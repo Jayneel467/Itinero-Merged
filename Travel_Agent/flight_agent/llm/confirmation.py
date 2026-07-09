@@ -139,14 +139,15 @@ def booking_summary_prompt(session: SessionContext) -> str:
 
 
 def payment_summary_prompt(session: SessionContext) -> str:
-    """Ask the user to confirm payment before completing the booking."""
+    """Ask the user to confirm booking before completing via sandbox credit line."""
     prebook = session.last_prebook or {}
     price = prebook.get("price")
     currency = prebook.get("currency") or "INR"
-    price_line = f"**{currency} {price}**" if price else "the prebooked amount"
+    price_line = f"**{currency} {price}**" if price else "the held fare"
 
     return (
-        f"Prebook is ready. Total to pay: {price_line}.\n\n"
-        "Reply **YES** or **CONFIRM** to complete payment and issue your ticket, "
-        "or say **cancel** to stop."
+        f"Your flight is on hold. Total fare: {price_line}.\n\n"
+        "Reply **YES** or **CONFIRM** to complete your booking and issue your ticket. "
+        "Card payment will be added later — no card is needed right now.\n\n"
+        "Say **cancel** to stop."
     )

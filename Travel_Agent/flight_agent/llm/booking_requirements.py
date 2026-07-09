@@ -16,6 +16,23 @@ INDIAN_AIRPORTS = frozenset(
 
 CABIN_CLASSES = ("ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST")
 
+# LiteAPI accepts passport or id — not id_card (see flights prebook API).
+_LITEAPI_DOCUMENT_TYPES = frozenset({"passport", "id"})
+_DOCUMENT_TYPE_ALIASES = {
+    "id_card": "id",
+    "national_id": "id",
+    "aadhaar": "id",
+    "govt_id": "id",
+}
+
+
+def liteapi_document_type(document_type: str | None) -> str:
+    """Map user-facing document labels to LiteAPI documentType values."""
+    normalized = (document_type or "passport").strip().lower()
+    if normalized in _LITEAPI_DOCUMENT_TYPES:
+        return normalized
+    return _DOCUMENT_TYPE_ALIASES.get(normalized, "passport")
+
 
 def _segment_countries(segments: list[dict[str, Any]]) -> set[str]:
     countries: set[str] = set()
@@ -68,7 +85,7 @@ def build_booking_requirements(
     """Build what the LLM should collect before prebook."""
     verify_data = verify_data or {}
     is_domestic = route_type == "domestic"
-    document_type = "id_card" if is_domestic and default_country == "IN" else "passport"
+    document_type = "id" if is_domestic and default_country == "IN" else "passport"
 
     if is_domestic and default_country == "IN":
         doc_label = "government ID / Aadhaar number"
@@ -263,7 +280,7 @@ def summarize_attachable_services(services_attachable: Any) -> dict[str, Any]:
     summary["llm_instruction"] = (
         "Read user_prompt and reply to the user in simple language. "
         "Do NOT mention LiteAPI, tools, serviceId, or JSON. "
-        "If user says skip/none/no extras, proceed to payment confirmation."
+        "If user says skip/none/no extras, proceed to booking confirmation."
     )
     return summary
 
@@ -273,7 +290,7 @@ def services_question_prompt(services: dict[str, Any]) -> str:
     if not services.get("available") or not services.get("groups"):
         return (
             "No seat selection or extra baggage is available for this flight.\n\n"
-            "Reply **YES** when you're ready to pay and confirm your ticket."
+            "Reply **YES** when you're ready to confirm your ticket."
         )
 
     type_labels = {

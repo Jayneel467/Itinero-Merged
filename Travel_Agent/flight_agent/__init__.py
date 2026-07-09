@@ -1,19 +1,23 @@
 """
-Flight Agent — production-ready LangGraph orchestration for flight booking.
+Flight Agent — sub-agent of Travel Agent in the Itinero workflow.
 
-Designed for integration with a Supervisor Agent or MCP server via the
-public ``FlightAgent`` class and ``FlightAgentInput`` / ``FlightAgentOutput`` models.
+Workflow: Supervisor → General Agent → Travel Agent → Flight Agent (this package)
+Output flows to Itinerary Agent via ``TravelAgentOutput.itinerary_payload``.
 """
 
-from flight_agent.agent import FlightAgent
+from flight_agent.agent import FlightAgent, create_flight_agent
 from flight_agent.models import FlightAgentInput, FlightAgentOutput, SessionContext
 
 __version__ = "1.0.0"
+
+# Workflow integration (for Supervisor / General Agent developer):
+#   from travel_agent import FlightWorkflowBridge, handle_workflow_message
 
 __all__ = [
     "FlightAgent",
     "FlightAgentInput",
     "FlightAgentOutput",
     "SessionContext",
+    "create_flight_agent",
     "__version__",
 ]

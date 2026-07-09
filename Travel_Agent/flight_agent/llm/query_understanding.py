@@ -77,6 +77,11 @@ _DATE_PATTERNS = [
     re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b"),
 ]
 
+_GENERIC_EXTRAS = re.compile(
+    r"\b(extra|extras|additional\s+service|additional\s+services|service|services)\b",
+    re.I,
+)
+
 _MONTHS = {
     "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
     "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
@@ -212,11 +217,16 @@ def _suggest_tool(hints: QueryHints, session: SessionContext) -> tuple[str | Non
         return None, "Politely say you only help with flights. Ask for route + date."
     if hints.is_greeting and step == "new_search":
         return None, "Greet warmly. Ask where from, where to, and travel date."
+    if step == "awaiting_extras_choice" and not hints.service_preference:
+        if hints.is_confirmation:
+            return None, "User said yes to extras. Ask which one: seat, baggage, or both."
+        if "extras" in hints.intents:
+            return None, "User wants extras but did not specify type. Ask: seat, baggage, or both?"
     if hints.is_confirmation:
         if step == "awaiting_details_yes":
             return "prebook_flight", "User confirmed details — call prebook_flight."
         if step == "awaiting_payment_yes":
-            return "complete_flight_booking", "User confirmed payment — call complete_flight_booking."
+            return "complete_flight_booking", "User confirmed booking — call complete_flight_booking."
     if hints.option_index and session.last_search_results:
         if not session.passengers_confirmed:
             return "set_booking_passengers", (
@@ -292,6 +302,8 @@ def analyze_user_query(message: str, session: SessionContext) -> QueryHints:
         hints.intents.append("extras")
     elif any(w in lower for w in ("skip", "no extras", "none", "no thanks", "nothing")):
         hints.service_preference = "none"
+        hints.intents.append("extras")
+    elif _GENERIC_EXTRAS.search(lower):
         hints.intents.append("extras")
 
     if re.search(r"\b(status|pnr|booking\s+ref)\b", lower):

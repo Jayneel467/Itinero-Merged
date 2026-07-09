@@ -13,6 +13,7 @@ from flight_agent.llm.booking_requirements import (
     booking_details_prompt,
     build_booking_requirements,
     detect_route_type,
+    liteapi_document_type,
     missing_traveler_labels,
     requirements_from_session,
     services_question_prompt,
@@ -278,6 +279,20 @@ def build_flight_tools(
             )
         session.service_preference = resolved
         session.awaiting_service_preference = False
+        if not session.prebook_id:
+            session.awaiting_booking_confirmation = True
+            session.booking_confirmed = False
+            session.awaiting_payment_confirmation = False
+            session.payment_confirmed = False
+            return json.dumps(
+                {
+                    "status": "await_confirmation",
+                    "preference": resolved,
+                    "user_prompt": booking_summary_prompt(session),
+                    "summary_prompt": booking_summary_prompt(session),
+                    "llm_instruction": "Show summary and ask user to reply YES to confirm.",
+                }
+            )
         if resolved == "none":
             session.awaiting_payment_confirmation = True
             return json.dumps(
@@ -285,7 +300,7 @@ def build_flight_tools(
                     "status": "ready",
                     "preference": resolved,
                     "user_prompt": (
-                        "No extras added. Reply **YES** when you're ready to pay and confirm your ticket."
+                        "No extras added. Reply **YES** when you're ready to confirm your ticket."
                     ),
                     "payment_prompt": payment_summary_prompt(session),
                 }
@@ -436,17 +451,21 @@ def build_flight_tools(
                     f"Some details saved. Ask for all remaining fields together: {', '.join(missing)}."
                 )
             return json.dumps(payload)
-        session.awaiting_booking_confirmation = True
+        session.awaiting_service_preference = True
+        session.service_preference = None
+        session.awaiting_booking_confirmation = False
         session.booking_confirmed = False
         session.awaiting_payment_confirmation = False
         session.payment_confirmed = False
         return json.dumps(
             {
-                "status": "await_confirmation",
+                "status": "await_service_preference",
                 "action": "ask_user",
-                "user_prompt": booking_summary_prompt(session),
-                "summary_prompt": booking_summary_prompt(session),
-                "llm_instruction": "Show summary and ask YES before prebook. Do NOT ask about add-ons yet.",
+                "user_prompt": service_preference_question(session),
+                "llm_instruction": (
+                    "Traveler details are complete. Ask whether the user wants seat, baggage, "
+                    "both, or no extras before asking for booking confirmation."
+                ),
             }
         )
 
@@ -455,6 +474,15 @@ def build_flight_tools(
         offer_id: str | None = None,
     ) -> str:
         """Create a LiteAPI prebook when traveler data and offer are ready."""
+        if session.awaiting_service_preference and not session.service_preference:
+            return json.dumps(
+                {
+                    "status": "service_preference_required",
+                    "action": "ask_user",
+                    "user_prompt": service_preference_question(session),
+                    "llm_instruction": "Ask about seat, baggage, both, or no extras before continuing.",
+                }
+            )
         if session.awaiting_booking_confirmation and not session.booking_confirmed:
             return json.dumps(
                 {
@@ -484,7 +512,9 @@ def build_flight_tools(
             birthday=draft["passenger_birthday"],
             gender=str(draft["passenger_gender"])[0].upper(),
             nationality=draft.get("passenger_nationality", service._settings.default_country),
-            document_type=draft.get("passenger_document_type") or req.get("document_type", "passport"),
+            document_type=liteapi_document_type(
+                draft.get("passenger_document_type") or req.get("document_type", "passport")
+            ),
             document_number=draft["passenger_document_number"],
             document_expiry=draft["passenger_document_expiry"],
             document_issue_country=draft.get(
@@ -508,14 +538,27 @@ def build_flight_tools(
         session.booking_confirmed = False
         session.awaiting_payment_confirmation = False
         session.payment_confirmed = False
-        session.awaiting_service_preference = True
-        session.service_preference = None
-        result["status"] = "await_service_preference"
-        result["user_prompt"] = service_preference_question(session)
+        if session.service_preference in {None, ""}:
+            session.awaiting_service_preference = True
+            session.service_preference = None
+            result["status"] = "await_service_preference"
+            result["user_prompt"] = service_preference_question(session)
+            result["llm_instruction"] = (
+                "Ask what extras user wants (seat/baggage/both/none) using user_prompt. "
+                "Do NOT list options or ask for booking confirmation until they answer. "
+                "Call set_service_preference when they reply."
+            )
+            return json.dumps(result)
+        if session.service_preference == "none":
+            session.awaiting_payment_confirmation = True
+            result["status"] = "ready_for_booking"
+            result["user_prompt"] = payment_summary_prompt(session)
+            result["payment_prompt"] = payment_summary_prompt(session)
+            result["llm_instruction"] = "No extras requested. Ask user to reply YES to confirm booking."
+            return json.dumps(result)
+        result["status"] = "ready_for_services"
         result["llm_instruction"] = (
-            "Ask what extras user wants (seat/baggage/both/none) using user_prompt. "
-            "Do NOT list options or ask for payment until they answer. "
-            "Call set_service_preference when they reply."
+            "User already chose extras. Call list_flight_services next and help them pick an option."
         )
         return json.dumps(result)
 
@@ -533,7 +576,7 @@ def build_flight_tools(
             return json.dumps(
                 {
                     "status": "skipped",
-                    "user_prompt": "No extras. Reply **YES** to pay.",
+                    "user_prompt": "No extras. Reply **YES** to confirm your booking.",
                     "payment_prompt": payment_summary_prompt(session),
                 }
             )
@@ -556,7 +599,7 @@ def build_flight_tools(
             **services,
             "groups": groups,
             "user_prompt": services_question_prompt({**services, "groups": groups}),
-            "llm_instruction": "Show options briefly. User picks one or says skip, then attach or pay.",
+            "llm_instruction": "Show options briefly. User picks one or says skip, then attach or confirm booking.",
         }
         return json.dumps(payload)
 
@@ -579,7 +622,7 @@ def build_flight_tools(
         session.selected_services = selections
         session.last_prebook = {**(session.last_prebook or {}), **result}
         result["status"] = "attached"
-        result["llm_instruction"] = "Add-ons added. Show updated total and ask YES to pay."
+        result["llm_instruction"] = "Add-ons added. Show updated total and ask YES to confirm booking."
         result["user_prompt"] = payment_summary_prompt(session)
         session.awaiting_payment_confirmation = True
         result["payment_prompt"] = payment_summary_prompt(session)
@@ -600,10 +643,11 @@ def build_flight_tools(
         if session.awaiting_payment_confirmation and not session.payment_confirmed:
             return json.dumps(
                 {
-                    "status": "payment_confirmation_required",
+                    "status": "booking_confirmation_required",
                     "action": "ask_user",
-                    "message": "User must confirm payment first. Do NOT complete until they reply YES.",
+                    "message": "User must confirm booking first. Do NOT complete until they reply YES.",
                     "payment_prompt": payment_summary_prompt(session),
+                    "user_prompt": payment_summary_prompt(session),
                 }
             )
 
@@ -616,20 +660,39 @@ def build_flight_tools(
         except LiteAPIError as exc:
             return json.dumps(
                 {
-                    "status": "payment_failed",
+                    "status": "booking_failed",
                     "error": str(exc),
                     "message": (
-                        "Payment failed. Your LiteAPI sandbox may not have a credit line — "
-                        "contact LiteAPI support or enable payment SDK. "
-                        "Prebook is saved; do not retry complete until payment is resolved."
+                        "Booking could not be completed. Your fare hold is still saved. "
+                        "Card payment is not enabled yet — bookings use LiteAPI sandbox credit "
+                        "(payment.method CREDIT). Ask your LiteAPI account admin to enable "
+                        "credit-line billing, then try confirming again."
                     ),
                     "prebook_id": pid,
+                    "user_prompt": (
+                        "Sorry, I couldn't finish the booking right now. Your flight is still on hold. "
+                        "Please try again in a moment, or contact support if this keeps happening."
+                    ),
+                    "llm_instruction": "Apologize briefly. Do not mention API errors or credit line details.",
                 }
             )
         session.booking_id = result.get("booking_id")
         session.last_booking = result
         session.awaiting_payment_confirmation = False
         session.payment_confirmed = False
+        if result.get("found"):
+            pnr = result.get("airline_pnr") or result.get("booking_ref") or "—"
+            bid = result.get("booking_id") or "—"
+            result["status"] = "booked"
+            result["user_prompt"] = (
+                f"**Your flight is booked!**\n\n"
+                f"- **Booking reference:** {bid}\n"
+                f"- **Airline PNR:** {pnr}\n\n"
+                "Please save these details. Have a safe trip!"
+            )
+            result["llm_instruction"] = (
+                "Congratulate the user. Share booking reference and PNR clearly. No technical terms."
+            )
         return json.dumps(result)
 
     async def get_flight_booking(

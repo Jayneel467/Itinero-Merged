@@ -7,7 +7,7 @@ from flight_agent.config import Settings, get_settings
 from flight_agent.exceptions import LiteAPIError, UnsupportedOperationError, ValidationError
 from flight_agent.logging_config import get_logger
 from flight_agent.models.intents import ContactSlot, FlightSearchParams, PassengerSlot
-from flight_agent.llm.booking_requirements import summarize_attachable_services
+from flight_agent.llm.booking_requirements import liteapi_document_type, summarize_attachable_services
 from flight_agent.models.liteapi import (
     AttachServicesRequest,
     BookingPayment,
@@ -145,7 +145,7 @@ class FlightService:
                 birthday=p.birthday,
                 gender=p.gender.upper()[0],
                 nationality=p.nationality.upper(),
-                documentType=p.document_type,
+                documentType=liteapi_document_type(p.document_type),
                 documentNumber=p.document_number,
                 documentExpiry=p.document_expiry,
                 documentIssueCountry=p.document_issue_country.upper(),
@@ -378,7 +378,7 @@ class FlightService:
                                 "offer_id": offer.get("offerId"),
                                 "total_price": total,
                                 "currency": display.get("currency"),
-                                "cabin_class": fare.get("cabinClass") or fare.get("cabin"),
+                                "cabin_class": self._extract_cabin_class(offer, journey),
                                 "fare_family": fare.get("fareFamily") or fare.get("family"),
                                 "is_cheapest": offer.get("offerId")
                                 == (cheapest or {}).get("offerId")
@@ -425,8 +425,10 @@ class FlightService:
             "changes": changes,
             "segments_summary": self._summarize_segments(journey.get("segments") or []),
             "journey_key": journey.get("journeyKey"),
-            "cabin_class": (journey.get("fare") or {}).get("cabinClass")
-            or (journey.get("offers") or [{}])[0].get("fare", {}).get("cabinClass"),
+            "cabin_class": self._extract_cabin_class(
+                (journey.get("offers") or [{}])[0],
+                journey,
+            ),
         }
 
     def _normalize_prebook_result(self, raw: dict[str, Any]) -> dict[str, Any]:
@@ -485,6 +487,28 @@ class FlightService:
                 }
             )
         return {"total": len(bookings), "bookings": bookings}
+
+    @staticmethod
+    def _extract_cabin_class(offer: dict[str, Any], journey: dict[str, Any] | None = None) -> str | None:
+        """Best-effort cabin extraction across LiteAPI response shapes."""
+        fare = offer.get("fare") or {}
+        if fare.get("cabinClass") or fare.get("cabin"):
+            return fare.get("cabinClass") or fare.get("cabin")
+
+        if offer.get("cabinClass"):
+            return offer.get("cabinClass")
+
+        for seg_fare in offer.get("segmentFares") or []:
+            cabin = seg_fare.get("cabin") or seg_fare.get("cabinClass")
+            if cabin:
+                return cabin
+
+        if journey:
+            journey_fare = journey.get("fare") or {}
+            if journey_fare.get("cabinClass") or journey_fare.get("cabin"):
+                return journey_fare.get("cabinClass") or journey_fare.get("cabin")
+
+        return None
 
     @staticmethod
     def _summarize_segments(segments: list[dict[str, Any]]) -> list[dict[str, Any]]:

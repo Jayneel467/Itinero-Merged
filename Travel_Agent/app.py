@@ -119,6 +119,8 @@ def _offer_rows(offers: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "Airline": first.get("airline") or "—",
                 "From": first.get("from") or "—",
                 "To": first.get("to") or "—",
+                "Cabin": offer.get("cabin_class") or "—",
+                "Fare Family": offer.get("fare_family") or "—",
                 "Departs": (first.get("departure") or "—")[:16],
                 "Price": _format_price(offer.get("total_price"), currency),
                 "Stops": offer.get("stops"),
@@ -215,7 +217,7 @@ def _render_sidebar() -> None:
     ctx: SessionContext = st.session_state.session_context
     with st.sidebar:
         st.header("✈️ Flight Agent")
-        st.caption("I help you **search, choose & book flights** — nothing else.")
+        st.caption("Standalone flight search & booking · connects to Travel workflow when needed.")
 
         st.markdown("##### Your progress")
         for label, done in step_status(ctx):
@@ -272,7 +274,7 @@ def main() -> None:
     _render_sidebar()
 
     st.title("✈️ Flight Agent")
-    st.caption("Search · compare · book — flights only")
+    st.caption("Search · compare · book flights")
 
     if not st.session_state.turns:
         _render_welcome()

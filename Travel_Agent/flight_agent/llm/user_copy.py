@@ -13,7 +13,7 @@ STEP_LABELS = [
     ("Confirm fare", "verified_offer_id"),
     ("Your details", "traveler_ready"),
     ("Add-ons", "service_preference"),
-    ("Pay & book", "prebook_id"),
+    ("Confirm booking", "prebook_id"),
     ("Ticket issued", "booking_id"),
 ]
 
@@ -60,13 +60,13 @@ def passengers_question_prompt(ctx: SessionContext) -> str:
 def service_preference_question(ctx: SessionContext) -> str:
     """Ask what add-ons user wants BEFORE listing options."""
     return (
-        "Your flight is held. **Would you like any extras?**\n\n"
+        "**Would you like any additional services?**\n\n"
         "Reply with one of:\n"
         "- **Seat** — preferred seat (window/aisle)\n"
         "- **Baggage** — extra luggage\n"
         "- **Both** — seat and baggage\n"
-        "- **None** or **skip** — no extras, go straight to payment\n\n"
-        "I'll show available options only after you tell me what you need."
+        "- **None** or **skip** — no extras\n\n"
+        "I'll use your choice in the next booking step and show available options only if needed."
     )
 
 
@@ -74,11 +74,11 @@ def next_step_hint(ctx: SessionContext) -> str:
     if ctx.booking_id:
         return "Your flight is booked. Save your PNR from the confirmation above."
     if ctx.awaiting_payment_confirmation and not ctx.payment_confirmed:
-        return "Reply **YES** when you're ready to pay and get your ticket."
+        return "Reply **YES** when you're ready to confirm your booking and get your ticket."
     if ctx.awaiting_service_preference and not ctx.service_preference:
         return "Tell me: **seat**, **baggage**, **both**, or **skip** (no extras)."
     if ctx.prebook_id and ctx.service_preference and ctx.service_preference != "none":
-        return "Pick an add-on from the list, or say **skip** to pay."
+        return "Pick an add-on from the list, or say **skip** to confirm your booking."
     if ctx.awaiting_booking_confirmation and not ctx.booking_confirmed:
         return "Check your details above, then reply **YES** to continue."
     if ctx.traveler_draft and ctx.verified_offer_id:
