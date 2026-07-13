@@ -207,12 +207,12 @@ def geocode_location(place: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Supervisor escalation — signal only, no external API call
+# Itinerary Agent escalation — signal only, no external API call
 # ---------------------------------------------------------------------------
 @tool
-def escalate_to_supervisor(task_description: str, reason: str) -> str:
+def escalate_to_itinerary(task_description: str, reason: str) -> str:
     """
-    Hand off a complex or out-of-scope task to the Supervisor Agent.
+    Hand off a complex or out-of-scope task to the Itinerary Agent.
 
     Call this ONLY when the user's request goes beyond what the General Agent
     handles on its own:
@@ -227,15 +227,15 @@ def escalate_to_supervisor(task_description: str, reason: str) -> str:
 
     Args:
         task_description: Plain-language description of what the user wants done.
-        reason: Why this needs the supervisor (e.g. "user wants to book a hotel",
+        reason: Why this needs the Itinerary Agent (e.g. "user wants to book a hotel",
                 "full multi-day itinerary requested", "PDF export needed").
     """
     logger.info(
-        "Escalating to supervisor | task=%s | reason=%s", task_description, reason
+        "Escalating to Itinerary Agent | task=%s | reason=%s", task_description, reason
     )
     # Return a signal string the graph's routing function checks after tools run.
-    # This string is NOT shown to the user — the supervisor_node generates the reply.
-    return f"ESCALATE_TO_SUPERVISOR|task={task_description}|reason={reason}"
+    # This string is NOT shown to the user — the itinerary_node generates the reply.
+    return f"ESCALATE_TO_ITINERARY|task={task_description}|reason={reason}"
 
 
 # Single list the graph imports - add new tools here as they're built.
@@ -247,5 +247,5 @@ ALL_TOOLS = [
     get_route,
     search_places,
     geocode_location,
-    escalate_to_supervisor,
+    escalate_to_itinerary,
 ]
