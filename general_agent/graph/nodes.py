@@ -5,9 +5,10 @@ Two nodes today:
   - agent_node      : the single LLM reasoning step (handles normal conversation
                       and tool routing). Injects a fresh datetime-aware system
                       prompt on every turn.
-  - supervisor_node : handoff stub. Triggered when `escalate_to_supervisor` is
-                      called. When supervisor_agent/ is fully built by the team,
-                      replace the TODO block inside with a real invocation.
+  - itinerary_node  : handoff node. Triggered when `escalate_to_itinerary` is
+                      called. When itinerary_agent/ is built and ready to integrate,
+                      replace the TODO block inside with a direct invocation —
+                      one line change, nothing else needs to move.
 
 When this grows into multi-agent, new specialist nodes get added here alongside
 `agent_node`, and `graph/workflow.py` wires the routing between them.
@@ -22,9 +23,9 @@ from llm.prompts import build_system_prompt
 
 logger = logging.getLogger(__name__)
 
-# The signal string that escalate_to_supervisor tool returns.
+# The signal string that escalate_to_itinerary tool returns.
 # Kept in sync with llm/tools.py and graph/workflow.py.
-_ESCALATION_SIGNAL = "ESCALATE_TO_SUPERVISOR"
+_ESCALATION_SIGNAL = "ESCALATE_TO_ITINERARY"
 
 
 def agent_node(state: AgentState):
@@ -56,24 +57,24 @@ def agent_node(state: AgentState):
     return {"messages": [response]}
 
 
-def supervisor_node(state: AgentState):
+def itinerary_node(state: AgentState):
     """
-    Handoff node — triggered when the `escalate_to_supervisor` tool fires.
+    Handoff node — triggered when the `escalate_to_itinerary` tool fires.
 
-    This is an intentional stub. The supervisor_agent/ folder (being built by
-    another team member) will contain the real SupervisorAgent. When it's ready,
-    replace the TODO block below with a direct invocation:
+    Architecture note:
+    The itinerary_agent/ is being built as an independent agent. When it's
+    ready to integrate, replace the TODO block below with a single call:
 
-        # TODO: Replace stub with real supervisor when supervisor_agent/ is ready
+        # TODO: Replace stub with real itinerary_agent when it's ready to integrate
         # import sys, os
-        # sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../supervisor_agent'))
-        # from agent import build_supervisor_agent
-        # supervisor = build_supervisor_agent()
-        # return supervisor.handle(state)
+        # sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../itinerary_agent'))
+        # from agent import build_itinerary_agent
+        # itinerary = build_itinerary_agent()
+        # return itinerary.handle(state)
 
     Until then, the node:
     1. Logs the escalation with full task/reason detail.
-    2. Returns a clear, friendly "connecting you" message to the user.
+    2. Returns a friendly "on it" message to the user.
     """
     # Extract escalation details from the most recent tool message.
     task_info = ""
@@ -84,15 +85,15 @@ def supervisor_node(state: AgentState):
                 task_info = content
                 break
 
-    logger.info("Supervisor handoff triggered | %s", task_info)
+    logger.info("Itinerary Agent handoff triggered | %s", task_info)
 
-    # --- TODO: Invoke real supervisor_agent here when it's ready ---
+    # --- TODO: Invoke real itinerary_agent here when it's ready to integrate ---
 
     handoff_reply = (
-        "On it — I'm connecting you with our specialist planning team. 🔗\n\n"
-        "The **Supervisor Agent** will take it from here and coordinate everything "
-        "you need across hotels, flights, and itinerary planning.\n\n"
-        "_Your request has been captured. The supervisor pipeline will be live shortly — "
+        "On it — handing this off to the Itinerary Agent now. 🗓️\n\n"
+        "It'll put together everything you need — day-by-day plan, hotels, "
+        "flights, and the full logistics.\n\n"
+        "_Your request has been captured. The itinerary pipeline will be live shortly — "
         "the team is actively building it._"
     )
 
