@@ -1,4 +1,4 @@
-"""Async HTTP client for LiteAPI flight operations."""
+"""Async HTTP client for LiteAPI flight operations (production retries)."""
 
 from __future__ import annotations
 
@@ -22,17 +22,14 @@ from flight_agent.models.liteapi import (
 
 logger = get_logger(__name__)
 
-# Shared sync client survives Streamlit reruns (asyncio.run() per message).
 _SYNC_CLIENTS: dict[str, httpx.Client] = {}
+
+# Safe to retry: GET and search. Complete/cancel use retries=0 by default.
+_RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
 class LiteAPIProvider:
-    """
-    Low-level client for LiteAPI Flights endpoints.
-
-    Uses a persistent sync httpx.Client (via asyncio.to_thread) so TCP/TLS
-    connections are reused across Streamlit messages and latency stays low.
-    """
+    """Low-level client for LiteAPI Flights endpoints with backoff retries."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
@@ -40,6 +37,7 @@ class LiteAPIProvider:
         self._api_key = self._settings.resolved_liteapi_api_key
         read_timeout = self._settings.liteapi_timeout_seconds
         self._timeout = httpx.Timeout(read_timeout, connect=5.0, write=10.0, pool=3.0)
+        self._max_retries = max(0, self._settings.liteapi_max_retries)
         self._client_key = f"{self._base_url}|{self._api_key[:12]}"
 
     def _headers(self) -> dict[str, str]:
@@ -62,7 +60,6 @@ class LiteAPIProvider:
         return client
 
     async def warm_up(self) -> None:
-        """Open a connection early so the first user search is faster."""
         if not self._api_key:
             return
         try:
@@ -77,16 +74,21 @@ class LiteAPIProvider:
         *,
         json_body: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
-        retries: int = 1,
+        retries: int | None = None,
+        idempotent: bool = True,
     ) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
         if not self._api_key:
             raise LiteAPIError("LiteAPI API key is not configured")
 
+        max_attempts = (retries if retries is not None else self._max_retries) + 1
+        if not idempotent:
+            max_attempts = 1
+
         client = self._get_client()
         last_exc: Exception | None = None
 
-        for attempt in range(retries + 1):
+        for attempt in range(max_attempts):
             started = time.perf_counter()
             try:
                 response = await asyncio.to_thread(
@@ -97,16 +99,41 @@ class LiteAPIProvider:
                     json=json_body,
                     params=params,
                 )
-                elapsed = round(time.perf_counter() - started, 2)
-                logger.info("liteapi_request", method=method, path=path, seconds=elapsed)
+                elapsed = round(time.perf_counter() * 1000 - started * 1000) / 1000
+                logger.info(
+                    "liteapi_request",
+                    method=method,
+                    path=path,
+                    status=response.status_code,
+                    seconds=elapsed,
+                    attempt=attempt + 1,
+                )
+                if (
+                    response.status_code in _RETRYABLE_STATUS
+                    and attempt < max_attempts - 1
+                    and idempotent
+                ):
+                    delay = min(2 ** attempt * 0.4, 4.0)
+                    logger.warning(
+                        "liteapi_retry_status",
+                        path=path,
+                        status=response.status_code,
+                        delay=delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
                 return self._parse_response(response, path)
             except httpx.TimeoutException as exc:
                 last_exc = exc
                 logger.warning("liteapi_timeout", path=path, attempt=attempt + 1)
+                if attempt < max_attempts - 1 and idempotent:
+                    await asyncio.sleep(min(2 ** attempt * 0.4, 4.0))
+                    continue
             except httpx.HTTPError as exc:
                 last_exc = exc
-                if attempt < retries:
+                if attempt < max_attempts - 1 and idempotent:
                     logger.warning("liteapi_retry", path=path, error=str(exc)[:120])
+                    await asyncio.sleep(min(2 ** attempt * 0.4, 4.0))
                     continue
                 raise LiteAPIError(
                     f"LiteAPI HTTP error: {exc}",
@@ -153,7 +180,7 @@ class LiteAPIProvider:
             path=path,
             status=response.status_code,
             message=message,
-            description=description[:200],
+            description=(description or "")[:200],
         )
 
         raise LiteAPIError(
@@ -164,46 +191,42 @@ class LiteAPIProvider:
             details={"description": description, "path": path, "body": body},
         )
 
-    # ------------------------------------------------------------------
-    # Flight operations
-    # ------------------------------------------------------------------
-
     async def search_flights(self, request: FlightSearchRequest) -> dict[str, Any]:
-        """POST /flights/rates — search for available flights."""
         payload = request.model_dump(by_alias=True, exclude_none=True)
-        return await self._request("POST", "/flights/rates", json_body=payload)
+        return await self._request("POST", "/flights/rates", json_body=payload, idempotent=True)
 
     async def verify_offer(self, request: VerifyOfferRequest) -> dict[str, Any]:
-        """POST /flights/verify — confirm offer availability and pricing."""
         payload = request.model_dump(by_alias=True)
-        return await self._request("POST", "/flights/verify", json_body=payload)
+        return await self._request("POST", "/flights/verify", json_body=payload, idempotent=True)
 
     async def prebook(self, request: PrebookRequest) -> dict[str, Any]:
-        """POST /flights/prebooks — create checkout session and reserve offer."""
         payload = request.model_dump(by_alias=True, exclude_none=True)
-        return await self._request("POST", "/flights/prebooks", json_body=payload)
+        # Prebook creates a hold — do not auto-retry (could double-hold)
+        return await self._request(
+            "POST", "/flights/prebooks", json_body=payload, idempotent=False
+        )
 
     async def attach_services(
         self,
         prebook_id: str,
         request: AttachServicesRequest,
     ) -> dict[str, Any]:
-        """POST /flights/prebooks/{prebookId}/services — attach ancillary services."""
         payload = request.model_dump(by_alias=True, exclude_none=True)
         return await self._request(
             "POST",
             f"/flights/prebooks/{prebook_id}/services",
             json_body=payload,
+            idempotent=False,
         )
 
     async def complete_booking(self, request: CompleteBookingRequest) -> dict[str, Any]:
-        """POST /flights/bookings/ — finalize a prebook into a confirmed booking."""
         payload = request.model_dump(by_alias=True, exclude_none=True)
-        return await self._request("POST", "/flights/bookings/", json_body=payload)
+        return await self._request(
+            "POST", "/flights/bookings/", json_body=payload, idempotent=False
+        )
 
     async def get_booking(self, booking_id: str) -> dict[str, Any]:
-        """GET /flights/bookings/{bookingId} — retrieve booking details and status."""
-        return await self._request("GET", f"/flights/bookings/{booking_id}")
+        return await self._request("GET", f"/flights/bookings/{booking_id}", idempotent=True)
 
     async def list_bookings(
         self,
@@ -211,25 +234,28 @@ class LiteAPIProvider:
         airline_pnr: str | None = None,
         last_name: str | None = None,
     ) -> dict[str, Any]:
-        """GET /flights/bookings — list bookings or lookup by PNR + last name."""
         params: dict[str, str] = {}
         if airline_pnr:
             params["airlinePnr"] = airline_pnr
         if last_name:
             params["lastName"] = last_name
-        return await self._request("GET", "/flights/bookings", params=params or None)
+        return await self._request("GET", "/flights/bookings", params=params or None, idempotent=True)
+
+    async def cancel_booking(self, booking_id: str) -> dict[str, Any]:
+        return await self._request(
+            "PUT", f"/flights/bookings/{booking_id}", idempotent=False
+        )
 
     async def search_airports(self, query: str) -> dict[str, Any]:
-        """GET /data/flights/airports — airport autocomplete lookup."""
-        return await self._request("GET", "/data/flights/airports", params={"q": query})
+        return await self._request(
+            "GET", "/data/flights/airports", params={"q": query}, idempotent=True
+        )
 
     async def close(self) -> None:
-        """Keep shared client open for reuse; Streamlit session benefits from pooling."""
         pass
 
     @staticmethod
     def close_all() -> None:
-        """Close all pooled clients (app shutdown)."""
         for key, client in list(_SYNC_CLIENTS.items()):
             if not client.is_closed:
                 client.close()

@@ -1,23 +1,39 @@
 """
-Flight Agent — sub-agent of Travel Agent in the Itinero workflow.
+Flight Agent — search / book / retrieve / cancel via GPT + LangGraph + LiteAPI.
 
-Workflow: Supervisor → General Agent → Travel Agent → Flight Agent (this package)
-Output flows to Itinerary Agent via ``TravelAgentOutput.itinerary_payload``.
+  from flight_agent import FlightAgent, FlightAgentInput, SessionContext
 """
 
-from flight_agent.agent import FlightAgent, create_flight_agent
-from flight_agent.models import FlightAgentInput, FlightAgentOutput, SessionContext
+from __future__ import annotations
 
-__version__ = "1.0.0"
+from typing import TYPE_CHECKING, Any
 
-# Workflow integration (for Supervisor / General Agent developer):
-#   from travel_agent import FlightWorkflowBridge, handle_workflow_message
+__version__ = "1.1.0"
 
 __all__ = [
     "FlightAgent",
     "FlightAgentInput",
     "FlightAgentOutput",
     "SessionContext",
-    "create_flight_agent",
     "__version__",
 ]
+
+if TYPE_CHECKING:
+    from flight_agent.agent import FlightAgent as FlightAgent
+    from flight_agent.models import (
+        FlightAgentInput as FlightAgentInput,
+        FlightAgentOutput as FlightAgentOutput,
+        SessionContext as SessionContext,
+    )
+
+
+def __getattr__(name: str) -> Any:
+    if name == "FlightAgent":
+        from flight_agent.agent import FlightAgent
+
+        return FlightAgent
+    if name in {"FlightAgentInput", "FlightAgentOutput", "SessionContext"}:
+        from flight_agent import models
+
+        return getattr(models, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

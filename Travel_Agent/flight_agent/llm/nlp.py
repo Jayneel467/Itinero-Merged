@@ -1,16 +1,20 @@
-"""LLM layer — Groq Qwen primary, Groq Llama + OpenAI fallbacks."""
+"""LLM layer — OpenAI GPT only (tool-calling flight assistant)."""
 
 from datetime import date
+from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
-from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from flight_agent.config import Settings, get_settings
 from flight_agent.exceptions import FlightAgentError
+from flight_agent.llm.booking_requirements import (
+    all_travelers_complete,
+    passenger_slot_plan,
+    traveler_collection_summary,
+)
 from flight_agent.llm.prompts import AGENT_SYSTEM
-from flight_agent.llm.query_understanding import QueryHints, format_hints_for_llm
 from flight_agent.llm.user_copy import next_step_hint
 from flight_agent.logging_config import get_logger
 from flight_agent.models.agent import SessionContext
@@ -19,43 +23,20 @@ logger = get_logger(__name__)
 
 
 class FlightNLP:
-    """LLM for tool-calling flight assistance — Groq Qwen first, fast Groq/OpenAI fallbacks."""
+    """LLM for tool-calling flight assistance — OpenAI GPT only."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
-        self._groq = self._build_groq(self._settings.groq_model)
-        self._groq_backup = self._build_groq_backup()
         self._openai = self._build_openai()
-        if not self._groq and not self._openai:
+        if not self._openai:
             raise FlightAgentError(
-                "No LLM configured. Set GROQ_API_KEY (gsk_...) and/or OPENAI_API_KEY (sk-...) in .env."
+                "No OpenAI LLM configured. Set OPENAI_API_KEY (sk-...) in Travel_Agent/.env."
             )
-        self._primary = self._settings.primary_llm_provider
         logger.info(
             "llm_configured",
-            primary=self._primary,
-            groq_model=self._settings.groq_model,
-            groq_fallback=self._settings.groq_fallback_model if self._groq_backup else None,
-            openai_model=self._settings.openai_model if self._openai else None,
-            fallback=self._settings.llm_fallback,
+            primary="openai",
+            openai_model=self._settings.openai_model,
         )
-
-    def _build_groq(self, model: str) -> ChatGroq | None:
-        api_key = self._settings.resolved_groq_api_key
-        if not api_key:
-            return None
-        return ChatGroq(
-            model=model,
-            temperature=self._settings.groq_temperature,
-            max_retries=self._settings.groq_max_retries,
-            groq_api_key=api_key,
-        )
-
-    def _build_groq_backup(self) -> ChatGroq | None:
-        fallback_model = self._settings.groq_fallback_model.strip()
-        if not fallback_model or fallback_model == self._settings.groq_model:
-            return None
-        return self._build_groq(fallback_model)
 
     def _build_openai(self) -> ChatOpenAI | None:
         api_key = self._settings.resolved_openai_api_key
@@ -68,66 +49,88 @@ class FlightNLP:
             api_key=api_key,
         )
 
-    def _groq_stack(self, tools: list) -> BaseChatModel | None:
-        """Groq primary model, then Groq backup model (same API key, immediate failover)."""
-        if not self._groq:
-            return None
-        primary = self._groq.bind_tools(tools)
-        if self._groq_backup:
-            backup = self._groq_backup.bind_tools(tools)
-            logger.debug("llm_groq_stack", primary=self._settings.groq_model, backup=self._settings.groq_fallback_model)
-            return primary.with_fallbacks([backup])
-        return primary
-
-    def _with_optional_openai(self, model: BaseChatModel, tools: list) -> BaseChatModel:
-        if not self._settings.llm_fallback or not self._openai:
-            return model
-        openai = self._openai.bind_tools(tools)
-        logger.debug("llm_openai_fallback", model=self._settings.openai_model)
-        return model.with_fallbacks([openai])
+    @property
+    def raw_llm(self) -> ChatOpenAI:
+        """Unbound GPT model (intent classification, etc.)."""
+        if not self._openai:
+            raise FlightAgentError("OpenAI is not configured.")
+        return self._openai
 
     def bind_tools(self, tools: list) -> BaseChatModel:
-        """Return LLM with flight tools bound; Groq Qwen first, Groq Llama if Qwen fails, OpenAI last."""
-        groq_stack = self._groq_stack(tools)
-
-        if self._primary == "groq" and groq_stack:
-            return self._with_optional_openai(groq_stack, tools)
-
-        if self._openai:
-            openai = self._openai.bind_tools(tools)
-            if self._settings.llm_fallback and groq_stack:
-                logger.debug("llm_chain", primary="openai", fallback="groq")
-                return openai.with_fallbacks([groq_stack])
-            return openai
-
-        if groq_stack:
-            return groq_stack
-
-        raise FlightAgentError("No usable LLM provider for tool calling.")
+        """Return GPT with flight tools bound."""
+        if not self._openai:
+            raise FlightAgentError("OpenAI is not configured.")
+        return self._openai.bind_tools(tools)
 
     def system_message(
         self,
         session: SessionContext,
         *,
         user_message: str = "",
-        query_hints: QueryHints | None = None,
     ) -> SystemMessage:
-        """Build system prompt with session context and user query analysis."""
-        session_ctx = session.model_dump(
-            exclude={"last_search_results", "traveler_draft", "available_services", "selected_services"},
-            exclude_none=True,
-        )
-        analysis = ""
-        if user_message and query_hints:
-            analysis = format_hints_for_llm(query_hints, user_message)
+        """Build system prompt with session context (LLM reads the user message itself)."""
+        session_ctx = {
+            "selected_offer_index": session.selected_offer_index,
+            "passengers_confirmed": session.passengers_confirmed,
+            "verified_offer_id": bool(session.verified_offer_id),
+            "prebook_id": bool(session.prebook_id),
+            "booking_id": bool(session.booking_id),
+            "awaiting_service_preference": session.awaiting_service_preference,
+            "service_preference": session.service_preference,
+            "search_offers_count": len(session.last_search_results or []),
+            "awaiting_booking_confirmation": session.awaiting_booking_confirmation,
+            "booking_confirmed": session.booking_confirmed,
+            "awaiting_payment_confirmation": session.awaiting_payment_confirmation,
+            "payment_confirmed": session.payment_confirmed,
+        }
+        traveler_summary: dict[str, Any] = {}
+        if session.travelers_draft and len(session.travelers_draft) > 1:
+            traveler_summary["passenger_count"] = len(session.travelers_draft)
+            traveler_summary["current_passenger_index"] = session.current_traveler_index + 1
+            traveler_summary["saved"] = [
+                f"{d.get('passenger_first_name', '')} {d.get('passenger_last_name', '')}".strip()
+                for d in session.travelers_draft
+                if d.get("passenger_first_name")
+            ]
+        else:
+            traveler_summary = {
+                k: session.traveler_draft.get(k)
+                for k in (
+                    "passenger_first_name",
+                    "passenger_last_name",
+                    "contact_email",
+                    "contact_phone_number",
+                    "passenger_birthday",
+                    "passenger_gender",
+                    "passenger_document_number",
+                )
+                if session.traveler_draft.get(k)
+            }
+        req_summary = {}
+        if session.booking_requirements:
+            req_summary = {
+                "route_type": session.booking_requirements.get("route_type"),
+                "document_type": session.booking_requirements.get("document_type"),
+            }
+        passenger_guide = ""
+        if (
+            session.verified_offer_id
+            and not all_travelers_complete(session)
+            and len(passenger_slot_plan(session)) > 1
+        ):
+            passenger_guide = (
+                "\nPASSENGER COLLECTION (ask for missing fields only):\n"
+                + traveler_collection_summary(session, self._settings.default_country)
+            )
+        latest = f"\nLatest user message: {user_message}" if user_message else ""
         content = AGENT_SYSTEM.format(
             today=date.today().isoformat(),
             next_step=next_step_hint(session),
-            query_analysis=analysis,
+            query_analysis=passenger_guide + latest,
             session_context=session_ctx,
             search_context=session.search_context or "(none yet)",
-            booking_requirements=session.booking_requirements or "(verify a flight first)",
-            traveler_draft=session.traveler_draft or "(none yet)",
+            booking_requirements=req_summary or "(verify a flight first)",
+            traveler_draft=traveler_summary or "(none yet)",
             passengers_confirmed=session.passengers_confirmed,
             service_preference=session.service_preference or "(not asked yet)",
         )

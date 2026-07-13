@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 from flight_agent.config import Settings, get_settings
-from flight_agent.exceptions import LiteAPIError, UnsupportedOperationError, ValidationError
+from flight_agent.exceptions import LiteAPIError, ValidationError
 from flight_agent.logging_config import get_logger
 from flight_agent.models.intents import ContactSlot, FlightSearchParams, PassengerSlot
 from flight_agent.llm.booking_requirements import liteapi_document_type, summarize_attachable_services
@@ -109,6 +109,8 @@ class FlightService:
             adults=params.adults,
             children=params.children,
             infants=params.infants,
+            children_ages=params.children_ages,
+            infant_ages=params.infant_ages,
             currency=(params.currency or self._settings.default_currency).upper(),
             country=self._settings.default_country,
             cabin_class=params.cabin_class,
@@ -192,7 +194,7 @@ class FlightService:
         transaction_id: str | None = None,
         payment_method: str | None = None,
     ) -> dict[str, Any]:
-        """Complete booking using prebook transaction ID or sandbox credit line."""
+        """Complete booking using Payment SDK transaction ID or sandbox credit line."""
         if payment_method:
             method = payment_method
         elif transaction_id:
@@ -202,9 +204,15 @@ class FlightService:
         else:
             method = PaymentMethod.CREDIT.value
 
+        if method == PaymentMethod.CREDIT.value:
+            try:
+                self._settings.assert_payment_allowed()
+            except ValueError as exc:
+                raise ValidationError(str(exc)) from exc
+
         if method == PaymentMethod.TRANSACTION_ID.value and not transaction_id:
             raise ValidationError(
-                "transaction_id is required when completing booking with Stripe (TRANSACTION_ID)"
+                "transaction_id is required when completing booking with Payment SDK (TRANSACTION_ID)"
             )
 
         try:
@@ -271,24 +279,72 @@ class FlightService:
 
     async def cancel_booking(self, booking_id: str) -> dict[str, Any]:
         """
-        Flight cancellation is not exposed in the LiteAPI Flights API.
+        Cancel a flight booking via LiteAPI PUT /flights/bookings/{bookingId}.
 
-        Hotel bookings support PUT /bookings/{id}; flights do not have an equivalent
-        endpoint. This method raises UnsupportedOperationError with guidance.
+        Re-fetches the booking afterwards so the agent can report the real status.
         """
-        # Attempt to fetch booking to provide useful context in the error
-        try:
-            booking = await self.get_booking(booking_id)
-            status = booking.get("status")
-        except Exception:
-            status = None
+        before = await self.get_booking(booking_id)
+        if not before.get("found"):
+            return {
+                "cancelled": False,
+                "found": False,
+                "booking_id": booking_id,
+                "message": "Booking not found.",
+            }
 
-        raise UnsupportedOperationError(
-            "Flight cancellation is not supported via the LiteAPI Flights API. "
-            "Please contact the airline directly using your booking reference (PNR). "
-            "Cancellation policies are available in the fare rules from verify/prebook.",
-            details={"booking_id": booking_id, "current_status": status},
-        )
+        prior_status = str(before.get("status") or "")
+        if "CANCEL" in prior_status.upper():
+            return {
+                "cancelled": True,
+                "already_cancelled": True,
+                "found": True,
+                "booking_id": booking_id,
+                "status": prior_status,
+                "airline_pnr": before.get("airline_pnr"),
+                "booking_ref": before.get("booking_ref"),
+                "message": "This booking is already cancelled.",
+            }
+
+        logger.info("flight_cancel_booking", booking_id=booking_id)
+        raw = await self._provider.cancel_booking(booking_id)
+        after = await self.get_booking(booking_id)
+        status = str(after.get("status") or prior_status)
+        cancelled = "CANCEL" in status.upper()
+        refund = None
+        fee = None
+        currency = None
+        if isinstance(raw, dict):
+            payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+            if isinstance(payload, dict):
+                refund = payload.get("refund_amount") or payload.get("refundAmount")
+                fee = payload.get("cancellation_fee") or payload.get("cancellationFee")
+                currency = payload.get("currency")
+                if payload.get("status"):
+                    status = str(payload.get("status"))
+                    cancelled = "CANCEL" in status.upper() or cancelled
+
+        return {
+            "cancelled": cancelled,
+            "found": True,
+            "booking_id": booking_id,
+            "status": status,
+            "prior_status": prior_status,
+            "airline_pnr": after.get("airline_pnr") or before.get("airline_pnr"),
+            "booking_ref": after.get("booking_ref") or before.get("booking_ref"),
+            "refund_amount": refund,
+            "cancellation_fee": fee,
+            "currency": currency,
+            "segments_summary": after.get("segments_summary") or before.get("segments_summary"),
+            "message": (
+                "Booking cancelled successfully."
+                if cancelled
+                else (
+                    "Cancellation request was sent. The booking still shows as "
+                    f"{status or 'confirmed'} — keep your airline PNR handy and "
+                    "contact the airline if needed."
+                )
+            ),
+        }
 
     async def resolve_airport_code(self, location: str) -> str:
         """Resolve a city name or partial code to a 3-letter IATA code."""
@@ -443,8 +499,9 @@ class FlightService:
         return {
             "success": True,
             "prebook_id": prebook.get("prebookId"),
-            "transaction_id": prebook.get("transactionId"),
-            "secret_key": prebook.get("secretKey"),
+            "transaction_id": prebook.get("transactionId") or entry.get("transactionId"),
+            "secret_key": prebook.get("secretKey") or entry.get("secretKey"),
+            "publishable_key": prebook.get("publishableKey") or entry.get("publishableKey"),
             "price": prebook.get("price"),
             "currency": prebook.get("currency"),
             "payment_methods": prebook.get("paymentMethodsAvailable"),
@@ -457,36 +514,93 @@ class FlightService:
         if not data:
             return {"found": False}
 
-        entry = data[0]
-        booking = entry.get("booking") or entry
+        entry = data[0] if isinstance(data, list) else data
+        if isinstance(entry, dict) and "bookings" in entry and not entry.get("booking"):
+            # List-shaped payload mistakenly passed to single-booking normalize
+            bookings = entry.get("bookings") or []
+            entry = bookings[0] if bookings else {}
+        booking = entry.get("booking") if isinstance(entry, dict) else None
+        if not isinstance(booking, dict):
+            booking = entry if isinstance(entry, dict) else {}
         journey = booking.get("journey") or {}
+        pricing = booking.get("pricing") or journey.get("pricing") or {}
+        display = pricing.get("display") if isinstance(pricing, dict) else {}
+        if not isinstance(display, dict):
+            display = {}
+
+        payment = booking.get("payment") if isinstance(booking.get("payment"), dict) else {}
+        total_price = display.get("total") or payment.get("amount")
+        currency = display.get("currency") or payment.get("currency")
 
         return {
             "found": True,
             "booking_id": booking.get("bookingId"),
             "status": booking.get("status"),
             "payment_status": booking.get("paymentStatus"),
-            "airline_pnr": booking.get("airlinePnr") or booking.get("bookingRef"),
+            "airline_pnr": self._extract_airline_pnr(booking),
             "booking_ref": booking.get("bookingRef"),
             "segments_summary": self._summarize_segments(journey.get("segments") or []),
             "passengers": booking.get("passengers") or [],
-            "pricing": booking.get("pricing") or journey.get("pricing"),
+            "contact": booking.get("contact") or {},
+            "pricing": display or pricing,
+            "total_price": total_price,
+            "currency": currency,
         }
 
     def _normalize_booking_list(self, raw: dict[str, Any]) -> dict[str, Any]:
-        bookings = []
+        bookings: list[dict[str, Any]] = []
         for item in raw.get("data") or []:
+            if not isinstance(item, dict):
+                continue
+            nested = item.get("bookings")
+            if isinstance(nested, list):
+                for booking in nested:
+                    if isinstance(booking, dict):
+                        bookings.append(self._summarize_listed_booking(booking))
+                continue
             booking = item.get("booking") or item
-            journey = booking.get("journey") or {}
-            bookings.append(
-                {
-                    "booking_id": booking.get("bookingId"),
-                    "status": booking.get("status"),
-                    "airline_pnr": booking.get("airlinePnr") or booking.get("bookingRef"),
-                    "segments_summary": self._summarize_segments(journey.get("segments") or []),
-                }
-            )
+            if isinstance(booking, dict):
+                bookings.append(self._summarize_listed_booking(booking))
         return {"total": len(bookings), "bookings": bookings}
+
+    def _summarize_listed_booking(self, booking: dict[str, Any]) -> dict[str, Any]:
+        journey = booking.get("journey") or {}
+        pricing = booking.get("pricing") or journey.get("pricing") or {}
+        display = pricing.get("display") if isinstance(pricing, dict) else {}
+        if not isinstance(display, dict):
+            display = {}
+        return {
+            "booking_id": booking.get("bookingId"),
+            "status": booking.get("status"),
+            "airline_pnr": self._extract_airline_pnr(booking),
+            "booking_ref": booking.get("bookingRef"),
+            "total_price": display.get("total"),
+            "currency": display.get("currency"),
+            "segments_summary": self._summarize_segments(journey.get("segments") or []),
+            "timestamp": booking.get("timestamp"),
+        }
+
+    @staticmethod
+    def _extract_airline_pnr(booking: dict[str, Any]) -> str | None:
+        if booking.get("airlinePnr"):
+            return str(booking["airlinePnr"])
+        locators = booking.get("airlineLocators") or []
+        if locators and isinstance(locators[0], dict) and locators[0].get("airlinePnr"):
+            return str(locators[0]["airlinePnr"])
+        order = booking.get("order") or {}
+        if isinstance(order, dict):
+            ref = order.get("reference") or {}
+            if isinstance(ref, dict):
+                if ref.get("pnr"):
+                    return str(ref["pnr"])
+                provider = ref.get("provider") or {}
+                if isinstance(provider, dict):
+                    meta = provider.get("metadata") or {}
+                    if isinstance(meta, dict):
+                        data = meta.get("data") or {}
+                        if isinstance(data, dict) and data.get("pnrCode"):
+                            return str(data["pnrCode"])
+        return booking.get("bookingRef")
 
     @staticmethod
     def _extract_cabin_class(offer: dict[str, Any], journey: dict[str, Any] | None = None) -> str | None:
@@ -543,6 +657,10 @@ class FlightService:
         if 1 <= index <= len(search_results):
             return search_results[index - 1].get("offer_id")
         return None
+
+    async def warm_up(self) -> None:
+        """Open a LiteAPI connection early so the first search is faster."""
+        await self._provider.warm_up()
 
     async def close(self) -> None:
         """Release underlying provider resources."""

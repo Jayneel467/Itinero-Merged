@@ -1,55 +1,23 @@
-"""User-facing labels and hints — no technical jargon."""
+"""User-facing copy helpers — plain language only."""
 
 from __future__ import annotations
 
 import re
 
+from flight_agent.llm.booking_requirements import (
+    all_travelers_complete,
+    next_traveler_details_prompt,
+    passenger_slot_plan,
+)
 from flight_agent.models.agent import SessionContext
-
-STEP_LABELS = [
-    ("Find flights", "last_search_results"),
-    ("Pick a flight", "selected_offer_index"),
-    ("Passengers", "passengers_confirmed"),
-    ("Confirm fare", "verified_offer_id"),
-    ("Your details", "traveler_ready"),
-    ("Add-ons", "service_preference"),
-    ("Confirm booking", "prebook_id"),
-    ("Ticket issued", "booking_id"),
-]
-
-
-def _traveler_ready(ctx: SessionContext) -> bool:
-    draft = ctx.traveler_draft or {}
-    return bool(draft.get("passenger_first_name") and draft.get("contact_email"))
-
-
-def step_status(ctx: SessionContext) -> list[tuple[str, bool]]:
-    checks = {
-        "last_search_results": bool(ctx.last_search_results),
-        "selected_offer_index": bool(ctx.selected_offer_index),
-        "passengers_confirmed": ctx.passengers_confirmed,
-        "verified_offer_id": bool(ctx.verified_offer_id),
-        "traveler_ready": _traveler_ready(ctx),
-        "service_preference": bool(ctx.service_preference) or not ctx.awaiting_service_preference,
-        "prebook_id": bool(ctx.prebook_id),
-        "booking_id": bool(ctx.booking_id),
-    }
-    return [(label, checks[key]) for label, key in STEP_LABELS]
 
 
 def passengers_question_prompt(ctx: SessionContext) -> str:
-    search = ctx.search_context or {}
     offer = ctx.selected_offer_index
-    intro = (
-        f"Great choice — **option {offer}**!" if offer else "Before I check the fare,"
-    )
-    current = search.get("adults"), search.get("children"), search.get("infants")
-    if any(v is not None for v in current) and ctx.passengers_confirmed:
-        return ""
+    intro = f"Great choice — **option {offer}**!" if offer else "Before I check the fare,"
     return (
         f"{intro}\n\n"
         "**How many passengers** are travelling?\n\n"
-        "Please tell me:\n"
         "- **Adults** (12+)\n"
         "- **Children** (2–11), if any\n"
         "- **Infants** (under 2), if any\n\n"
@@ -58,125 +26,217 @@ def passengers_question_prompt(ctx: SessionContext) -> str:
 
 
 def service_preference_question(ctx: SessionContext) -> str:
-    """Ask what add-ons user wants BEFORE listing options."""
     return (
         "**Would you like any additional services?**\n\n"
-        "Reply with one of:\n"
-        "- **Seat** — preferred seat (window/aisle)\n"
+        "- **Seat** — preferred seat\n"
         "- **Baggage** — extra luggage\n"
         "- **Both** — seat and baggage\n"
-        "- **None** or **skip** — no extras\n\n"
-        "I'll use your choice in the next booking step and show available options only if needed."
+        "- **None** or **skip** — no extras"
     )
 
 
 def next_step_hint(ctx: SessionContext) -> str:
+    if ctx.awaiting_cancel_confirmation:
+        return cancel_confirmation_prompt(
+            {"booking_id": ctx.pending_cancel_booking_id or ctx.booking_id}
+        )
     if ctx.booking_id:
-        return "Your flight is booked. Save your PNR from the confirmation above."
+        return post_booking_help_prompt(ctx)
     if ctx.awaiting_payment_confirmation and not ctx.payment_confirmed:
         return "Reply **YES** when you're ready to confirm your booking and get your ticket."
     if ctx.awaiting_service_preference and not ctx.service_preference:
-        return "Tell me: **seat**, **baggage**, **both**, or **skip** (no extras)."
+        return "Tell me: **seat**, **baggage**, **both**, or **skip**."
     if ctx.prebook_id and ctx.service_preference and ctx.service_preference != "none":
-        return "Pick an add-on from the list, or say **skip** to confirm your booking."
+        return "Pick an add-on from the list, or say **skip**."
     if ctx.awaiting_booking_confirmation and not ctx.booking_confirmed:
         return "Check your details above, then reply **YES** to continue."
-    if ctx.traveler_draft and ctx.verified_offer_id:
-        return "Share any missing details, or reply **YES** if everything looks correct."
-    if ctx.verified_offer_id:
+    if ctx.verified_offer_id and not all_travelers_complete(ctx):
+        if len(passenger_slot_plan(ctx)) > 1:
+            return next_traveler_details_prompt(ctx)
         req = ctx.booking_requirements or {}
-        pax = ctx.search_context or {}
-        pax_line = (
-            f"{pax.get('adults', 1)} adult(s)"
-            + (f", {pax.get('children')} child(ren)" if pax.get("children") else "")
-            + (f", {pax.get('infants')} infant(s)" if pax.get("infants") else "")
-        )
-        doc = "Aadhaar/ID (no passport)" if req.get("route_type") == "domestic" else "passport"
-        return f"Booking for **{pax_line}**. Send name, email, phone, DOB, gender & **{doc}**."
+        doc = "Aadhaar/ID" if req.get("route_type") == "domestic" else "passport"
+        return f"Send name, email, phone, DOB, gender & **{doc}**."
     if ctx.selected_offer_index and not ctx.passengers_confirmed:
-        return "Tell me **how many passengers** (adults, children, infants) before I confirm the fare."
+        return "Tell me **how many passengers** (adults, children, infants)."
     if ctx.last_search_results:
         return "Say **option 1** (or another number), then I'll ask about passengers."
     return "Tell me where you're flying from, to, and your travel date."
 
 
-def id_document_label(ctx: SessionContext) -> str:
-    req = ctx.booking_requirements or {}
-    if req.get("route_type") == "domestic":
-        return "Aadhaar / govt ID (no passport)"
-    return "Passport required"
-
-
 def strip_thinking_tags(text: str) -> str:
-    """Remove Qwen-style thinking blocks from model output."""
     if not text:
         return text
     cleaned = re.sub(r"<think[^>]*>.*?", "", text, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(
-        r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE
-    )
+    cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     return cleaned.strip()
 
 
-def sanitize_assistant_text(text: str) -> str:
-    """Remove technical terms users should not see."""
+def sanitize_assistant_text(text: str, session: SessionContext | None = None) -> str:
     if not text:
         return text
     text = strip_thinking_tags(text)
     if is_technical_error(text):
-        return clarification_prompt()
-    replacements = {
-        "LiteAPI": "our flight system",
-        "liteapi": "our flight system",
-        "prebook": "booking hold",
-        "Prebook": "Booking hold",
-        "transactionId": "payment reference",
-        "serviceId": "add-on",
-        "offerId": "flight option",
-        "id_card": "government ID",
-        "build_flight_tools": "system",
-        "NameError": "issue",
-        "not defined": "missing",
-    }
-    result = text
-    for old, new in replacements.items():
-        result = result.replace(old, new)
-    if is_technical_error(result):
-        return clarification_prompt()
-    return result
+        return contextual_fallback_prompt(session) if session else ""
+    for old, new in (
+        ("LiteAPI", "our flight system"),
+        ("liteapi", "our flight system"),
+        ("prebook", "booking hold"),
+        ("Prebook", "Booking hold"),
+        ("transactionId", "payment reference"),
+        ("serviceId", "add-on"),
+        ("offerId", "flight option"),
+        ("id_card", "government ID"),
+    ):
+        text = text.replace(old, new)
+    if is_technical_error(text):
+        return contextual_fallback_prompt(session) if session else ""
+    return text
 
 
 def is_technical_error(text: str) -> bool:
-    """True if text looks like a code/system error, not a user message."""
     lower = text.lower()
-    markers = (
-        "nameerror",
-        "not defined",
-        "traceback",
-        "exception",
-        "attributeerror",
-        "typeerror",
-        "keyerror",
-        "importerror",
-        "syntaxerror",
-        "graphrecursion",
-        "  file ",
-        "line ",
+    if any(
+        m in lower
+        for m in (
+            "nameerror",
+            "not defined",
+            "traceback",
+            "exception",
+            "attributeerror",
+            "typeerror",
+            "keyerror",
+            "importerror",
+            "syntaxerror",
+            "graphrecursion",
+        )
+    ):
+        return True
+    if re.search(r"(^|\n)\s*file\s+\S+", lower):
+        return True
+    if re.search(r"(^|\n)\s*line\s+\d+", lower):
+        return True
+    return False
+
+
+def contextual_fallback_prompt(session: SessionContext) -> str:
+    """What the user should do next when the model reply is empty/bad."""
+    if session.awaiting_payment_confirmation and not session.payment_confirmed:
+        from flight_agent.llm.confirmation import payment_summary_prompt
+
+        return payment_summary_prompt(session)
+    if session.awaiting_booking_confirmation and not session.booking_confirmed:
+        from flight_agent.llm.confirmation import booking_summary_prompt
+
+        return booking_summary_prompt(session)
+    if session.awaiting_service_preference and not session.service_preference:
+        return service_preference_question(session)
+    if session.verified_offer_id and not all_travelers_complete(session):
+        return "Thanks — I still need a few more details.\n\n" + next_traveler_details_prompt(
+            session
+        )
+    if session.selected_offer_index and not session.passengers_confirmed:
+        return passengers_question_prompt(session)
+    return next_step_hint(session) or clarification_prompt()
+
+
+def booking_details_user_prompt(booking: dict) -> str:
+    if not booking or not booking.get("found"):
+        return (
+            "I couldn't find that booking.\n\n"
+            "Share your **booking ID** or **airline PNR + last name**, "
+            "or say **list my bookings**."
+        )
+    bid = booking.get("booking_id") or "—"
+    pnr = booking.get("airline_pnr") or "—"
+    status = booking.get("status") or "—"
+    segs = booking.get("segments_summary") or []
+    route = "—"
+    if segs:
+        s = segs[0]
+        route = f"{s.get('from', '?')} → {s.get('to', '?')}"
+    return (
+        f"**Your booking**\n\n"
+        f"- **Status:** {status}\n"
+        f"- **Booking ID:** `{bid}`\n"
+        f"- **Airline PNR:** {pnr}\n"
+        f"- **Route:** {route}\n\n"
+        "Say **cancel booking** to cancel, or **list my bookings**."
     )
-    return any(m in lower for m in markers)
 
 
-def clarification_prompt(context: str = "") -> str:
-    """Ask the user to clarify when the agent is unsure."""
-    base = (
+def booking_list_user_prompt(payload: dict) -> str:
+    bookings = payload.get("bookings") or []
+    if not bookings:
+        return "No bookings found. Share a **booking ID**, or book a new flight."
+    lines = [f"**Found {len(bookings)} booking(s):**", ""]
+    for i, b in enumerate(bookings[:8], start=1):
+        segs = b.get("segments_summary") or []
+        route = "—"
+        if segs:
+            route = f"{segs[0].get('from', '?')} → {segs[0].get('to', '?')}"
+        lines.append(
+            f"{i}. **{b.get('status') or '—'}** · {route}\n"
+            f"   ID: `{b.get('booking_id') or '—'}` · PNR: {b.get('airline_pnr') or '—'}"
+        )
+    lines.append("\nReply with a **booking ID** for details.")
+    return "\n".join(lines)
+
+
+def cancel_confirmation_prompt(booking: dict | None = None) -> str:
+    booking = booking or {}
+    bid = booking.get("booking_id") or "this booking"
+    pnr = booking.get("airline_pnr")
+    extra = f" (PNR **{pnr}**)" if pnr else ""
+    return (
+        f"You're about to **cancel** booking `{bid}`{extra}.\n\n"
+        "Reply **YES** to confirm, or **NO** to keep the ticket."
+    )
+
+
+def cancel_result_user_prompt(result: dict) -> str:
+    bid = result.get("booking_id") or "—"
+    pnr = result.get("airline_pnr") or "—"
+    status = result.get("status") or "—"
+    if result.get("already_cancelled"):
+        return f"Booking `{bid}` is already cancelled (status: **{status}**)."
+    if result.get("cancelled"):
+        return (
+            f"**Booking cancelled.**\n\n"
+            f"- **Booking ID:** `{bid}`\n"
+            f"- **Status:** {status}\n"
+            f"- **Airline PNR:** {pnr}"
+        )
+    return (
+        f"{result.get('message') or 'Cancellation could not be confirmed yet.'}\n\n"
+        f"- **Booking ID:** `{bid}`\n"
+        f"- **Status:** {status}\n"
+        f"- **Airline PNR:** {pnr}"
+    )
+
+
+def post_booking_help_prompt(session: SessionContext) -> str:
+    bid = session.booking_id or (session.last_booking or {}).get("booking_id")
+    lines = ["Your ticket is ready. You can:"]
+    if bid:
+        lines.append(f"- **retrieve booking** (ID `{bid}`)")
+    else:
+        lines.append("- **retrieve booking** or share a booking ID / PNR")
+    lines.append("- **list my bookings**")
+    lines.append("- **cancel booking**")
+    return "\n".join(lines)
+
+
+def is_generic_clarification(text: str) -> bool:
+    stripped = text.strip().lower()
+    return stripped.startswith("sorry, i didn't") or stripped.startswith(
+        "sorry, i did not"
+    )
+
+
+def clarification_prompt() -> str:
+    return (
         "Sorry, I didn't quite catch that.\n\n"
-        "I'm your **flight booking assistant** — I can help you:\n"
-        "- **Search flights** (e.g. *Mumbai to Delhi on 8 July*)\n"
-        "- **Pick an option** (e.g. *option 1*)\n"
-        "- **Book a ticket** (share your details when asked)\n\n"
-        "Please tell me **where you're flying from, where to, and your date** — "
-        "or repeat what you'd like me to do."
+        "I'm your **flight booking assistant**. Tell me "
+        "**from, to, and date** (e.g. *Mumbai to Delhi on 8 July*), "
+        "or say what you'd like next."
     )
-    if context:
-        return f"{base}\n\n({context})"
-    return base

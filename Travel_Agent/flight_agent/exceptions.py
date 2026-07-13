@@ -32,7 +32,3 @@ class LiteAPIError(FlightAgentError):
 
 class ValidationError(FlightAgentError):
     """Raised when user input or slot validation fails."""
-
-
-class UnsupportedOperationError(FlightAgentError):
-    """Raised when an operation is not supported by the provider."""

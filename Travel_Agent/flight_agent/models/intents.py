@@ -18,7 +18,6 @@ class FlightIntent(str, Enum):
     BOOKING_STATUS = "booking_status"
     CANCEL_BOOKING = "cancel_booking"
     GENERAL = "general"
-    UNKNOWN = "unknown"
 
 
 class FlightSearchParams(BaseModel):
@@ -31,6 +30,14 @@ class FlightSearchParams(BaseModel):
     adults: int = Field(default=1, ge=1)
     children: int = Field(default=0, ge=0)
     infants: int = Field(default=0, ge=0)
+    children_ages: list[int] | None = Field(
+        default=None,
+        description="Age of each child (2–11), length must match children count when set",
+    )
+    infant_ages: list[int] | None = Field(
+        default=None,
+        description="Age of each infant (under 2), length must match infants count when set",
+    )
     cabin_class: str | None = None
     currency: str | None = None
 

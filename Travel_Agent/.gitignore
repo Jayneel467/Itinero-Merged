@@ -1,8 +1,7 @@
-.env
 __pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-venv/
+*.pyc
 .pytest_cache/
-.mypy_cache/
+.env
+*.db
+data/
+.streamlit/
