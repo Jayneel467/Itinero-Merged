@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-07-17T00:00:00.000Z" agent="AI Travel Planner" version="21.0.0">
+  <diagram name="AI Travel Planner Architecture" id="travel-planner-arch">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1"
+                  connect="1" arrows="1" fold="1" page="1" pageScale="1"
+                  pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TITLE                                                        -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="title" value="AI Travel Planner — Multi-Agent Architecture"
+                style="text;html=1;strokeColor=none;fillColor=none;align=center;
+                       verticalAlign=middle;whiteSpace=wrap;rounded=0;
+                       fontSize=20;fontStyle=1;fontColor=#1a1a2e;"
+                vertex="1" parent="1">
+          <mxGeometry x="327" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- USER (gray)                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="user" value="👤 User"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;
+                       strokeColor=#666666;fontColor=#333333;fontSize=14;
+                       fontStyle=1;arcSize=50;"
+                vertex="1" parent="1">
+          <mxGeometry x="727" y="80" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- ITINERARY AGENT CONTAINER (blue)                            -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="itinerary_container"
+                value="✈️  Itinerary Agent (Main Orchestrator)"
+                style="swimlane;startSize=35;fillColor=#dae8fc;strokeColor=#6c8ebf;
+                       fontColor=#003080;fontSize=13;fontStyle=1;arcSize=4;"
+                vertex="1" parent="1">
+          <mxGeometry x="327" y="200" width="1000" height="420" as="geometry" />
+        </mxCell>
+
+        <!-- Itinerary Agent sub-components -->
+        <mxCell id="ia_conv" value="💬 Conversation Manager"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;
+                       strokeColor=#6c8ebf;fontColor=#003080;fontSize=11;"
+                vertex="1" parent="itinerary_container">
+          <mxGeometry x="40" y="60" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ia_state" value="🗄️ State Manager"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;
+                       strokeColor=#6c8ebf;fontColor=#003080;fontSize=11;"
+                vertex="1" parent="itinerary_container">
+          <mxGeometry x="240" y="60" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ia_workflow" value="⚙️ Workflow Manager"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;
+                       strokeColor=#6c8ebf;fontColor=#003080;fontSize=11;"
+                vertex="1" parent="itinerary_container">
+          <mxGeometry x="440" y="60" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ia_memory" value="🧠 Memory (ConversationState)"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;
+                       strokeColor=#6c8ebf;fontColor=#003080;fontSize=11;"
+                vertex="1" parent="itinerary_container">
+          <mxGeometry x="640" y="60" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ia_planner" value="📋 Requirement Collector"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;
+                       strokeColor=#6c8ebf;fontColor=#003080;fontSize=11;"
+                vertex="1" parent="itinerary_container">
+          <mxGeometry x="860" y="60" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- LangGraph Nodes row -->
+        <mxCell id="nodes_label" value="LangGraph Nodes"
+                style="text;html=1;strokeColor=none;fillColor=none;
+                       align=left;verticalAlign=middle;fontStyle=1;
+                       fontSize=11;fontColor=#003080;"
+                vertex="1" parent="itinerary_container">
+          <mxGeometry x="40" y="130" width="160" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n_greet"    value="Greeting"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="40"  y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_req"      value="Requirement\nCollection"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="150" y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_fsc"      value="Flight Search\nConfirmation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="260" y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_fs"       value="Flight\nSearch"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="370" y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_fsel"     value="Flight\nSelection"  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="480" y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_fpbc"     value="Flight Prebook\nConfirmation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="590" y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_fpb"      value="Flight\nPrebook"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="700" y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_draft"    value="Draft\nItinerary"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="810" y="155" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_dreview"  value="Draft\nReview"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="40"  y="205" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_hs"       value="Hotel\nSearch"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="150" y="205" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_hsel"     value="Hotel\nSelection"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="260" y="205" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_hpbc"     value="Hotel Prebook\nConfirmation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="370" y="205" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_hpb"      value="Hotel\nPrebook"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="480" y="205" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_final"    value="Final\nItinerary"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f0ff;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="590" y="205" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="n_err"      value="Error\nHandler"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="700" y="205" width="100" height="35" as="geometry"/></mxCell>
+
+        <!-- State Management row (purple) -->
+        <mxCell id="state_label" value="AppState (Centralized)"
+                style="text;html=1;strokeColor=none;fillColor=none;
+                       align=left;verticalAlign=middle;fontStyle=1;
+                       fontSize=11;fontColor=#660099;"
+                vertex="1" parent="itinerary_container">
+          <mxGeometry x="40" y="260" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s_trip"   value="TripState"       style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="40"  y="285" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="s_conv"   value="ConversationState" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="160" y="285" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="s_flight" value="FlightState"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="280" y="285" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="s_hotel"  value="HotelState"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="400" y="285" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="s_itin"   value="ItineraryState"  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="520" y="285" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="s_pref"   value="UserPreferences" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="640" y="285" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="s_draft"  value="DraftItinerary"  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="760" y="285" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="s_final"  value="FinalItinerary"  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="880" y="285" width="110" height="35" as="geometry"/></mxCell>
+
+        <!-- Prebook IDs row -->
+        <mxCell id="s_fpb"  value="FlightPrebook\n(ID + Details)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="40"  y="335" width="130" height="40" as="geometry"/></mxCell>
+        <mxCell id="s_hpb"  value="HotelPrebooks\n(ID × N days)"  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="180" y="335" width="130" height="40" as="geometry"/></mxCell>
+        <mxCell id="s_pending" value="PendingAction\n(Confirmation Gate)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="320" y="335" width="140" height="40" as="geometry"/></mxCell>
+        <mxCell id="s_stage"   value="WorkflowStage\n(Router Key)"       style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="itinerary_container"><mxGeometry x="470" y="335" width="140" height="40" as="geometry"/></mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- FLIGHT AGENT CONTAINER (green)                              -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="flight_container"
+                value="✈️  Flight Agent (LLM Worker)"
+                style="swimlane;startSize=35;fillColor=#d5e8d4;strokeColor=#82b366;
+                       fontColor=#1a4d2e;fontSize=13;fontStyle=1;arcSize=4;"
+                vertex="1" parent="1">
+          <mxGeometry x="100" y="680" width="560" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fa_search"  value="🔍 search_flights()\nGenerates dummy flight data\n6-10 realistic options"  style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="flight_container"><mxGeometry x="20"  y="50" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="fa_filter"  value="🔽 filter_flights()\nBudget · Stops · Time\nAirline · Cabin class"        style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="flight_container"><mxGeometry x="185" y="50" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="fa_rank"    value="⭐ recommend_flights()\nRank by value score\nPrice + Duration + Stops"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="flight_container"><mxGeometry x="350" y="50" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="fa_select"  value="✅ select_flight()\nCalculate total price\nPassenger summary"             style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="flight_container"><mxGeometry x="20"  y="130" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="fa_prebook" value="🔖 prebook_flight()\nFlightPrebook record\nPrebook ID + Expiry"           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="flight_container"><mxGeometry x="185" y="130" width="155" height="60" as="geometry"/></mxCell>
+
+        <!-- Flight data contract -->
+        <mxCell id="fa_contract"
+                value="📦 Output Contract: FlightAgentResponse / FlightPrebookResponse&#xa;Fields: flight_id · airline · flight_number · origin · destination · departure_time · arrival_time&#xa;duration · stops · cabin_class · price · baggage · refund_policy · seats_available · rank_score"
+                style="text;html=1;strokeColor=#82b366;fillColor=#f0fff0;align=left;
+                       verticalAlign=middle;whiteSpace=wrap;fontSize=9;rounded=1;"
+                vertex="1" parent="flight_container">
+          <mxGeometry x="20" y="205" width="520" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- HOTEL AGENT CONTAINER (orange)                              -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="hotel_container"
+                value="🏨  Hotel Agent (LLM Worker)"
+                style="swimlane;startSize=35;fillColor=#ffe6cc;strokeColor=#d6b656;
+                       fontColor=#7d4e00;fontSize=13;fontStyle=1;arcSize=4;"
+                vertex="1" parent="1">
+          <mxGeometry x="994" y="680" width="560" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ha_search"  value="🔍 search_hotels()\nGenerates dummy hotel data\n5-8 realistic options/day" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="hotel_container"><mxGeometry x="20"  y="50" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="ha_filter"  value="🔽 filter_hotels()\nBudget · Rating · Meal plan\nAmenities · Cancellation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="hotel_container"><mxGeometry x="185" y="50" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="ha_rank"    value="⭐ recommend_hotels()\nRank by value score\nLocation + Rating + Price"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="hotel_container"><mxGeometry x="350" y="50" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="ha_select"  value="✅ select_hotel()\nNights × price calc\nGuest summary"                   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="hotel_container"><mxGeometry x="20"  y="130" width="155" height="60" as="geometry"/></mxCell>
+        <mxCell id="ha_prebook" value="🔖 prebook_hotel()\nHotelPrebook record\nPrebook ID + Expiry"            style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="hotel_container"><mxGeometry x="185" y="130" width="155" height="60" as="geometry"/></mxCell>
+
+        <!-- Hotel data contract -->
+        <mxCell id="ha_contract"
+                value="📦 Output Contract: HotelAgentResponse / HotelPrebookResponse&#xa;Fields: hotel_id · name · star_rating · location · area · distance · amenities · room_type&#xa;meal_plan · cancellation_policy · check_in · check_out · price_per_night · rank_score"
+                style="text;html=1;strokeColor=#d6b656;fillColor=#fff9f0;align=left;
+                       verticalAlign=middle;whiteSpace=wrap;fontSize=9;rounded=1;"
+                vertex="1" parent="hotel_container">
+          <mxGeometry x="20" y="205" width="520" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WORKFLOW FLOW (vertical, right side)                        -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="flow_container"
+                value="📋 Workflow Steps"
+                style="swimlane;startSize=30;fillColor=#f8f8f8;strokeColor=#aaaaaa;
+                       fontColor=#333333;fontSize=12;fontStyle=1;arcSize=4;"
+                vertex="1" parent="1">
+          <mxGeometry x="1340" y="80" width="270" height="880" as="geometry" />
+        </mxCell>
+
+        <mxCell id="wf1"  value="① Requirement Collection"      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="40"  width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf2"  value="② Confirm: Search Flights?"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6ae00;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="85"  width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf3"  value="③ Flight Search → Filter → Rank" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="130" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf4"  value="④ User Selects Flight"         style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="175" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf5"  value="⑤ Confirm: Pre-book Flight?"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6ae00;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="220" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf6"  value="⑥ Flight Pre-book (ID stored)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="265" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf7"  value="⑦ Generate Draft Itinerary"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="310" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf8"  value="⑧ User Reviews / Modifies Draft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6ae00;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="355" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf9"  value="⑨ Itinerary Approved"          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="400" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf10" value="⑩ Hotel Search Day-by-Day"     style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="445" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf11" value="⑪ User Selects Hotel (per day)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="490" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf12" value="⑫ Confirm: Pre-book Hotels?"   style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6ae00;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="535" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf13" value="⑬ Bulk Hotel Pre-book (IDs stored)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="580" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf14" value="⑭ Generate Final Itinerary"    style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="625" width="240" height="32" as="geometry"/></mxCell>
+        <mxCell id="wf15" value="✅ Complete Day-wise Plan → User" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333;fontStyle=1;fontSize=10;" vertex="1" parent="flow_container"><mxGeometry x="15" y="670" width="240" height="32" as="geometry"/></mxCell>
+
+        <!-- Workflow arrows -->
+        <mxCell id="wa1"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf1"  target="wf2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa2"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf2"  target="wf3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa3"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf3"  target="wf4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa4"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf4"  target="wf5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa5"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf5"  target="wf6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa6"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf6"  target="wf7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa7"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf7"  target="wf8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa8"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf8"  target="wf9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa9"  style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf9"  target="wf10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf10" target="wf11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf11" target="wf12"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf12" target="wf13"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf13" target="wf14"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="wa14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="flow_container" source="wf14" target="wf15"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- MAIN ARROWS: User ↔ Itinerary Agent                        -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="arrow_user_to_ia"
+                value="Messages / Selections / Confirmations"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;
+                       fontSize=10;fontStyle=2;strokeColor=#666666;
+                       exitX=0.5;exitY=1;entryX=0.5;entryY=0;"
+                edge="1" parent="1" source="user" target="itinerary_container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow_ia_to_user"
+                value="Agent Responses / Options / Itinerary"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;
+                       fontSize=10;fontStyle=2;strokeColor=#666666;
+                       exitX=0.4;exitY=0;entryX=0.4;entryY=1;"
+                edge="1" parent="1" source="itinerary_container" target="user">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Itinerary Agent → Flight Agent (delegated instruction) -->
+        <mxCell id="arrow_ia_to_fa"
+                value="NL Instruction: search/filter/rank/prebook flights"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;
+                       fontSize=9;fontStyle=2;strokeColor=#82b366;
+                       exitX=0.2;exitY=1;entryX=0.5;entryY=0;"
+                edge="1" parent="1" source="itinerary_container" target="flight_container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow_fa_to_ia"
+                value="FlightAgentResponse (structured JSON)"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;
+                       fontSize=9;fontStyle=2;strokeColor=#82b366;dashed=1;
+                       exitX=0.6;exitY=0;entryX=0.25;entryY=1;"
+                edge="1" parent="1" source="flight_container" target="itinerary_container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Itinerary Agent → Hotel Agent (delegated instruction) -->
+        <mxCell id="arrow_ia_to_ha"
+                value="NL Instruction: search/filter/rank/prebook hotels per day"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;
+                       fontSize=9;fontStyle=2;strokeColor=#d6b656;
+                       exitX=0.8;exitY=1;entryX=0.5;entryY=0;"
+                edge="1" parent="1" source="itinerary_container" target="hotel_container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="arrow_ha_to_ia"
+                value="HotelAgentResponse (structured JSON)"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;
+                       fontSize=9;fontStyle=2;strokeColor=#d6b656;dashed=1;
+                       exitX=0.4;exitY=0;entryX=0.75;entryY=1;"
+                edge="1" parent="1" source="hotel_container" target="itinerary_container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- LEGEND                                                       -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="legend"
+                value="Legend"
+                style="swimlane;startSize=25;fillColor=#ffffff;strokeColor=#aaaaaa;
+                       fontSize=11;fontStyle=1;arcSize=4;"
+                vertex="1" parent="1">
+          <mxGeometry x="100" y="1000" width="450" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_ia" value="Itinerary Agent (Blue)"   style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="legend"><mxGeometry x="10" y="35" width="90" height="30" as="geometry"/></mxCell>
+        <mxCell id="leg_fa" value="Flight Agent (Green)"     style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="legend"><mxGeometry x="115" y="35" width="90" height="30" as="geometry"/></mxCell>
+        <mxCell id="leg_ha" value="Hotel Agent (Orange)"     style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="legend"><mxGeometry x="220" y="35" width="90" height="30" as="geometry"/></mxCell>
+        <mxCell id="leg_sm" value="State Management (Purple)" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="legend"><mxGeometry x="325" y="35" width="110" height="30" as="geometry"/></mxCell>
+        <mxCell id="leg_user" value="User (Gray)"            style="rounded=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=10;" vertex="1" parent="legend"><mxGeometry x="10" y="75" width="90" height="30" as="geometry"/></mxCell>
+        <mxCell id="leg_gate" value="Confirmation Gate (Yellow)" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6ae00;fontSize=10;" vertex="1" parent="legend"><mxGeometry x="115" y="75" width="130" height="30" as="geometry"/></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
