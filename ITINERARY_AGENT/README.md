@@ -86,7 +86,7 @@ the full colour-coded visual diagram.
 - Builds detailed natural-language instructions for the worker agents.
 - Generates the draft and final itinerary using an LLM.
 - Enforces the "confirm before every major action" rule.
-- Model: `gpt-4o-mini` (configurable)
+- Model: `gpt-4.1-mini` (configurable)
 
 ### 2. Flight Agent (LLM Worker)
 - Receives instructions from the Itinerary Agent — never from the user.
@@ -95,7 +95,7 @@ the full colour-coded visual diagram.
 - Pre-books the selected flight and returns a `FlightPrebook` record.
 - Model: `gpt-4o-mini` (configurable)
 - **Swap to real API:** Replace `_call_llm()` in `agents/flight_agent.py` with
-  a [LiteAPI API] call — all method signatures stay the same.
+  a [Lite API] call — all method signatures stay the same.
 
 ### 3. Hotel Agent (LLM Worker)
 - Receives instructions from the Itinerary Agent — never from the user.
@@ -176,7 +176,7 @@ Optional overrides in `.env`:
 
 | Variable | Default | Description |
 |---|---|---|
-| `ITINERARY_AGENT_MODEL` | `gpt-4o-mini` | Main orchestrator model |
+| `ITINERARY_AGENT_MODEL` | `gpt-4.1-mini` | Main orchestrator model |
 | `FLIGHT_AGENT_MODEL` | `gpt-4o-mini` | Flight worker model |
 | `HOTEL_AGENT_MODEL` | `gpt-4o-mini` | Hotel worker model |
 | `ITINERARY_AGENT_TEMPERATURE` | `0.3` | Creativity for conversation |
@@ -270,12 +270,12 @@ AppState
 The dummy data layer is fully isolated inside the LLM calls in each agent.
 To connect to real APIs:
 
-**Flight Agent → Lite API**
+**Flight Agent → Duffel API**
 ```python
 # In agents/flight_agent.py, replace _call_llm() calls in search_flights() with:
-import lite_api
-offers = lite_api.OfferRequests.create(...)
-# Map lite offer objects to FlightOption Pydantic models
+import requests
+response = requests.get("https://api.liteapi.travel/v2.0/data/flights", ...)
+# Map Duffel offer objects to FlightOption Pydantic models
 ```
 
 **Hotel Agent → LiteAPI**
@@ -318,3 +318,4 @@ instruction-building logic remain unchanged.
 | `python-dotenv` | `.env` file loading |
 | `rich` | Beautiful terminal output |
 
+---

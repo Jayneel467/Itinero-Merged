@@ -88,17 +88,20 @@ def _dump(state: AppState) -> dict[str, Any]:
 
 def node_greeting(state_dict: dict[str, Any]) -> dict[str, Any]:
     """
-    Entry point. Send a warm greeting and move to requirement collection.
+    Entry point. Send a single rich opening question designed to capture
+    as much info as possible in the user's first reply.
     Only fires once at the start of the session.
     """
     logger.info("NODE: greeting")
     state = _load(state_dict)
 
     greeting = (
-        "Hello! I'm Aria, your AI Travel Consultant. 👋\n\n"
-        "I'll help you plan a complete trip — from flights and hotels to a "
-        "day-by-day itinerary.\n\n"
-        "Where would you like to travel, and when are you planning to go?"
+        "Hi! I'm Vero Ai, your AI Travel Consultant.\n\n"
+        "To get started, just tell me about your trip in one go — for example:\n"
+        "  \"Delhi to Goa, 15th to 20th August, 2 adults, economy class\"\n\n"
+        "You can also mention things like your budget, interests (beach, history, food), "
+        "or hotel preferences — I'll pick it all up automatically.\n\n"
+        "Where are you headed and when?"
     )
 
     state.add_assistant_message(greeting)

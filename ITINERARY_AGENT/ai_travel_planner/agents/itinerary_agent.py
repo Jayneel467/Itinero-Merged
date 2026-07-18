@@ -52,34 +52,57 @@ logger = get_logger("agents.itinerary_agent")
 # ─────────────────────────────────────────────────────────────────────────────
 
 _REQUIREMENT_COLLECTION_PROMPT = """\
-You are a professional AI Travel Consultant named Aria.
+You are Vero Ai, a professional AI Travel Consultant.
 
-Your goal is to collect trip requirements from the user through natural, friendly conversation.
+Your job is to collect trip details from the user and extract all information from what they say — including anything they mention voluntarily.
 
-Rules:
-- Ask ONLY for missing fields — never ask for information already provided.
-- Ask for at most 2 missing fields per turn.
-- Be warm, concise, and professional.
-- Never show internal field names. Use natural language.
-- When you have: origin, destination, departure_date, and (return_date if round-trip),
-  you have ENOUGH to proceed. Optionally collect adults, budget, cabin_class.
-- When you have enough info, end your response with the exact token: [READY_TO_SEARCH]
+== EXTRACTION RULES ==
+You will receive:
+  - "Already known": fields already collected in previous turns
+  - "User said": the user's latest message
 
-Fields to collect (only ask what is missing):
-  - departure city / origin airport
-  - destination city
-  - departure date
-  - return date (if round-trip)
-  - number of adults (default: 1)
-  - number of children (default: 0)
-  - budget per person (optional)
-  - cabin class (default: Economy)
-  - hotel preference (beach / city center / near airport)
-  - meal preference (breakfast / half board / all inclusive)
-  - any special interests (beach, history, adventure, food)
+From "User said", extract EVERY piece of travel information mentioned, even if you didn't ask for it:
+  - origin, destination, dates, number of people, budget, cabin class, interests, hotel preferences, meal preferences, etc.
 
-Always respond in plain English. No markdown unless listing options.
-Current date context will be provided in the user message.
+Then produce TWO things:
+
+1. A JSON block (between <EXTRACT> and </EXTRACT>) with ONLY the fields you could confidently extract from this message.
+   Use null for fields not mentioned. Use these exact keys:
+   {
+     "origin": null,
+     "destination": null,
+     "departure_date": "YYYY-MM-DD or null",
+     "return_date": "YYYY-MM-DD or null",
+     "trip_type": "one_way or round_trip or null",
+     "adults": null,
+     "children": null,
+     "cabin_class": "Economy or Premium Economy or Business or First or null",
+     "max_budget_per_person": null,
+     "nonstop_preferred": null,
+     "hotel_preference": null,
+     "meal_preference": "Room Only or Breakfast Included or Half Board or Full Board or All Inclusive or null",
+     "sightseeing_interests": [],
+     "free_cancellation": null
+   }
+
+2. A conversational reply to the user that:
+   - Acknowledges what you understood from their message (briefly, 1 line).
+   - Asks ONLY for the most critical missing required fields — max 2 at a time.
+   - Required fields: origin, destination, departure_date, and return_date (if round-trip).
+   - Once you have all required fields, end your reply with the exact token: [READY_TO_SEARCH]
+   - Do NOT ask for optional fields (budget, cabin class, interests) unless all required fields are already known.
+   - Never ask for something the user already told you.
+   - Be warm, concise, and natural. No markdown.
+
+== FORMAT ==
+<EXTRACT>
+{ ... json ... }
+</EXTRACT>
+<REPLY>
+your conversational message here
+</REPLY>
+
+Current date context and known fields will be provided.
 """
 
 _CONFIRMATION_INTERPRETER_PROMPT = """\
@@ -213,41 +236,62 @@ class ItineraryAgent:
     def collect_requirements(self, state: AppState) -> AppState:
         """
         Continue the requirement-collection conversation.
-        Updates state.trip.search_params and state.preferences with any new info
-        extracted from the last user message.  Returns the agent's reply.
+
+        Single LLM call: the prompt returns both a structured <EXTRACT> JSON block
+        (all fields the user mentioned) and a <REPLY> conversational message.
+        This replaces the old two-call pattern (converse + separate extraction pass).
         """
         logger.info("ItineraryAgent.collect_requirements")
 
-        # Build context summary of what we already know
         known = self._known_params_summary(state)
         today = date.today().isoformat()
 
-        system = _REQUIREMENT_COLLECTION_PROMPT
         user_msg = (
             f"Today's date: {today}\n\n"
-            f"What we already know:\n{known}\n\n"
-            f"User's latest message: \"{state.last_user_input}\"\n\n"
-            "Continue the conversation. Ask only for what is still missing."
+            f"Already known:\n{known}\n\n"
+            f"User said: \"{state.last_user_input}\""
         )
 
-        reply = self._call_llm(system, user_msg)
+        raw = self._call_llm(_REQUIREMENT_COLLECTION_PROMPT, user_msg)
 
-        # Check if the LLM signals we have enough information
-        ready = "[READY_TO_SEARCH]" in reply
-        clean_reply = reply.replace("[READY_TO_SEARCH]", "").strip()
+        # ── Parse <EXTRACT> block ─────────────────────────────────────────────
+        extracted: dict[str, Any] = {}
+        if "<EXTRACT>" in raw and "</EXTRACT>" in raw:
+            try:
+                json_str = raw.split("<EXTRACT>")[1].split("</EXTRACT>")[0].strip()
+                extracted = json.loads(json_str)
+            except (json.JSONDecodeError, IndexError) as exc:
+                logger.warning("EXTRACT parse failed: %s", exc)
 
-        # Try to extract any structured data the LLM mentioned
-        state = self._extract_params_from_conversation(state)
+        # ── Parse <REPLY> block ───────────────────────────────────────────────
+        clean_reply = ""
+        if "<REPLY>" in raw and "</REPLY>" in raw:
+            clean_reply = raw.split("<REPLY>")[1].split("</REPLY>")[0].strip()
+        else:
+            # Fallback: strip tags and use whatever text remains
+            clean_reply = raw.replace("<EXTRACT>", "").replace("</EXTRACT>", "")
+            if "<REPLY>" in clean_reply:
+                clean_reply = clean_reply.split("<REPLY>", 1)[-1]
+            # Remove the JSON blob if it leaked into the reply
+            import re as _re
+            clean_reply = _re.sub(r"\{[^}]+\}", "", clean_reply).strip()
+
+        # ── Apply extracted fields to state ───────────────────────────────────
+        if extracted:
+            state = self._apply_extracted(state, extracted)
+
+        # ── Check ready signal ────────────────────────────────────────────────
+        ready = "[READY_TO_SEARCH]" in clean_reply
+        clean_reply = clean_reply.replace("[READY_TO_SEARCH]", "").strip()
 
         if ready:
             state.set_stage(WorkflowStage.FLIGHT_SEARCH_CONFIRMATION)
             state.set_pending_action(PendingAction.SEARCH_FLIGHTS)
-            confirmation_prompt = (
-                f"\n\nGreat! I have everything I need to search flights. 🛫\n\n"
-                f"{self._trip_summary(state)}\n\n"
-                "Would you like me to search for the best available flights now?"
+            clean_reply = (
+                clean_reply
+                + f"\n\nHere's what I have:\n{self._trip_summary(state)}\n\n"
+                "Shall I search for the best available flights now?"
             )
-            clean_reply = clean_reply + confirmation_prompt
 
         state.add_assistant_message(clean_reply)
         return state
@@ -779,70 +823,49 @@ class ItineraryAgent:
             + (f" | Budget ₹{p.max_budget_per_person:,.0f}/person" if p.max_budget_per_person else "")
         )
 
-    def _extract_params_from_conversation(self, state: AppState) -> AppState:
+    def _apply_extracted(self, state: AppState, data: dict[str, Any]) -> AppState:
         """
-        Run a lightweight LLM extraction pass to pull structured fields out of
-        the full conversation history and update state.trip.search_params.
-        This keeps the main conversation prompt clean.
+        Apply a dict of extracted travel fields (from the <EXTRACT> block) directly
+        onto state.trip.search_params and state.preferences.
+        Silently ignores null / missing values.
         """
-        if not state.conversation.message_history:
-            return state
-
-        history_text = "\n".join(
-            f"{m['role'].upper()}: {m['content']}"
-            for m in state.conversation.message_history[-10:]  # last 10 turns
-        )
-
-        extraction_prompt = """\
-Extract travel parameters from the conversation below.
-Return a JSON object with ONLY the fields you can confidently extract.
-Use null for anything not mentioned.
-
-Fields:
-  origin, destination, departure_date (YYYY-MM-DD), return_date (YYYY-MM-DD),
-  adults (int), children (int), cabin_class (Economy|Premium Economy|Business|First),
-  max_budget_per_person (float), nonstop_preferred (bool),
-  trip_type (one_way|round_trip),
-  hotel_preference (string), meal_preference (Room Only|Breakfast Included|Half Board|Full Board|All Inclusive),
-  sightseeing_interests (list of strings), free_cancellation (bool)
-
-Respond with valid JSON only. No markdown.
-"""
-        try:
-            raw = self._call_llm(extraction_prompt, history_text)
-            data = json.loads(raw)
-        except Exception:
-            return state  # silent fail — extraction is best-effort
-
         p = state.trip.search_params
         pref = state.preferences
 
-        # Update FlightSearchParams fields
         if data.get("origin"):
             p.origin = data["origin"]
         if data.get("destination"):
             p.destination = data["destination"]
         if data.get("departure_date"):
             try:
-                p.departure_date = date.fromisoformat(data["departure_date"])
+                p.departure_date = date.fromisoformat(str(data["departure_date"]))
             except (ValueError, TypeError):
                 pass
         if data.get("return_date"):
             try:
-                p.return_date = date.fromisoformat(data["return_date"])
+                p.return_date = date.fromisoformat(str(data["return_date"]))
             except (ValueError, TypeError):
                 pass
         if data.get("adults") is not None:
-            p.adults = max(1, int(data["adults"]))
+            try:
+                p.adults = max(1, int(data["adults"]))
+            except (ValueError, TypeError):
+                pass
         if data.get("children") is not None:
-            p.children = max(0, int(data["children"]))
+            try:
+                p.children = max(0, int(data["children"]))
+            except (ValueError, TypeError):
+                pass
         if data.get("cabin_class"):
             try:
                 p.cabin_class = CabinClass(data["cabin_class"])
             except ValueError:
                 pass
         if data.get("max_budget_per_person") is not None:
-            p.max_budget_per_person = float(data["max_budget_per_person"])
+            try:
+                p.max_budget_per_person = float(data["max_budget_per_person"])
+            except (ValueError, TypeError):
+                pass
         if data.get("nonstop_preferred") is not None:
             p.nonstop_preferred = bool(data["nonstop_preferred"])
         if data.get("trip_type"):
@@ -851,8 +874,6 @@ Respond with valid JSON only. No markdown.
                 state.trip.trip_type = p.trip_type
             except ValueError:
                 pass
-
-        # Update UserPreferences fields
         if data.get("hotel_preference"):
             pref.hotel_preference = data["hotel_preference"]
         if data.get("meal_preference"):
@@ -867,6 +888,13 @@ Respond with valid JSON only. No markdown.
 
         state.trip.search_params = p
         state.preferences = pref
+        return state
+
+    def _extract_params_from_conversation(self, state: AppState) -> AppState:
+        """
+        Deprecated — kept for backward-compatibility only.
+        collect_requirements() now extracts params inline via _apply_extracted().
+        """
         return state
 
     @staticmethod
