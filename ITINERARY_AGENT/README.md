@@ -176,7 +176,7 @@ Optional overrides in `.env`:
 
 | Variable | Default | Description |
 |---|---|---|
-| `ITINERARY_AGENT_MODEL` | `gpt-4o` | Main orchestrator model |
+| `ITINERARY_AGENT_MODEL` | `gpt-4o-mini` | Main orchestrator model |
 | `FLIGHT_AGENT_MODEL` | `gpt-4o-mini` | Flight worker model |
 | `HOTEL_AGENT_MODEL` | `gpt-4o-mini` | Hotel worker model |
 | `ITINERARY_AGENT_TEMPERATURE` | `0.3` | Creativity for conversation |
