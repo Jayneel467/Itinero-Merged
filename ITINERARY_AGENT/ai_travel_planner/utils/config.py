@@ -27,7 +27,7 @@ try:
         openai_api_key: str = Field(..., alias="OPENAI_API_KEY")
 
         # ── Model names ───────────────────────────────────────────────────────
-        itinerary_agent_model: str = Field("gpt-4o", alias="ITINERARY_AGENT_MODEL")
+        itinerary_agent_model: str = Field("gpt-4o-mini", alias="ITINERARY_AGENT_MODEL")
         flight_agent_model: str = Field("gpt-4o-mini", alias="FLIGHT_AGENT_MODEL")
         hotel_agent_model: str = Field("gpt-4o-mini", alias="HOTEL_AGENT_MODEL")
 
@@ -58,7 +58,7 @@ except ImportError:
                 )
             self.openai_api_key: str = key
             self.itinerary_agent_model: str = os.getenv(
-                "ITINERARY_AGENT_MODEL", "gpt-4o"
+                "ITINERARY_AGENT_MODEL", "gpt-4o-mini"
             )
             self.flight_agent_model: str = os.getenv(
                 "FLIGHT_AGENT_MODEL", "gpt-4o-mini"

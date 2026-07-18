@@ -11,10 +11,6 @@ from .models import (
     UserPreferences,
     FlightSearchParams,
     HotelSearchParams,
-    PassengerDetail,
-    PaymentRecord,
-    FlightBooking,
-    HotelBooking,
 )
 
 __all__ = [
@@ -29,8 +25,4 @@ __all__ = [
     "UserPreferences",
     "FlightSearchParams",
     "HotelSearchParams",
-    "PassengerDetail",
-    "PaymentRecord",
-    "FlightBooking",
-    "HotelBooking",
 ]

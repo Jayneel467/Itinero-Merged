@@ -27,20 +27,16 @@ from ai_travel_planner.graph.nodes import (
     node_draft_itinerary_review,
     node_error,
     node_final_itinerary,
-    node_flight_payment,
     node_flight_prebook,
     node_flight_prebook_confirmation,
     node_flight_search,
     node_flight_search_confirmation,
     node_flight_selection,
     node_greeting,
-    node_hotel_payment,
     node_hotel_prebook,
     node_hotel_prebook_confirmation,
     node_hotel_search,
     node_hotel_selection,
-    node_passenger_details,
-    node_return_flight_selection,
 )
 from ai_travel_planner.state.models import AppState, WorkflowStage
 from ai_travel_planner.utils.display import (
@@ -61,21 +57,14 @@ _NODE_MAP: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     WorkflowStage.FLIGHT_SEARCH_CONFIRMATION.value:  node_flight_search_confirmation,
     WorkflowStage.FLIGHT_SEARCH.value:               node_flight_search,
     WorkflowStage.FLIGHT_SELECTION.value:            node_flight_selection,
-    # IMPROVEMENT: Return flight selection for round-trips
-    WorkflowStage.RETURN_FLIGHT_SELECTION.value:     node_return_flight_selection,
     WorkflowStage.FLIGHT_PREBOOK_CONFIRMATION.value: node_flight_prebook_confirmation,
     WorkflowStage.FLIGHT_PREBOOK.value:              node_flight_prebook,
-    # IMPROVEMENT: Passenger details and payment stages
-    WorkflowStage.PASSENGER_DETAILS.value:           node_passenger_details,
-    WorkflowStage.FLIGHT_PAYMENT.value:              node_flight_payment,
     WorkflowStage.DRAFT_ITINERARY.value:             node_draft_itinerary,
     WorkflowStage.DRAFT_ITINERARY_REVIEW.value:      node_draft_itinerary_review,
     WorkflowStage.HOTEL_SEARCH.value:                node_hotel_search,
     WorkflowStage.HOTEL_SELECTION.value:             node_hotel_selection,
     WorkflowStage.HOTEL_PREBOOK_CONFIRMATION.value:  node_hotel_prebook_confirmation,
     WorkflowStage.HOTEL_PREBOOK.value:               node_hotel_prebook,
-    # IMPROVEMENT: Hotel payment stage
-    WorkflowStage.HOTEL_PAYMENT.value:               node_hotel_payment,
     WorkflowStage.FINAL_ITINERARY.value:             node_final_itinerary,
     WorkflowStage.ERROR.value:                       node_error,
 }

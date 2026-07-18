@@ -29,25 +29,14 @@ class WorkflowStage(str, Enum):
     FLIGHT_SEARCH_CONFIRMATION = "flight_search_confirmation"
     FLIGHT_SEARCH = "flight_search"
     FLIGHT_SELECTION = "flight_selection"
-    # IMPROVEMENT: Outbound selection done; now select return flight (round-trip)
-    RETURN_FLIGHT_SELECTION = "return_flight_selection"
     FLIGHT_PREBOOK_CONFIRMATION = "flight_prebook_confirmation"
-    # IMPROVEMENT: Collect passenger names/contact before prebook
-    PASSENGER_DETAILS = "passenger_details"
     FLIGHT_PREBOOK = "flight_prebook"
-    # IMPROVEMENT: Payment step before final booking
-    FLIGHT_PAYMENT = "flight_payment"
-    # IMPROVEMENT: Final confirmed booking (generates permanent booking IDs)
-    FLIGHT_BOOKING = "flight_booking"
     DRAFT_ITINERARY = "draft_itinerary"
     DRAFT_ITINERARY_REVIEW = "draft_itinerary_review"
     HOTEL_SEARCH = "hotel_search"
     HOTEL_SELECTION = "hotel_selection"
     HOTEL_PREBOOK_CONFIRMATION = "hotel_prebook_confirmation"
     HOTEL_PREBOOK = "hotel_prebook"
-    # IMPROVEMENT: Hotel payment + final hotel booking
-    HOTEL_PAYMENT = "hotel_payment"
-    HOTEL_BOOKING = "hotel_booking"
     FINAL_ITINERARY = "final_itinerary"
     COMPLETED = "completed"
     ERROR = "error"
@@ -59,11 +48,9 @@ class PendingAction(str, Enum):
     NONE = "none"
     SEARCH_FLIGHTS = "search_flights"
     PREBOOK_FLIGHT = "prebook_flight"
-    CONFIRM_PAYMENT = "confirm_payment"
     APPROVE_DRAFT_ITINERARY = "approve_draft_itinerary"
     SEARCH_HOTELS = "search_hotels"
     PREBOOK_HOTELS = "prebook_hotels"
-    CONFIRM_HOTEL_PAYMENT = "confirm_hotel_payment"
     FINALIZE_ITINERARY = "finalize_itinerary"
 
 
@@ -135,13 +122,7 @@ class FlightSearchParams(BaseModel):
             missing.append("departure date")
         if self.trip_type == TripType.ROUND_TRIP and not self.return_date:
             missing.append("return date")
-        # IMPROVEMENT: also require passenger count and cabin class explicitly
         return missing
-
-    def next_missing_field(self) -> str | None:
-        """Return the single next missing field (for one-question-at-a-time flow)."""
-        missing = self.missing_required_fields()
-        return missing[0] if missing else None
 
     def is_complete(self) -> bool:
         return len(self.missing_required_fields()) == 0
@@ -235,99 +216,6 @@ class FlightPrebookResponse(BaseModel):
     prebook: FlightPrebook | None = None
     errors: list[str] = Field(default_factory=list)
     suggested_next_action: str = "Review draft itinerary"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# IMPROVEMENT: Passenger Details Model
-# ─────────────────────────────────────────────────────────────────────────────
-
-class PassengerDetail(BaseModel):
-    """Contact and identity details for a single passenger."""
-
-    passenger_type: str = "adult"  # "adult" | "child"
-    first_name: str = ""
-    last_name: str = ""
-    email: str = ""
-    phone: str = ""
-
-    def is_complete(self) -> bool:
-        """All mandatory fields are filled and valid."""
-        import re
-        if not self.first_name.strip() or not self.last_name.strip():
-            return False
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", self.email):
-            return False
-        if not re.match(r"^\+?[\d\s\-]{7,15}$", self.phone):
-            return False
-        return True
-
-    def missing_fields(self) -> list[str]:
-        import re
-        missing = []
-        if not self.first_name.strip():
-            missing.append("first name")
-        if not self.last_name.strip():
-            missing.append("last name")
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", self.email):
-            missing.append("valid email address")
-        if not re.match(r"^\+?[\d\s\-]{7,15}$", self.phone):
-            missing.append("valid phone number")
-        return missing
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# IMPROVEMENT: Payment + Final Booking Models
-# ─────────────────────────────────────────────────────────────────────────────
-
-class PaymentRecord(BaseModel):
-    """Simulated payment record (dummy — no real payment gateway)."""
-
-    payment_id: str = Field(
-        default_factory=lambda: f"PAY-{uuid.uuid4().hex[:10].upper()}"
-    )
-    amount: float
-    currency: str = "INR"
-    method: str = "Credit Card"  # dummy
-    status: str = "Paid"
-    paid_at: datetime = Field(default_factory=datetime.now)
-
-
-class FlightBooking(BaseModel):
-    """Final confirmed flight booking record with permanent booking ID."""
-
-    booking_id: str = Field(
-        default_factory=lambda: f"FBK-{uuid.uuid4().hex[:10].upper()}"
-    )
-    prebook_id: str
-    flight: FlightOption
-    passengers: list[PassengerDetail] = Field(default_factory=list)
-    payment: PaymentRecord | None = None
-    total_price: float
-    currency: str = "INR"
-    booking_status: str = "Confirmed"
-    booked_at: datetime = Field(default_factory=datetime.now)
-    # Round-trip: may have a paired return booking_id
-    return_booking_id: str | None = None
-
-
-class HotelBooking(BaseModel):
-    """Final confirmed hotel booking record with permanent booking ID."""
-
-    booking_id: str = Field(
-        default_factory=lambda: f"HBK-{uuid.uuid4().hex[:10].upper()}"
-    )
-    prebook_id: str
-    hotel: HotelOption
-    check_in: date
-    check_out: date
-    room_type: str
-    guests: list[PassengerDetail] = Field(default_factory=list)
-    payment: PaymentRecord | None = None
-    total_price: float
-    currency: str = "INR"
-    booking_status: str = "Confirmed"
-    booked_at: datetime = Field(default_factory=datetime.now)
-    day_label: str = ""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -497,30 +385,14 @@ class TripState(BaseModel):
 class FlightState(BaseModel):
     """All flight-related state for the current session."""
 
-    # Outbound search results
     search_results: list[FlightOption] = Field(default_factory=list)
     recommended_flight: FlightOption | None = None
     selected_flight: FlightOption | None = None
-
-    # IMPROVEMENT: Round-trip return flight
-    return_search_results: list[FlightOption] = Field(default_factory=list)
-    return_recommended_flight: FlightOption | None = None
-    selected_return_flight: FlightOption | None = None
-
     prebook: FlightPrebook | None = None
-    # IMPROVEMENT: Return flight prebook
-    return_prebook: FlightPrebook | None = None
-
     last_agent_response: FlightAgentResponse | None = None
     search_performed: bool = False
     selection_made: bool = False
-    # IMPROVEMENT: Track return selection separately
-    return_selection_made: bool = False
     prebook_done: bool = False
-
-    # IMPROVEMENT: Final booking records
-    booking: FlightBooking | None = None
-    return_booking: FlightBooking | None = None
 
 
 class HotelState(BaseModel):
@@ -538,8 +410,6 @@ class HotelState(BaseModel):
     all_days_searched: bool = False
     all_hotels_selected: bool = False
     prebook_done: bool = False
-    # IMPROVEMENT: Final hotel booking records keyed by day_label
-    bookings: dict[str, HotelBooking] = Field(default_factory=dict)
 
 
 class ItineraryState(BaseModel):
@@ -611,11 +481,6 @@ class AppState(BaseModel):
     hotels: HotelState = Field(default_factory=HotelState)
     itinerary: ItineraryState = Field(default_factory=ItineraryState)
     preferences: UserPreferences = Field(default_factory=UserPreferences)
-
-    # IMPROVEMENT: Passenger details and payment
-    passengers: list[PassengerDetail] = Field(default_factory=list)
-    flight_payment: PaymentRecord | None = None
-    hotel_payment: PaymentRecord | None = None
 
     def touch(self) -> None:
         """Update the timestamp whenever state is mutated."""

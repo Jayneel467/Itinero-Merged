@@ -36,7 +36,6 @@ from ai_travel_planner.agents.itinerary_agent import ItineraryAgent
 from ai_travel_planner.state.models import (
     AgentResponseStatus,
     AppState,
-    FlightPrebook,
     PendingAction,
     WorkflowStage,
 )
@@ -175,7 +174,7 @@ def node_flight_search_confirmation(state_dict: dict[str, Any]) -> dict[str, Any
 def node_flight_search(state_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Delegate flight search to FlightAgent.
-    IMPROVEMENT: Stores both outbound and return flight results for round-trips.
+    Stores results in state.flights and presents them to the user.
     """
     logger.info("NODE: flight_search")
     state = _load(state_dict)
@@ -202,31 +201,13 @@ def node_flight_search(state_dict: dict[str, Any]) -> dict[str, Any]:
             "I'm sorry, I couldn't find any flights matching your criteria. "
             "Would you like to adjust the dates or budget?"
         )
-        return _dump(state)
+    else:
+        state.flights.search_results = response.flights
+        state.flights.recommended_flight = response.recommended_flight
+        state.set_stage(WorkflowStage.FLIGHT_SELECTION)
+        reply = itinerary_agent.format_flight_results_message(state)
+        state.add_assistant_message(reply)
 
-    state.flights.search_results = response.flights
-    state.flights.recommended_flight = response.recommended_flight
-
-    # IMPROVEMENT: Extract return flights stored in filters_applied
-    fa = response.filters_applied
-    raw_return = fa.get("_return_flights", [])
-    ret_rec_id = fa.get("_recommended_return_flight_id")
-    if raw_return:
-        from ai_travel_planner.state.models import FlightOption as FO
-        return_flights = []
-        for rf in raw_return:
-            try:
-                return_flights.append(FO(**rf))
-            except Exception:
-                pass
-        state.flights.return_search_results = return_flights
-        state.flights.return_recommended_flight = next(
-            (f for f in return_flights if f.flight_id == ret_rec_id), None
-        ) or (max(return_flights, key=lambda f: f.rank_score) if return_flights else None)
-
-    state.set_stage(WorkflowStage.FLIGHT_SELECTION)
-    reply = itinerary_agent.format_flight_results_message(state)
-    state.add_assistant_message(reply)
     return _dump(state)
 
 
@@ -236,9 +217,8 @@ def node_flight_search(state_dict: dict[str, Any]) -> dict[str, Any]:
 
 def node_flight_selection(state_dict: dict[str, Any]) -> dict[str, Any]:
     """
-    Capture the user's outbound flight selection.
-    IMPROVEMENT: After outbound selection, routes to RETURN_FLIGHT_SELECTION
-    for round-trips before asking for pre-book confirmation.
+    Capture the user's flight selection by number.
+    Calls FlightAgent.select_flight() to confirm price, then asks for pre-book confirmation.
     """
     logger.info("NODE: flight_selection")
     state = _load(state_dict)
@@ -272,65 +252,6 @@ def node_flight_selection(state_dict: dict[str, Any]) -> dict[str, Any]:
 
     state.flights.selected_flight = response.selected_flight
     state.flights.selection_made = True
-
-    # IMPROVEMENT: Round-trip → go pick return flight first
-    from ai_travel_planner.state.models import TripType
-    if (state.trip.search_params.trip_type == TripType.ROUND_TRIP
-            and state.flights.return_search_results
-            and not state.flights.return_selection_made):
-        state.set_stage(WorkflowStage.RETURN_FLIGHT_SELECTION)
-        reply = itinerary_agent.format_return_flight_results_message(state)
-        state.add_assistant_message(reply)
-    else:
-        state.set_stage(WorkflowStage.FLIGHT_PREBOOK_CONFIRMATION)
-        state.set_pending_action(PendingAction.PREBOOK_FLIGHT)
-        reply = itinerary_agent.format_flight_selected_message(state)
-        state.add_assistant_message(reply)
-
-    return _dump(state)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Node: Return Flight Selection (IMPROVEMENT — round-trip)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def node_return_flight_selection(state_dict: dict[str, Any]) -> dict[str, Any]:
-    """
-    IMPROVEMENT: Capture the user's RETURN flight selection for round-trips.
-    After selection, moves to pre-book confirmation showing both flights.
-    """
-    logger.info("NODE: return_flight_selection")
-    state = _load(state_dict)
-    itinerary_agent = _get_itinerary_agent()
-    flight_agent = _get_flight_agent()
-
-    intent = itinerary_agent.interpret_user_intent(state.last_user_input)
-
-    if intent["intent"] != "select" or intent.get("selection_number") is None:
-        state.add_assistant_message(
-            "Please enter the number of the return flight you'd like to select "
-            f"(1–{len(state.flights.return_search_results)})."
-        )
-        return _dump(state)
-
-    idx = intent["selection_number"] - 1
-    flights = state.flights.return_search_results
-
-    if idx < 0 or idx >= len(flights):
-        state.add_assistant_message(
-            f"Invalid selection. Please choose between 1 and {len(flights)}."
-        )
-        return _dump(state)
-
-    selected = flights[idx]
-    passengers = {
-        "adults": state.trip.search_params.adults,
-        "children": state.trip.search_params.children,
-    }
-    response = flight_agent.select_flight(selected, passengers)
-
-    state.flights.selected_return_flight = response.selected_flight
-    state.flights.return_selection_made = True
     state.set_stage(WorkflowStage.FLIGHT_PREBOOK_CONFIRMATION)
     state.set_pending_action(PendingAction.PREBOOK_FLIGHT)
 
@@ -375,10 +296,7 @@ def node_flight_prebook_confirmation(state_dict: dict[str, Any]) -> dict[str, An
 # ─────────────────────────────────────────────────────────────────────────────
 
 def node_flight_prebook(state_dict: dict[str, Any]) -> dict[str, Any]:
-    """
-    Pre-book outbound (and return) flight via FlightAgent.
-    IMPROVEMENT: Prebooks both legs for round-trips, then routes to PASSENGER_DETAILS.
-    """
+    """Delegate flight pre-booking to FlightAgent and store the prebook record."""
     logger.info("NODE: flight_prebook")
     state = _load(state_dict)
     itinerary_agent = _get_itinerary_agent()
@@ -389,13 +307,12 @@ def node_flight_prebook(state_dict: dict[str, Any]) -> dict[str, Any]:
         state.add_assistant_message("No flight selected. Let's go back and pick one.")
         return _dump(state)
 
+    instruction = itinerary_agent.build_flight_prebook_instruction(state)
     passengers = {
         "adults": state.trip.search_params.adults,
         "children": state.trip.search_params.children,
     }
 
-    # Prebook outbound
-    instruction = itinerary_agent.build_flight_prebook_instruction(state)
     response = flight_agent.prebook_flight(
         instruction=instruction,
         flight=state.flights.selected_flight,
@@ -408,106 +325,14 @@ def node_flight_prebook(state_dict: dict[str, Any]) -> dict[str, Any]:
         state.add_assistant_message(
             "Sorry, the flight pre-booking failed. Would you like to try again?"
         )
-        return _dump(state)
-
-    state.flights.prebook = response.prebook
-
-    # IMPROVEMENT: Prebook return flight if round-trip
-    if state.flights.selected_return_flight:
-        ret_instr = (
-            f"Pre-book return flight {state.flights.selected_return_flight.airline} "
-            f"{state.flights.selected_return_flight.flight_number}."
-        )
-        ret_response = flight_agent.prebook_flight(
-            instruction=ret_instr,
-            flight=state.flights.selected_return_flight,
-            passengers=passengers,
-        )
-        if ret_response.prebook:
-            state.flights.return_prebook = ret_response.prebook
-
-    state.flights.prebook_done = True
-    state.clear_pending_action()
-    # IMPROVEMENT: Route to passenger details collection instead of draft itinerary
-    state.set_stage(WorkflowStage.PASSENGER_DETAILS)
-
-    reply = itinerary_agent.format_flight_prebook_message(state)
-    state.add_assistant_message(reply)
-    return _dump(state)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Node: Passenger Details Collection (IMPROVEMENT)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def node_passenger_details(state_dict: dict[str, Any]) -> dict[str, Any]:
-    """
-    IMPROVEMENT: Collect first name, last name, email, phone for each passenger.
-    Validates email and phone. Loops until all passengers are complete.
-    """
-    logger.info("NODE: passenger_details")
-    state = _load(state_dict)
-    agent = _get_itinerary_agent()
-    state = agent.collect_passenger_details(state)
-    return _dump(state)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Node: Flight Payment (IMPROVEMENT)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def node_flight_payment(state_dict: dict[str, Any]) -> dict[str, Any]:
-    """
-    IMPROVEMENT: Confirm payment and generate final flight booking IDs (FBK-...).
-    Simulates payment processing — ready to swap with a real payment gateway.
-    """
-    logger.info("NODE: flight_payment")
-    state = _load(state_dict)
-    agent = _get_itinerary_agent()
-
-    intent = agent.interpret_user_intent(state.last_user_input)
-
-    if intent["intent"] == "yes":
-        state = agent.process_flight_payment(state)
-    elif intent["intent"] == "no":
-        state.clear_pending_action()
-        state.set_stage(WorkflowStage.FLIGHT_PREBOOK_CONFIRMATION)
-        state.add_assistant_message(
-            "Payment cancelled. Would you like to go back and review your flight selection?"
-        )
     else:
-        state.add_assistant_message(
-            "Would you like to confirm payment? Please reply yes or no."
-        )
-    return _dump(state)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Node: Hotel Payment (IMPROVEMENT)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def node_hotel_payment(state_dict: dict[str, Any]) -> dict[str, Any]:
-    """
-    IMPROVEMENT: Confirm hotel payment and generate final hotel booking IDs (HBK-...).
-    """
-    logger.info("NODE: hotel_payment")
-    state = _load(state_dict)
-    agent = _get_itinerary_agent()
-
-    intent = agent.interpret_user_intent(state.last_user_input)
-
-    if intent["intent"] == "yes":
-        state = agent.process_hotel_payment(state)
-    elif intent["intent"] == "no":
+        state.flights.prebook = response.prebook
+        state.flights.prebook_done = True
         state.clear_pending_action()
-        state.set_stage(WorkflowStage.HOTEL_PREBOOK_CONFIRMATION)
-        state.add_assistant_message(
-            "Hotel payment cancelled. Would you like to review your hotel selections?"
-        )
-    else:
-        state.add_assistant_message(
-            "Would you like to confirm hotel payment? Please reply yes or no."
-        )
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
+        reply = itinerary_agent.format_flight_prebook_message(state)
+        state.add_assistant_message(reply)
+
     return _dump(state)
 
 
@@ -836,9 +661,7 @@ def node_hotel_prebook(state_dict: dict[str, Any]) -> dict[str, Any]:
 
     state.hotels.prebook_done = True
     state.clear_pending_action()
-    # IMPROVEMENT: Route to hotel payment before final itinerary
-    state.set_stage(WorkflowStage.HOTEL_PAYMENT)
-    state.set_pending_action(PendingAction.CONFIRM_HOTEL_PAYMENT)
+    state.set_stage(WorkflowStage.FINAL_ITINERARY)
 
     reply = itinerary_agent.format_hotel_prebooks_done_message(state)
     state.add_assistant_message(reply)

@@ -54,31 +54,26 @@ _FLIGHT_AGENT_SYSTEM_PROMPT = """\
 You are an expert Flight Search Agent for an AI Travel Planning system.
 
 Your responsibilities:
-1. Parse the natural-language instruction from the Itinerary Agent.
+1. Parse the natural-language instruction you receive from the Itinerary Agent.
 2. Generate realistic dummy flight data that matches the request.
-3. Apply requested filters (budget, stops, time-of-day, airline, cabin class).
+3. Apply the requested filters (budget, stops, time-of-day, airline, cabin class).
 4. Rank results by value score (price + duration + stops + user preference).
 5. Identify the single best-value recommendation.
-6. Return a structured JSON response conforming EXACTLY to the schema.
-
-IMPORTANT — Round-trip support:
-If the instruction requests BOTH outbound AND return flights, include BOTH
-under separate JSON keys: "flights" (outbound) and "return_flights" (return).
-Each list follows the same FlightOption schema.
-Use "recommended_flight_id" for outbound and "recommended_return_flight_id" for return.
+6. Return a structured JSON response conforming EXACTLY to the schema provided.
 
 Flight Data Generation Rules:
-- Generate between 5 and 8 flight options per direction.
-- Use real airline names operating on the route.
-- Realistic flight numbers (e.g., "AI 204", "6E 716", "SG 112").
-- Departure times spread across morning, afternoon, and evening slots.
+- Generate between 6 and 10 flight options.
+- Use real airline names operating on the requested route.
+- Generate realistic flight numbers (e.g., "AI 204", "6E 716", "SG 112").
+- Departure times spread across early-morning (05:00–08:00), morning (08:00–12:00),
+  afternoon (12:00–17:00), and evening (17:00–22:00) slots.
 - Duration must be realistic for the route distance.
-- Price variation: ±30% around a realistic base fare.
-- Stops: 70% nonstop, 30% one-stop for domestic.
-- Baggage: economy 15 kg check-in + 7 kg cabin; business 30 kg + 7 kg.
+- Price variation: ±30 % around a realistic base fare for the route.
+- Stops: 70 % nonstop, 30 % one-stop for domestic; 40 % nonstop, 60 % one-stop for international.
+- Baggage: economy gets 15 kg check-in + 7 kg cabin; business gets 30 kg + 7 kg.
 - Seats available: random between 2 and 18.
 - Rank score: 0–10 float; higher = better value.
-- Mark exactly one flight as recommended=true per direction.
+- Mark exactly one flight as recommended=true (the highest-ranked one).
 
 Always respond with valid JSON only. No markdown fences, no extra text.
 
@@ -86,13 +81,11 @@ Response schema:
 {
   "status": "success" | "not_found" | "error",
   "action_performed": "<string>",
-  "summary": "<one-sentence summary>",
-  "flights": [ <FlightOption objects — outbound> ],
-  "return_flights": [ <FlightOption objects — return, if round-trip> ],
-  "recommended_flight_id": "<flight_id>",
-  "recommended_return_flight_id": "<flight_id | null>",
+  "summary": "<one-sentence human-readable summary>",
+  "flights": [ <FlightOption objects> ],
+  "recommended_flight_id": "<flight_id of best option>",
   "total_results": <int>,
-  "filters_applied": {},
+  "filters_applied": { <key: value> },
   "errors": [],
   "suggested_next_action": "<string>"
 }
@@ -101,7 +94,7 @@ FlightOption schema:
 {
   "flight_id": "FL-XXXXXXXX",
   "airline": "<name>",
-  "flight_number": "<code>",
+  "flight_number": "<code number>",
   "origin": "<city or IATA>",
   "destination": "<city or IATA>",
   "departure_time": "YYYY-MM-DDTHH:MM:SS",
@@ -346,8 +339,7 @@ class FlightAgent:
         raw_json: str,
         original_instruction: str,
     ) -> FlightAgentResponse:
-        """Parse raw LLM JSON into a validated FlightAgentResponse.
-        IMPROVEMENT: Also parses return_flights for round-trip responses."""
+        """Parse raw LLM JSON into a validated FlightAgentResponse."""
         try:
             data = json.loads(raw_json)
         except json.JSONDecodeError as exc:
@@ -361,49 +353,33 @@ class FlightAgent:
                 raw_instruction=original_instruction,
             )
 
-        def _build_flights(raw_list: list) -> tuple[list[FlightOption], FlightOption | None, str]:
-            """Build a flight list and find the recommended one. Returns (flights, recommended, rec_id)."""
-            flights: list[FlightOption] = []
-            recommended: FlightOption | None = None
-            for raw_flight in raw_list:
-                try:
-                    flight = FlightOption(**raw_flight)
-                    if not flight.total_price:
-                        flight = flight.model_copy(update={"total_price": flight.price_per_adult})
-                    flights.append(flight)
-                except Exception as e:
-                    logger.warning("Skipping malformed flight record: %s", e)
-            return flights, recommended
-
-        # Outbound flights
-        flights, _ = _build_flights(data.get("flights", []))
+        # Build FlightOption list
+        flights: list[FlightOption] = []
+        recommended_flight: FlightOption | None = None
         recommended_id = data.get("recommended_flight_id", "")
-        recommended_flight: FlightOption | None = next(
-            (f for f in flights if f.flight_id == recommended_id), None
-        )
+
+        for raw_flight in data.get("flights", []):
+            try:
+                flight = FlightOption(**raw_flight)
+                # Ensure total_price is set
+                if not flight.total_price:
+                    flight = flight.model_copy(
+                        update={"total_price": flight.price_per_adult}
+                    )
+                flights.append(flight)
+                if flight.flight_id == recommended_id:
+                    recommended_flight = flight
+            except Exception as e:
+                logger.warning("Skipping malformed flight record: %s", e)
+
+        # Fallback: if recommended_id didn't match, pick highest rank_score
         if not recommended_flight and flights:
             recommended_flight = max(flights, key=lambda f: f.rank_score)
+            recommended_flight = recommended_flight.model_copy(update={"recommended": True})
             flights = [
-                f.model_copy(update={"recommended": True})
-                if f.flight_id == recommended_flight.flight_id else f
+                (f.model_copy(update={"recommended": True}) if f.flight_id == recommended_flight.flight_id else f)
                 for f in flights
             ]
-            recommended_flight = next(f for f in flights if f.recommended)
-
-        # IMPROVEMENT: Return flights (round-trip)
-        return_flights, _ = _build_flights(data.get("return_flights", []))
-        ret_recommended_id = data.get("recommended_return_flight_id", "")
-        recommended_return: FlightOption | None = next(
-            (f for f in return_flights if f.flight_id == ret_recommended_id), None
-        )
-        if not recommended_return and return_flights:
-            recommended_return = max(return_flights, key=lambda f: f.rank_score)
-            return_flights = [
-                f.model_copy(update={"recommended": True})
-                if f.flight_id == recommended_return.flight_id else f
-                for f in return_flights
-            ]
-            recommended_return = next(f for f in return_flights if f.recommended)
 
         status_str = data.get("status", "success")
         try:
@@ -417,14 +393,8 @@ class FlightAgent:
             summary=data.get("summary", f"Found {len(flights)} flights."),
             flights=flights,
             recommended_flight=recommended_flight,
-            # Store return flights in filters_applied as a workaround (no schema change needed)
-            # We'll use a dedicated field added below
-            total_results=len(flights) + len(return_flights),
-            filters_applied={
-                **data.get("filters_applied", {}),
-                "_return_flights": [f.model_dump(mode="json") for f in return_flights],
-                "_recommended_return_flight_id": recommended_return.flight_id if recommended_return else None,
-            },
+            total_results=len(flights),
+            filters_applied=data.get("filters_applied", {}),
             errors=data.get("errors", []),
             suggested_next_action=data.get("suggested_next_action", "Present options to user"),
             raw_instruction=original_instruction,

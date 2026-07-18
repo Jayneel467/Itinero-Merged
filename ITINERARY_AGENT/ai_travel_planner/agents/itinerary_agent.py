@@ -28,18 +28,14 @@ from ai_travel_planner.state.models import (
     CabinClass,
     DraftItinerary,
     FinalItinerary,
-    FlightBooking,
     FlightOption,
     FlightSearchParams,
-    HotelBooking,
     HotelOption,
     HotelPrebook,
     HotelSearchParams,
     ItineraryActivity,
     ItineraryDay,
     MealPlan,
-    PassengerDetail,
-    PaymentRecord,
     PendingAction,
     TripType,
     UserPreferences,
@@ -58,33 +54,30 @@ logger = get_logger("agents.itinerary_agent")
 _REQUIREMENT_COLLECTION_PROMPT = """\
 You are a professional AI Travel Consultant named Aria.
 
-Your goal is to collect trip requirements one question at a time.
+Your goal is to collect trip requirements from the user through natural, friendly conversation.
 
-STRICT RULES:
-- Ask ONLY ONE missing field per turn — never two or more questions in one message.
-- Never assume values for cabin class, trip type, budget, or passenger count.
-- Never show internal field names. Use warm, natural language.
-- When ALL of the following are confirmed, emit [READY_TO_SEARCH] at the end:
-    * origin city
-    * destination city
-    * departure date
-    * return date (only required for round-trip)
-    * number of adults
-    * trip type (one-way or round-trip)
-    * cabin class
+Rules:
+- Ask ONLY for missing fields — never ask for information already provided.
+- Ask for at most 2 missing fields per turn.
+- Be warm, concise, and professional.
+- Never show internal field names. Use natural language.
+- When you have: origin, destination, departure_date, and (return_date if round-trip),
+  you have ENOUGH to proceed. Optionally collect adults, budget, cabin_class.
+- When you have enough info, end your response with the exact token: [READY_TO_SEARCH]
 
-Priority order for questions (ask the first missing one):
-  1. destination city (if not known)
-  2. departure city (if not known)
-  3. departure date (if not known)
-  4. trip type — one-way or round-trip (if not known)
-  5. return date (if round-trip and not known)
-  6. number of adults (if not confirmed)
-  7. number of children (if not confirmed — acceptable answer: "none" or "0")
-  8. cabin class — Economy / Business / First (if not confirmed)
-  9. budget per person (optional — ask gently, accept "no budget limit")
+Fields to collect (only ask what is missing):
+  - departure city / origin airport
+  - destination city
+  - departure date
+  - return date (if round-trip)
+  - number of adults (default: 1)
+  - number of children (default: 0)
+  - budget per person (optional)
+  - cabin class (default: Economy)
+  - hotel preference (beach / city center / near airport)
+  - meal preference (breakfast / half board / all inclusive)
+  - any special interests (beach, history, adventure, food)
 
-When [READY_TO_SEARCH] is emitted, include a clean trip summary.
 Always respond in plain English. No markdown unless listing options.
 Current date context will be provided in the user message.
 """
@@ -183,48 +176,6 @@ Use the same schema as the draft itinerary JSON, but include:
   - Updated activities with hotel check-in/check-out events
 """
 
-# IMPROVEMENT: Prompt for extracting passenger details from freeform user input
-_PASSENGER_EXTRACTION_PROMPT = """\
-Extract passenger contact details from the user's message.
-
-Return a JSON object. Use null for fields not mentioned.
-
-Schema:
-{
-  "first_name": "<string | null>",
-  "last_name": "<string | null>",
-  "email": "<string | null>",
-  "phone": "<string | null>"
-}
-
-Respond with valid JSON only. No markdown. No extra text.
-"""
-
-# IMPROVEMENT: Validation prompt for dates and passenger counts
-_VALIDATION_PROMPT = """\
-You are a travel booking validator.
-
-Validate the following trip parameters and return a JSON result.
-
-Rules:
-  - Departure date must be in the future (today's date provided).
-  - Return date must be after departure date (if round-trip).
-  - Adults must be between 1 and 9.
-  - Children must be between 0 and 9.
-  - Budget (if given) must be a positive number.
-  - Email must contain @ and a domain.
-  - Phone must be 7–15 digits (with optional +, spaces, hyphens).
-
-Return:
-{
-  "valid": true | false,
-  "errors": ["<error message>", ...],
-  "warnings": ["<warning message>", ...]
-}
-
-Respond with valid JSON only. No markdown.
-"""
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ItineraryAgent class
@@ -262,17 +213,12 @@ class ItineraryAgent:
     def collect_requirements(self, state: AppState) -> AppState:
         """
         Continue the requirement-collection conversation.
-        IMPROVEMENT: Asks strictly ONE missing field per turn.
-        Validates dates before marking ready.
+        Updates state.trip.search_params and state.preferences with any new info
+        extracted from the last user message.  Returns the agent's reply.
         """
         logger.info("ItineraryAgent.collect_requirements")
 
-        # First extract whatever the user just provided
-        state = self._extract_params_from_conversation(state)
-
-        # Validate what we have so far
-        validation_errors = self._validate_trip_params(state)
-
+        # Build context summary of what we already know
         known = self._known_params_summary(state)
         today = date.today().isoformat()
 
@@ -280,18 +226,20 @@ class ItineraryAgent:
         user_msg = (
             f"Today's date: {today}\n\n"
             f"What we already know:\n{known}\n\n"
-            f"Validation issues (if any): {', '.join(validation_errors) if validation_errors else 'None'}\n\n"
             f"User's latest message: \"{state.last_user_input}\"\n\n"
-            "Ask ONLY the single next missing required field. "
-            "If everything is valid and complete, end with [READY_TO_SEARCH]."
+            "Continue the conversation. Ask only for what is still missing."
         )
 
         reply = self._call_llm(system, user_msg)
 
+        # Check if the LLM signals we have enough information
         ready = "[READY_TO_SEARCH]" in reply
         clean_reply = reply.replace("[READY_TO_SEARCH]", "").strip()
 
-        if ready and not validation_errors:
+        # Try to extract any structured data the LLM mentioned
+        state = self._extract_params_from_conversation(state)
+
+        if ready:
             state.set_stage(WorkflowStage.FLIGHT_SEARCH_CONFIRMATION)
             state.set_pending_action(PendingAction.SEARCH_FLIGHTS)
             confirmation_prompt = (
@@ -300,9 +248,6 @@ class ItineraryAgent:
                 "Would you like me to search for the best available flights now?"
             )
             clean_reply = clean_reply + confirmation_prompt
-        elif ready and validation_errors:
-            # Don't advance — fix validation issues first
-            clean_reply += f"\n\n⚠️ Please note: {'; '.join(validation_errors)}"
 
         state.add_assistant_message(clean_reply)
         return state
@@ -342,59 +287,35 @@ class ItineraryAgent:
     # ──────────────────────────────────────────────────────────────────────────
 
     def build_flight_search_instruction(self, state: AppState) -> str:
-        """
-        Build instruction for the Flight Agent.
-        IMPROVEMENT: For round-trip, explicitly request BOTH outbound and return
-        as two separate lists so they can be selected independently.
-        """
+        """Build a rich natural-language instruction for the Flight Agent."""
         p = state.trip.search_params
         pref = state.preferences
 
-        budget_str = (
-            f"Maximum budget ₹{p.max_budget_per_person:,.0f} per passenger."
-            if p.max_budget_per_person else ""
-        )
+        budget_str = f"Maximum budget ₹{p.max_budget_per_person:,.0f} per passenger." if p.max_budget_per_person else ""
         nonstop_str = "Prefer nonstop flights." if p.nonstop_preferred else "Nonstop preferred but one stop acceptable."
-        airlines_str = (
-            f"Preferred airlines: {', '.join(p.preferred_airlines)}."
-            if p.preferred_airlines else ""
+        airlines_str = f"Preferred airlines: {', '.join(p.preferred_airlines)}." if p.preferred_airlines else ""
+
+        instruction = (
+            f"Search flights from {p.origin} to {p.destination} "
+            f"for {p.adults} adult(s) and {p.children} child(ren) "
+            f"departing on {p.departure_date}. "
+            f"Trip type: {p.trip_type.value}. "
+            f"Cabin class: {p.cabin_class.value}. "
+            f"{budget_str} "
+            f"{nonstop_str} "
+            f"{airlines_str} "
+            "Baggage included preferred. "
+            "Return the 5 best options ranked by value (price, duration, stops). "
+            "Provide a clear recommendation with reason."
         )
 
         if p.trip_type == TripType.ROUND_TRIP and p.return_date:
-            instruction = (
-                f"Search OUTBOUND flights from {p.origin} to {p.destination} "
-                f"for {p.adults} adult(s) and {p.children} child(ren) "
-                f"departing on {p.departure_date}. "
-                f"Cabin class: {p.cabin_class.value}. "
-                f"{budget_str} {nonstop_str} {airlines_str} "
-                "Return 5 best options ranked by value. "
-                "Use JSON key 'flights' for outbound results. "
-                "Also include in the SAME response under key 'return_flights': "
-                f"5 best RETURN flights from {p.destination} to {p.origin} "
-                f"on {p.return_date} with the same passenger count and preferences."
-            )
-        else:
-            instruction = (
-                f"Search flights from {p.origin} to {p.destination} "
-                f"for {p.adults} adult(s) and {p.children} child(ren) "
-                f"departing on {p.departure_date}. "
-                f"Cabin class: {p.cabin_class.value}. "
-                f"{budget_str} {nonstop_str} {airlines_str} "
-                "Return 5 best options ranked by value."
+            instruction += (
+                f" Also search return flights from {p.destination} to {p.origin} "
+                f"on {p.return_date}."
             )
 
         return instruction.strip()
-
-    def build_return_flight_search_instruction(self, state: AppState) -> str:
-        """Build a standalone instruction to search only return flights."""
-        p = state.trip.search_params
-        return (
-            f"Search RETURN flights from {p.destination} to {p.origin} "
-            f"for {p.adults} adult(s) and {p.children} child(ren) "
-            f"departing on {p.return_date}. "
-            f"Cabin class: {p.cabin_class.value}. "
-            "Return 5 best options ranked by value."
-        )
 
     def build_flight_prebook_instruction(self, state: AppState) -> str:
         """Build a pre-booking instruction for the Flight Agent."""
@@ -499,160 +420,6 @@ class ItineraryAgent:
             f"Total: ₹{hotel.price_per_night * nights:,.0f}. "
             f"This is for {day_label} of the itinerary."
         )
-
-    # ──────────────────────────────────────────────────────────────────────────
-    # IMPROVEMENT: Passenger Detail Collection
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def collect_passenger_details(self, state: AppState) -> AppState:
-        """
-        Collect passenger details one field at a time.
-        Validates email and phone before advancing.
-        """
-        logger.info("ItineraryAgent.collect_passenger_details")
-        total_passengers = state.trip.search_params.adults + state.trip.search_params.children
-
-        # Initialise passenger list if needed
-        while len(state.passengers) < total_passengers:
-            idx = len(state.passengers)
-            ptype = "adult" if idx < state.trip.search_params.adults else "child"
-            state.passengers.append(PassengerDetail(passenger_type=ptype))
-
-        # Try to extract details from latest user input
-        raw = self._call_llm(_PASSENGER_EXTRACTION_PROMPT, state.last_user_input)
-        try:
-            extracted = json.loads(raw)
-        except json.JSONDecodeError:
-            extracted = {}
-
-        # Fill into the first incomplete passenger
-        for pax in state.passengers:
-            if not pax.is_complete():
-                if extracted.get("first_name") and not pax.first_name:
-                    pax.first_name = extracted["first_name"]
-                if extracted.get("last_name") and not pax.last_name:
-                    pax.last_name = extracted["last_name"]
-                if extracted.get("email") and not pax.email:
-                    pax.email = extracted["email"]
-                if extracted.get("phone") and not pax.phone:
-                    pax.phone = extracted["phone"]
-                break
-
-        # Find first incomplete passenger
-        incomplete = next((p for p in state.passengers if not p.is_complete()), None)
-
-        if incomplete is None:
-            # All passengers complete — move to payment
-            state.set_stage(WorkflowStage.FLIGHT_PAYMENT)
-            state.set_pending_action(PendingAction.CONFIRM_PAYMENT)
-            flight = state.flights.selected_flight
-            ret_flight = state.flights.selected_return_flight
-            total = (flight.total_price if flight else 0) + (ret_flight.total_price if ret_flight else 0)
-            reply = (
-                "✅ Passenger details collected!\n\n"
-                f"  Passengers: {', '.join(f'{p.first_name} {p.last_name}' for p in state.passengers)}\n\n"
-                f"  💳 Total amount to pay: ₹{total:,.0f}\n"
-                "  Payment method: Credit Card (dummy simulation)\n\n"
-                "Would you like to confirm payment and complete the booking? (yes / no)"
-            )
-        else:
-            # Ask for the next missing field
-            idx = state.passengers.index(incomplete) + 1
-            missing = incomplete.missing_fields()
-            reply = (
-                f"Please provide the {missing[0]} for Passenger {idx} "
-                f"({incomplete.passenger_type})."
-            )
-
-        state.add_assistant_message(reply)
-        return state
-
-    # ──────────────────────────────────────────────────────────────────────────
-    # IMPROVEMENT: Payment Processing
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def process_flight_payment(self, state: AppState) -> AppState:
-        """
-        Simulate payment processing and generate final booking IDs.
-        IMPROVEMENT: Generates unique FBK- booking IDs distinct from FPB- prebook IDs.
-        """
-        logger.info("ItineraryAgent.process_flight_payment")
-
-        flight = state.flights.selected_flight
-        ret_flight = state.flights.selected_return_flight
-        prebook = state.flights.prebook
-        ret_prebook = state.flights.return_prebook
-
-        total = (
-            (flight.total_price if flight else 0) +
-            (ret_flight.total_price if ret_flight else 0)
-        )
-
-        # Simulate payment
-        payment = PaymentRecord(amount=total)
-        state.flight_payment = payment
-
-        # Create final booking for outbound
-        if flight and prebook:
-            booking = FlightBooking(
-                prebook_id=prebook.prebook_id,
-                flight=flight,
-                passengers=state.passengers,
-                payment=payment,
-                total_price=flight.total_price,
-                booking_status="Confirmed",
-            )
-            state.flights.booking = booking
-
-        # Create final booking for return flight
-        if ret_flight and ret_prebook:
-            ret_booking = FlightBooking(
-                prebook_id=ret_prebook.prebook_id,
-                flight=ret_flight,
-                passengers=state.passengers,
-                payment=payment,
-                total_price=ret_flight.total_price,
-                booking_status="Confirmed",
-                return_booking_id=state.flights.booking.booking_id if state.flights.booking else None,
-            )
-            state.flights.return_booking = ret_booking
-
-        state.clear_pending_action()
-        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
-
-        reply = self._format_flight_booking_confirmation(state)
-        state.add_assistant_message(reply)
-        return state
-
-    def process_hotel_payment(self, state: AppState) -> AppState:
-        """Simulate hotel payment and generate final hotel booking IDs."""
-        logger.info("ItineraryAgent.process_hotel_payment")
-
-        total = sum(pb.total_price for pb in state.hotels.prebooks.values())
-        payment = PaymentRecord(amount=total)
-        state.hotel_payment = payment
-
-        for day_label, prebook in state.hotels.prebooks.items():
-            booking = HotelBooking(
-                prebook_id=prebook.prebook_id,
-                hotel=prebook.hotel,
-                check_in=prebook.check_in,
-                check_out=prebook.check_out,
-                room_type=prebook.room_type,
-                guests=[PassengerDetail(**p.model_dump()) for p in state.passengers],
-                payment=payment,
-                total_price=prebook.total_price,
-                booking_status="Confirmed",
-                day_label=day_label,
-            )
-            state.hotels.bookings[day_label] = booking
-
-        state.clear_pending_action()
-        state.set_stage(WorkflowStage.FINAL_ITINERARY)
-
-        reply = self._format_hotel_booking_confirmation(state)
-        state.add_assistant_message(reply)
-        return state
 
     # ──────────────────────────────────────────────────────────────────────────
     # 5. Draft Itinerary Generation
@@ -776,17 +543,6 @@ class ItineraryAgent:
 
         total_hotel_cost = sum(pb.total_price for pb in prebooks.values())
         flight_prebook = state.flights.prebook
-        # IMPROVEMENT: Use confirmed booking ID if available, else fall back to prebook ID
-        flight_booking_id = (
-            state.flights.booking.booking_id if state.flights.booking
-            else (flight_prebook.prebook_id if flight_prebook else None)
-        )
-        hotel_booking_ids = [
-            state.hotels.bookings[lbl].booking_id
-            if lbl in state.hotels.bookings
-            else pb.prebook_id
-            for lbl, pb in prebooks.items()
-        ]
 
         final = FinalItinerary(
             trip_title=draft.trip_title if draft else f"Trip to {p.destination}",
@@ -795,9 +551,8 @@ class ItineraryAgent:
             departure_date=p.departure_date or date.today(),
             return_date=p.return_date,
             outbound_flight=flight,
-            return_flight=state.flights.selected_return_flight,
-            flight_prebook_id=flight_booking_id,
-            hotel_prebook_ids=hotel_booking_ids,
+            flight_prebook_id=flight_prebook.prebook_id if flight_prebook else None,
+            hotel_prebook_ids=[pb.prebook_id for pb in prebooks.values()],
             hotel_names=[pb.hotel.name for pb in prebooks.values()],
             total_days=len(days),
             days=days,
@@ -818,19 +573,12 @@ class ItineraryAgent:
     # ──────────────────────────────────────────────────────────────────────────
 
     def format_flight_results_message(self, state: AppState) -> str:
-        """
-        Return a formatted string listing all outbound flight options.
-        IMPROVEMENT: Clarifies this is the outbound leg for round-trips.
-        """
+        """Return a formatted string listing all flight options for the user."""
         flights = state.flights.search_results
-        p = state.trip.search_params
-        is_round_trip = p.trip_type == TripType.ROUND_TRIP
-
         if not flights:
             return "I couldn't find any flights matching your criteria. Would you like to adjust the search?"
 
-        leg_label = "OUTBOUND FLIGHTS" if is_round_trip else "AVAILABLE FLIGHTS"
-        lines = [f"Here are the best {leg_label} I found:\n"]
+        lines = ["Here are the best available flights I found:\n"]
         for i, f in enumerate(flights, 1):
             rec = " ⭐ Recommended" if f.recommended else ""
             stops = "Nonstop" if f.stops == 0 else f"{f.stops} stop(s) via {', '.join(f.stopover_cities)}"
@@ -851,171 +599,50 @@ class ItineraryAgent:
                 f"(best value for price and duration)."
             )
 
-        if is_round_trip:
-            lines.append("\nWhich OUTBOUND flight would you like? (Enter the option number)")
-        else:
-            lines.append("\nWhich flight would you like to select? (Enter the option number)")
-        return "\n".join(lines)
-
-    def format_return_flight_results_message(self, state: AppState) -> str:
-        """Format the RETURN flight options for round-trip journeys."""
-        flights = state.flights.return_search_results
-        if not flights:
-            return "I couldn't find any return flights. Would you like to adjust the search?"
-
-        lines = ["Now please choose your RETURN FLIGHT:\n"]
-        for i, f in enumerate(flights, 1):
-            rec = " ⭐ Recommended" if f.recommended else ""
-            stops = "Nonstop" if f.stops == 0 else f"{f.stops} stop(s) via {', '.join(f.stopover_cities)}"
-            lines.append(
-                f"  {i}. {f.airline} {f.flight_number}{rec}\n"
-                f"     {f.origin} → {f.destination} | "
-                f"{f.departure_time.strftime('%d %b, %H:%M')} → {f.arrival_time.strftime('%H:%M')} | "
-                f"{f.duration_display} | {stops}\n"
-                f"     {f.cabin_class.value} | ₹{f.price_per_adult:,.0f}/adult | "
-                f"{f.baggage_included} | {f.refund_policy} | {f.seats_available} seats left\n"
-            )
-
-        recommended = state.flights.return_recommended_flight
-        if recommended:
-            lines.append(
-                f"\n💡 My recommendation: Option {next((i for i,f in enumerate(flights,1) if f.flight_id == recommended.flight_id), 1)} "
-                f"— {recommended.airline} {recommended.flight_number}."
-            )
-        lines.append("\nWhich return flight would you like? (Enter the option number)")
+        lines.append("\nWhich flight would you like to select? (Enter the option number)")
         return "\n".join(lines)
 
     def format_flight_selected_message(self, state: AppState) -> str:
-        """
-        Summarise selected flight(s) and ask for pre-book confirmation.
-        IMPROVEMENT: Shows both outbound and return for round-trips.
-        """
+        """Summarise the user's selected flight and ask for pre-book confirmation."""
         f = state.flights.selected_flight
-        ret = state.flights.selected_return_flight
         if not f:
             return "No flight selected."
         p = state.trip.search_params
         adults = p.adults
         children = p.children
-        outbound_total = f.price_per_adult * adults + (f.price_per_child or 0) * children
+        total = f.price_per_adult * adults + (f.price_per_child or 0) * children
         stops = "Nonstop" if f.stops == 0 else f"{f.stops} stop(s)"
 
-        lines = [
-            "Great choice! Here's your flight summary:\n",
-            "  ✈  OUTBOUND FLIGHT",
-            f"  {f.airline} {f.flight_number}",
-            f"  Route: {f.origin} → {f.destination}",
-            f"  Departure: {f.departure_time.strftime('%d %b %Y, %H:%M')}",
-            f"  Arrival: {f.arrival_time.strftime('%d %b %Y, %H:%M')}",
-            f"  Duration: {f.duration_display} | {stops}",
-            f"  Class: {f.cabin_class.value} | Baggage: {f.baggage_included}",
-            f"  Price: ₹{f.price_per_adult:,.0f}/adult × {adults} = ₹{outbound_total:,.0f}",
-        ]
-
-        grand_total = outbound_total
-        if ret:
-            return_total = ret.price_per_adult * adults + (ret.price_per_child or 0) * children
-            grand_total += return_total
-            ret_stops = "Nonstop" if ret.stops == 0 else f"{ret.stops} stop(s)"
-            lines += [
-                "\n  ✈  RETURN FLIGHT",
-                f"  {ret.airline} {ret.flight_number}",
-                f"  Route: {ret.origin} → {ret.destination}",
-                f"  Departure: {ret.departure_time.strftime('%d %b %Y, %H:%M')}",
-                f"  Arrival: {ret.arrival_time.strftime('%d %b %Y, %H:%M')}",
-                f"  Duration: {ret.duration_display} | {ret_stops}",
-                f"  Class: {ret.cabin_class.value} | Baggage: {ret.baggage_included}",
-                f"  Price: ₹{ret.price_per_adult:,.0f}/adult × {adults} = ₹{return_total:,.0f}",
-            ]
-
-        lines += [
-            f"\n  💰 Total Flight Cost: ₹{grand_total:,.0f}",
-            "\nWould you like me to pre-book these flights? (yes / no)",
-        ]
-        return "\n".join(lines)
+        return (
+            f"Great choice! Here's a summary of your selected flight:\n\n"
+            f"  ✈  {f.airline} {f.flight_number}\n"
+            f"  Route: {f.origin} → {f.destination}\n"
+            f"  Departure: {f.departure_time.strftime('%d %b %Y, %H:%M')}\n"
+            f"  Arrival: {f.arrival_time.strftime('%d %b %Y, %H:%M')}\n"
+            f"  Duration: {f.duration_display} | {stops}\n"
+            f"  Class: {f.cabin_class.value}\n"
+            f"  Baggage: {f.baggage_included}\n"
+            f"  Refund: {f.refund_policy}\n"
+            f"  Price: ₹{f.price_per_adult:,.0f}/adult × {adults} = ₹{total:,.0f} total\n\n"
+            "Would you like me to pre-book this flight? (yes / no)"
+        )
 
     def format_flight_prebook_message(self, state: AppState) -> str:
-        """Confirm successful flight pre-booking. Now proceeds to passenger details."""
+        """Confirm successful flight pre-booking."""
         pb = state.flights.prebook
-        ret_pb = state.flights.return_prebook
         if not pb:
             return "Flight pre-booking failed."
-
-        lines = [
-            "✅ Flight(s) pre-booked!\n",
-            f"  Outbound Prebook ID: {pb.prebook_id}",
-            f"  Flight: {pb.flight.airline} {pb.flight.flight_number}",
-            f"  Route: {pb.flight.origin} → {pb.flight.destination}",
-            f"  Departure: {pb.flight.departure_time.strftime('%d %b %Y, %H:%M')}",
-            f"  Hold Expires: {pb.booking_expiry.strftime('%d %b %Y, %H:%M')}",
-        ]
-        if ret_pb:
-            lines += [
-                f"\n  Return Prebook ID: {ret_pb.prebook_id}",
-                f"  Flight: {ret_pb.flight.airline} {ret_pb.flight.flight_number}",
-                f"  Route: {ret_pb.flight.origin} → {ret_pb.flight.destination}",
-                f"  Departure: {ret_pb.flight.departure_time.strftime('%d %b %Y, %H:%M')}",
-            ]
-
-        total = pb.total_price + (ret_pb.total_price if ret_pb else 0)
-        lines += [
-            f"\n  Total: ₹{total:,.0f} | Status: {pb.booking_status}",
-            "\nBefore I complete the booking, I need passenger details.",
-            f"Please provide the first name, last name, email, and phone for Passenger 1 "
-            f"({state.trip.search_params.adults} adult(s) total).",
-        ]
-        return "\n".join(lines)
-
-    def _format_flight_booking_confirmation(self, state: AppState) -> str:
-        """Format confirmed flight booking with permanent booking IDs."""
-        booking = state.flights.booking
-        ret_booking = state.flights.return_booking
-        payment = state.flight_payment
-
-        lines = [
-            "🎉 FLIGHT BOOKING CONFIRMED!\n",
-        ]
-        if booking:
-            lines += [
-                f"  ✅ Outbound Booking ID: {booking.booking_id}",
-                f"  Flight: {booking.flight.airline} {booking.flight.flight_number}",
-                f"  {booking.flight.origin} → {booking.flight.destination}",
-                f"  Departure: {booking.flight.departure_time.strftime('%d %b %Y, %H:%M')}",
-            ]
-        if ret_booking:
-            lines += [
-                f"\n  ✅ Return Booking ID: {ret_booking.booking_id}",
-                f"  Flight: {ret_booking.flight.airline} {ret_booking.flight.flight_number}",
-                f"  {ret_booking.flight.origin} → {ret_booking.flight.destination}",
-                f"  Departure: {ret_booking.flight.departure_time.strftime('%d %b %Y, %H:%M')}",
-            ]
-        if payment:
-            lines += [
-                f"\n  💳 Payment ID: {payment.payment_id}",
-                f"  Amount Paid: ₹{payment.amount:,.0f} | Status: {payment.status}",
-            ]
-        lines.append("\nNow let me create your day-by-day trip itinerary... 🗺️")
-        return "\n".join(lines)
-
-    def _format_hotel_booking_confirmation(self, state: AppState) -> str:
-        """Format confirmed hotel bookings with permanent booking IDs."""
-        bookings = state.hotels.bookings
-        payment = state.hotel_payment
-
-        lines = ["🎉 HOTEL BOOKINGS CONFIRMED!\n"]
-        for day_label, bk in bookings.items():
-            lines += [
-                f"  ✅ {day_label}: {bk.hotel.name}",
-                f"     Booking ID: {bk.booking_id}",
-                f"     {bk.check_in} → {bk.check_out} | ₹{bk.total_price:,.0f}",
-            ]
-        if payment:
-            lines += [
-                f"\n  💳 Payment ID: {payment.payment_id}",
-                f"  Amount Paid: ₹{payment.amount:,.0f} | Status: {payment.status}",
-            ]
-        lines.append("\nGenerating your complete final itinerary now... ✈️🏨")
-        return "\n".join(lines)
+        return (
+            f"✅ Flight pre-booked successfully!\n\n"
+            f"  Prebook ID: {pb.prebook_id}\n"
+            f"  Flight: {pb.flight.airline} {pb.flight.flight_number}\n"
+            f"  Route: {pb.flight.origin} → {pb.flight.destination}\n"
+            f"  Departure: {pb.flight.departure_time.strftime('%d %b %Y, %H:%M')}\n"
+            f"  Total Price: ₹{pb.total_price:,.0f}\n"
+            f"  Status: {pb.booking_status}\n"
+            f"  Hold Expires: {pb.booking_expiry.strftime('%d %b %Y, %H:%M')}\n\n"
+            "Now let me create a draft itinerary for your trip..."
+        )
 
     def format_hotel_results_message(
         self, hotels: list[HotelOption], day_label: str
@@ -1080,22 +707,17 @@ class ItineraryAgent:
         return "\n".join(lines)
 
     def format_hotel_prebooks_done_message(self, state: AppState) -> str:
-        """Confirm all hotel pre-bookings and prompt for payment."""
+        """Confirm all hotel pre-bookings and prompt final itinerary generation."""
         prebooks = state.hotels.prebooks
         lines = ["✅ All hotels pre-booked successfully!\n"]
-        total = 0.0
         for label, pb in prebooks.items():
-            total += pb.total_price
             lines.append(
                 f"  {label}: {pb.hotel.name}\n"
                 f"    Prebook ID: {pb.prebook_id}\n"
                 f"    {pb.check_in} → {pb.check_out} | ₹{pb.total_price:,.0f}\n"
                 f"    Status: {pb.booking_status}\n"
             )
-        lines.append(f"\n  💰 Total Hotel Cost: ₹{total:,.0f}")
-        lines.append(
-            "\nWould you like to confirm payment for all hotels and complete the booking? (yes / no)"
-        )
+        lines.append("\nGenerating your complete final itinerary now... 🗺️")
         return "\n".join(lines)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -1119,32 +741,6 @@ class ItineraryAgent:
         except Exception as exc:
             logger.error("ItineraryAgent LLM call failed: %s", exc)
             raise
-
-    def _validate_trip_params(self, state: AppState) -> list[str]:
-        """
-        IMPROVEMENT: Validate trip parameters and return a list of error messages.
-        Returns empty list if everything is valid.
-        """
-        errors: list[str] = []
-        p = state.trip.search_params
-        today = date.today()
-
-        if p.departure_date:
-            if p.departure_date < today:
-                errors.append(f"Departure date {p.departure_date} is in the past.")
-        if p.return_date and p.departure_date:
-            if p.return_date <= p.departure_date:
-                errors.append(
-                    f"Return date {p.return_date} must be after departure date {p.departure_date}."
-                )
-        if p.adults < 1:
-            errors.append("At least 1 adult passenger is required.")
-        if p.adults > 9 or p.children > 9:
-            errors.append("Maximum 9 passengers per booking.")
-        if p.max_budget_per_person is not None and p.max_budget_per_person <= 0:
-            errors.append("Budget must be a positive number.")
-
-        return errors
 
     def _known_params_summary(self, state: AppState) -> str:
         """Build a human-readable summary of what trip parameters we already know."""
