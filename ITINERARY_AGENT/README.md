@@ -86,7 +86,7 @@ the full colour-coded visual diagram.
 - Builds detailed natural-language instructions for the worker agents.
 - Generates the draft and final itinerary using an LLM.
 - Enforces the "confirm before every major action" rule.
-- Model: `gpt-4o` (configurable)
+- Model: `gpt-4o-mini` (configurable)
 
 ### 2. Flight Agent (LLM Worker)
 - Receives instructions from the Itinerary Agent — never from the user.
@@ -95,7 +95,7 @@ the full colour-coded visual diagram.
 - Pre-books the selected flight and returns a `FlightPrebook` record.
 - Model: `gpt-4o-mini` (configurable)
 - **Swap to real API:** Replace `_call_llm()` in `agents/flight_agent.py` with
-  a [Duffel API](https://duffel.com) call — all method signatures stay the same.
+  a [LiteAPI API] call — all method signatures stay the same.
 
 ### 3. Hotel Agent (LLM Worker)
 - Receives instructions from the Itinerary Agent — never from the user.
@@ -270,12 +270,12 @@ AppState
 The dummy data layer is fully isolated inside the LLM calls in each agent.
 To connect to real APIs:
 
-**Flight Agent → Duffel API**
+**Flight Agent → Lite API**
 ```python
 # In agents/flight_agent.py, replace _call_llm() calls in search_flights() with:
-import duffel_api
-offers = duffel_api.OfferRequests.create(...)
-# Map Duffel offer objects to FlightOption Pydantic models
+import lite_api
+offers = lite_api.OfferRequests.create(...)
+# Map lite offer objects to FlightOption Pydantic models
 ```
 
 **Hotel Agent → LiteAPI**
@@ -318,8 +318,3 @@ instruction-building logic remain unchanged.
 | `python-dotenv` | `.env` file loading |
 | `rich` | Beautiful terminal output |
 
----
-
-## License
-
-MIT
