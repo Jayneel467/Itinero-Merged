@@ -1,0 +1,197 @@
+/* ═══════════════════════════════════════════════════════
+   Destination Card Styles
+   ═══════════════════════════════════════════════════════ */
+
+.destination-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background-color: var(--color-white);
+  padding-top: 12px;
+  padding-bottom: 30px;
+  border-radius: var(--radius-3xl);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  overflow: hidden;
+  position: relative;
+}
+
+.destination-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Gradient accent line at top */
+.destination-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 0 0 3px 3px;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.destination-card:hover::before {
+  opacity: 1;
+}
+
+.destination-card__image {
+  width: calc(100% - 22px);
+  height: 180px;
+  margin-bottom: 15px;
+  margin-left: 11px;
+  object-fit: cover;
+  border-radius: 28px;
+  transition: transform var(--transition-slow);
+}
+
+.destination-card:hover .destination-card__image {
+  transform: scale(1.05);
+}
+
+.destination-card__info {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 35px;
+  margin-left: 22px;
+}
+
+.destination-card__city {
+  color: var(--color-black);
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.destination-card__country {
+  color: var(--color-gray-800);
+  font-size: 17px;
+}
+
+.destination-card__pricing {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 5px 23px;
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.destination-card__price-group {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.destination-card__price-label {
+  color: var(--color-gray-800);
+  font-size: 16px;
+}
+
+.destination-card__price-value {
+  color: var(--color-navy);
+  font-size: 27px;
+  font-weight: 700;
+}
+
+.destination-card__divider {
+  width: 1px;
+  height: 44px;
+  background: linear-gradient(180deg, transparent, var(--color-gray-200), transparent);
+  margin: 0 5px;
+}
+
+.destination-card__action-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-white);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  color: var(--color-black);
+}
+
+.destination-card__action-btn:hover {
+  background: var(--gradient-primary);
+  color: var(--color-white);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-glow-primary);
+  transform: scale(1.1);
+}
+
+.destination-card__action-btn:hover svg {
+  animation: slideArrowRight 0.6s ease infinite;
+}
+
+.destination-card__action-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
+/* ── Responsive Styles ───────────────────────────── */
+@media (max-width: 1024px) {
+  .destination-card__city {
+    font-size: 26px;
+  }
+  .destination-card__image {
+    height: 160px;
+  }
+  .destination-card__price-value {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  .destination-card__city {
+    font-size: 24px;
+  }
+  .destination-card__image {
+    height: 150px;
+  }
+  .destination-card__country {
+    font-size: 15px;
+  }
+  .destination-card__info {
+    margin-bottom: 20px;
+    margin-left: 16px;
+  }
+  .destination-card__pricing {
+    padding: 5px 16px;
+  }
+  .destination-card__price-value {
+    font-size: 22px;
+  }
+  .destination-card__price-label {
+    font-size: 14px;
+  }
+  .destination-card {
+    padding-bottom: 20px;
+    border-radius: var(--radius-2xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .destination-card__city {
+    font-size: 20px;
+  }
+  .destination-card__image {
+    height: 140px;
+    border-radius: 20px;
+  }
+  .destination-card__price-value {
+    font-size: 20px;
+  }
+  .destination-card__info {
+    margin-bottom: 15px;
+  }
+}

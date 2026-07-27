@@ -1,4 +1,4 @@
-"""User-facing copy helpers — plain language only."""
+"""User-facing copy helpers — warm, plain language only."""
 
 from __future__ import annotations
 
@@ -14,24 +14,28 @@ from flight_agent.models.agent import SessionContext
 
 def passengers_question_prompt(ctx: SessionContext) -> str:
     offer = ctx.selected_offer_index
-    intro = f"Great choice — **option {offer}**!" if offer else "Before I check the fare,"
+    intro = (
+        f"Nice pick — **option {offer}**."
+        if offer
+        else "Before I lock in the fare,"
+    )
     return (
         f"{intro}\n\n"
-        "**How many passengers** are travelling?\n\n"
+        "How many people are flying?\n\n"
         "- **Adults** (12+)\n"
         "- **Children** (2–11), if any\n"
         "- **Infants** (under 2), if any\n\n"
-        "Example: *2 adults, 1 child* or *1 adult only*"
+        "Example: *2 adults, 1 child* or *just 1 adult*"
     )
 
 
 def service_preference_question(ctx: SessionContext) -> str:
     return (
-        "**Would you like any additional services?**\n\n"
-        "- **Seat** — preferred seat\n"
+        "Want any extras before I hold the fare?\n\n"
+        "- **Seat** — pick your seat\n"
         "- **Baggage** — extra luggage\n"
         "- **Both** — seat and baggage\n"
-        "- **None** or **skip** — no extras"
+        "- **Skip** — no extras"
     )
 
 
@@ -43,24 +47,24 @@ def next_step_hint(ctx: SessionContext) -> str:
     if ctx.booking_id:
         return post_booking_help_prompt(ctx)
     if ctx.awaiting_payment_confirmation and not ctx.payment_confirmed:
-        return "Reply **YES** when you're ready to confirm your booking and get your ticket."
+        return "Reply **YES** when you're ready to confirm and get your ticket."
     if ctx.awaiting_service_preference and not ctx.service_preference:
         return "Tell me: **seat**, **baggage**, **both**, or **skip**."
     if ctx.prebook_id and ctx.service_preference and ctx.service_preference != "none":
         return "Pick an add-on from the list, or say **skip**."
     if ctx.awaiting_booking_confirmation and not ctx.booking_confirmed:
-        return "Check your details above, then reply **YES** to continue."
+        return "Glance at the details above, then reply **YES** to continue — or tell me what to change."
     if ctx.verified_offer_id and not all_travelers_complete(ctx):
         if len(passenger_slot_plan(ctx)) > 1:
             return next_traveler_details_prompt(ctx)
         req = ctx.booking_requirements or {}
         doc = "Aadhaar/ID" if req.get("route_type") == "domestic" else "passport"
-        return f"Send name, email, phone, DOB, gender & **{doc}**."
+        return f"Send name, email, phone, DOB, gender & **{doc}** in one message."
     if ctx.selected_offer_index and not ctx.passengers_confirmed:
-        return "Tell me **how many passengers** (adults, children, infants)."
+        return "How many passengers? (adults, children, infants)"
     if ctx.last_search_results:
-        return "Say **option 1** (or another number), then I'll ask about passengers."
-    return "Tell me where you're flying from, to, and your travel date."
+        return "Say **option 1** (or another number) and I'll take it from there."
+    return "Where from, where to, and which date? (e.g. *Mumbai to Delhi on 8 July*)"
 
 
 def strip_thinking_tags(text: str) -> str:
@@ -86,6 +90,9 @@ def sanitize_assistant_text(text: str, session: SessionContext | None = None) ->
         ("serviceId", "add-on"),
         ("offerId", "flight option"),
         ("id_card", "government ID"),
+        ("FlightAgent", "flight booking"),
+        ("General Agent", "Vero"),
+        ("Itinero helping", "Vero helping"),
     ):
         text = text.replace(old, new)
     if is_technical_error(text):
@@ -131,12 +138,19 @@ def contextual_fallback_prompt(session: SessionContext) -> str:
     if session.awaiting_service_preference and not session.service_preference:
         return service_preference_question(session)
     if session.verified_offer_id and not all_travelers_complete(session):
-        return "Thanks — I still need a few more details.\n\n" + next_traveler_details_prompt(
-            session
+        return (
+            "Almost there — I still need a couple of traveler details.\n\n"
+            + next_traveler_details_prompt(session)
         )
     if session.selected_offer_index and not session.passengers_confirmed:
         return passengers_question_prompt(session)
-    return next_step_hint(session) or clarification_prompt()
+    hint = next_step_hint(session)
+    if hint and hint != clarification_prompt():
+        return (
+            "Sorry — that last step hiccuped on my side. "
+            "Here's where we left off:\n\n" + hint
+        )
+    return clarification_prompt()
 
 
 def booking_details_user_prompt(booking: dict) -> str:
@@ -160,14 +174,17 @@ def booking_details_user_prompt(booking: dict) -> str:
         f"- **Booking ID:** `{bid}`\n"
         f"- **Airline PNR:** {pnr}\n"
         f"- **Route:** {route}\n\n"
-        "Say **cancel booking** to cancel, or **list my bookings**."
+        "Say **cancel booking** if you need to cancel, or **list my bookings**."
     )
 
 
 def booking_list_user_prompt(payload: dict) -> str:
     bookings = payload.get("bookings") or []
     if not bookings:
-        return "No bookings found. Share a **booking ID**, or book a new flight."
+        return (
+            "No bookings on file yet. Share a **booking ID**, "
+            "or tell me a route and date to book a new flight."
+        )
     lines = [f"**Found {len(bookings)} booking(s):**", ""]
     for i, b in enumerate(bookings[:8], start=1):
         segs = b.get("segments_summary") or []
@@ -188,8 +205,8 @@ def cancel_confirmation_prompt(booking: dict | None = None) -> str:
     pnr = booking.get("airline_pnr")
     extra = f" (PNR **{pnr}**)" if pnr else ""
     return (
-        f"You're about to **cancel** booking `{bid}`{extra}.\n\n"
-        "Reply **YES** to confirm, or **NO** to keep the ticket."
+        f"Just to confirm — you want to **cancel** booking `{bid}`{extra}?\n\n"
+        "Reply **YES** to cancel, or **NO** to keep the ticket."
     )
 
 
@@ -201,13 +218,16 @@ def cancel_result_user_prompt(result: dict) -> str:
         return f"Booking `{bid}` is already cancelled (status: **{status}**)."
     if result.get("cancelled"):
         return (
-            f"**Booking cancelled.**\n\n"
+            f"**Done — booking cancelled.**\n\n"
             f"- **Booking ID:** `{bid}`\n"
             f"- **Status:** {status}\n"
             f"- **Airline PNR:** {pnr}"
         )
+    fallback = (
+        "I couldn't confirm the cancellation yet — try again in a moment."
+    )
     return (
-        f"{result.get('message') or 'Cancellation could not be confirmed yet.'}\n\n"
+        f"{result.get('message') or fallback}\n\n"
         f"- **Booking ID:** `{bid}`\n"
         f"- **Status:** {status}\n"
         f"- **Airline PNR:** {pnr}"
@@ -216,7 +236,7 @@ def cancel_result_user_prompt(result: dict) -> str:
 
 def post_booking_help_prompt(session: SessionContext) -> str:
     bid = session.booking_id or (session.last_booking or {}).get("booking_id")
-    lines = ["Your ticket is ready. You can:"]
+    lines = ["Your ticket's ready. You can:"]
     if bid:
         lines.append(f"- **retrieve booking** (ID `{bid}`)")
     else:
@@ -235,8 +255,7 @@ def is_generic_clarification(text: str) -> bool:
 
 def clarification_prompt() -> str:
     return (
-        "Sorry, I didn't quite catch that.\n\n"
-        "I'm your **flight booking assistant**. Tell me "
-        "**from, to, and date** (e.g. *Mumbai to Delhi on 8 July*), "
-        "or say what you'd like next."
+        "I didn't quite catch that — no worries.\n\n"
+        "Tell me **from, to, and date** (e.g. *Mumbai to Delhi on 8 July*), "
+        "or say what you'd like next with your booking."
     )

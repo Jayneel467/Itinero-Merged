@@ -1,0 +1,82 @@
+export const MOCK_HOTELS = [
+  {
+    id: 'h1',
+    name: 'The Oberoi',
+    location: 'Electronic City, Bengaluru',
+    distance: '4.2 Km from center',
+    rating: 4.5,
+    ratingText: 'Very good',
+    reviewCount: 112,
+    lat: 12.8399,
+    lng: 77.6770,
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1551882547-ff40c0d5f9af?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+    ],
+    tags: ['Free cancellation', 'Pay at hotel', 'Breakfast Included'],
+    pricePerNight: 2237,
+    totalPrice: 2639,
+  },
+  {
+    id: 'h2',
+    name: 'Taj West End',
+    location: 'Race Course Road, Bengaluru',
+    distance: '2.1 Km from center',
+    rating: 4.8,
+    ratingText: 'Excellent',
+    reviewCount: 345,
+    lat: 12.9845,
+    lng: 77.5816,
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+    ],
+    tags: ['Free cancellation', 'Pool', 'Spa'],
+    pricePerNight: 8500,
+    totalPrice: 9800,
+  },
+  {
+    id: 'h3',
+    name: 'ITC Gardenia',
+    location: 'Residency Road, Bengaluru',
+    distance: '1.5 Km from center',
+    rating: 4.7,
+    ratingText: 'Excellent',
+    reviewCount: 289,
+    lat: 12.9719,
+    lng: 77.6012,
+    image: 'https://images.unsplash.com/photo-1551882547-ff40c0d5f9af?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1551882547-ff40c0d5f9af?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+    ],
+    tags: ['Pay at hotel', 'Breakfast Included'],
+    pricePerNight: 6200,
+    totalPrice: 7100,
+  },
+  {
+    id: 'h4',
+    name: 'Lemon Tree Premier',
+    location: 'Ulsoor Lake, Bengaluru',
+    distance: '3.8 Km from center',
+    rating: 4.2,
+    ratingText: 'Good',
+    reviewCount: 156,
+    lat: 12.9815,
+    lng: 77.6176,
+    image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
+    ],
+    tags: ['Free cancellation'],
+    pricePerNight: 3100,
+    totalPrice: 3500,
+  }
+];

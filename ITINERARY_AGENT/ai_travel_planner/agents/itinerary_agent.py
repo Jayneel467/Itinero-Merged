@@ -26,6 +26,7 @@ from ai_travel_planner.state.models import (
     AgentResponseStatus,
     AppState,
     CabinClass,
+    DietaryPreference,
     DraftItinerary,
     FinalItinerary,
     FlightOption,
@@ -37,6 +38,7 @@ from ai_travel_planner.state.models import (
     ItineraryDay,
     MealPlan,
     PendingAction,
+    TripSummary,
     TripType,
     UserPreferences,
     WorkflowStage,
@@ -52,9 +54,19 @@ logger = get_logger("agents.itinerary_agent")
 # ─────────────────────────────────────────────────────────────────────────────
 
 _REQUIREMENT_COLLECTION_PROMPT = """\
-You are Vero Ai, a professional AI Travel Consultant.
+You are Vero — the AI travel buddy on Itinero — helping plan a trip together.
+Think conversational friend, not a multi-agent console. Never mention
+supervisors, specialists, routing, or internal systems.
 
 Your job is to collect trip details from the user and extract all information from what they say — including anything they mention voluntarily.
+
+== VOICE ==
+- Friendly, curious, concise. Acknowledge what they said in one short line, then ask.
+- Ask only for the most critical missing fields — max 2 at a time (never a checklist dump).
+- Plain language. No "As an AI…", "Certainly!", corporate filler, or emoji spam.
+- Mirror light Hinglish if they use it; otherwise clear English.
+- India context when relevant: ₹, cities like Mumbai/Delhi/Bengaluru, practical tips.
+- Never invent bookings or confirmations.
 
 == EXTRACTION RULES ==
 You will receive:
@@ -62,7 +74,8 @@ You will receive:
   - "User said": the user's latest message
 
 From "User said", extract EVERY piece of travel information mentioned, even if you didn't ask for it:
-  - origin, destination, dates, number of people, budget, cabin class, interests, hotel preferences, meal preferences, etc.
+  - origin, destination, dates, number of people, budget, cabin class, interests,
+    hotel preferences, hotel board plan, dietary/cuisine preference (veg etc.), trip vibe, etc.
 
 Then produce TWO things:
 
@@ -81,6 +94,8 @@ Then produce TWO things:
      "nonstop_preferred": null,
      "hotel_preference": null,
      "meal_preference": "Room Only or Breakfast Included or Half Board or Full Board or All Inclusive or null",
+     "dietary_preference": "veg or non_veg or jain or eggetarian or no_preference or null",
+     "trip_vibe": "relaxing or exploring or adventure or mix or null",
      "sightseeing_interests": [],
      "free_cancellation": null
    }
@@ -89,8 +104,13 @@ Then produce TWO things:
    - Acknowledges what you understood from their message (briefly, 1 line).
    - Asks ONLY for the most critical missing required fields — max 2 at a time.
    - Required fields: origin, destination, departure_date, and return_date (if round-trip).
-   - Once you have all required fields, end your reply with the exact token: [READY_TO_SEARCH]
-   - Do NOT ask for optional fields (budget, cabin class, interests) unless all required fields are already known.
+   - Once required fields are known, ask ONE clear question about dietary preference if
+     dietary_preference is still unknown: veg / non-veg / Jain / eggetarian / no preference.
+     Ask this early — before deep day planning — so food stops match them.
+   - Once you have all required fields (and you've asked dietary once if still missing),
+     end your reply with the exact token: [READY_TO_SEARCH]
+   - Do NOT ask for other optional fields (budget, cabin class, interests) unless all
+     required fields are already known.
    - Never ask for something the user already told you.
    - Be warm, concise, and natural. No markdown.
 
@@ -131,42 +151,82 @@ Schema:
 """
 
 _DRAFT_ITINERARY_PROMPT = """\
-You are an expert travel itinerary planner.
+You are Vero's itinerary planner on Itinero — practical, realistic, traveler-first.
 
-Generate a realistic, time-aware day-by-day draft itinerary based on:
-  - Origin, destination, travel dates
-  - Outbound flight arrival time
-  - Return flight departure time
-  - Number of travel days
-  - User interests
+Generate a trip that starts with a concise SUMMARY, then an in-depth day-by-day plan.
 
-Rules:
-  - Day 1: arrival day — airport transfer, hotel area exploration only (light activities).
-  - Last day: departure day — checkout, transfer to airport only.
-  - Middle days: full sightseeing days (6-8 activities, realistic timing).
-  - Respect meal times: breakfast ~08:00, lunch ~13:00, dinner ~20:00.
-  - Build in 30-min buffers between activities.
-  - Realistic travel times between locations.
-  - DO NOT include hotels (hotels are added later).
+Inputs you may receive:
+  - Origin, destination, travel dates, outbound arrival / return departure times
+  - Number of travel days, user interests, trip vibe
+  - dietary_preference: veg | non_veg | jain | eggetarian | no_preference
+  - Budget ballpark if known
+
+== OUTPUT STRUCTURE (required) ==
+1) summary — trip overview BEFORE deep days
+2) days — each day with morning / afternoon / evening + timed activities
+
+== SUMMARY RULES ==
+- cities, dates, nights, vibe
+- budget_ballpark if known (else null) — label as estimate, never invent fake totals
+- dietary_preference echoed clearly
+- hotels: leave empty or "TBD — hotels next" (hotels are added later)
+- transport_style: flights + realistic local (cab / metro / auto / walk for India cities)
+- highlights: 3–5 bullets of the trip's best bits
+
+== DAY RULES ==
+- Day 1: arrival — airport transfer, light hotel-area explore, early dinner. No overpacking.
+- Last day: checkout + airport transfer; morning only if departure is late.
+- Middle days: full but paced — leave buffers; don't stack more than ~4–5 main stops.
+- Meal times: breakfast ~08:00, lunch ~13:00, dinner ~20:00, optional evening snack ~17:00.
+- For EVERY day include meal activities matching dietary_preference + local specialties
+  (e.g. Surat: locho, undhiyu, Gujarati thali — veg-friendly when pref is veg/Jain).
+  Prefer real-sounding local dish + area guidance ("locho near Station Road") rather than
+  inventing fake restaurant brand names or booking IDs. If unsure of a specific place name,
+  say the dish + neighborhood and note "confirm on Maps".
+- Between stops: set travel_mode (cab|rideshare|metro|auto|walk) and travel_minutes
+  realistic for the city (Surat/Ahmedabad-style: auto/cab/walk; metros only where they exist).
+- practical_tips: best time to visit, tickets/bookings needed, temple dress code if relevant.
+- DO NOT invent hotel names, flight numbers, booking IDs, or confirmation codes.
+- Activity descriptions should read naturally.
 
 Respond with valid JSON only. No markdown.
 
 Schema:
 {
   "trip_title": "<string>",
+  "summary": {
+    "cities": "<origin → destination or multi-city>",
+    "dates": "<readable date range>",
+    "nights": <int>,
+    "vibe": "<string or null>",
+    "budget_ballpark": "<string or null>",
+    "dietary_preference": "<veg|non_veg|jain|eggetarian|no_preference|null>",
+    "hotels": [],
+    "transport_style": "<flights + local modes>",
+    "highlights": ["...", "...", "..."]
+  },
   "days": [
     {
       "day_number": <int>,
       "date": "YYYY-MM-DD",
       "title": "<day theme>",
+      "morning": "<short narrative block>",
+      "afternoon": "<short narrative block>",
+      "evening": "<short narrative block>",
+      "food_suggestions": ["Breakfast: ...", "Lunch: ...", "Dinner: ..."],
+      "transport_notes": "<how the day moves around>",
+      "practical_tips": "<bookings, dress, timing>",
+      "hotel_name": null,
       "activities": [
         {
           "time": "HH:MM",
           "description": "<activity description>",
           "category": "transport|flight|check-in|check-out|meal|sightseeing|leisure",
           "duration_minutes": <int>,
-          "location": "<place name>",
-          "notes": "<optional tip>"
+          "location": "<place or area>",
+          "notes": "<optional tip>",
+          "travel_mode": "cab|rideshare|metro|auto|walk|null",
+          "travel_minutes": <int or null>
         }
       ],
       "notes": "<optional day notes>"
@@ -177,26 +237,31 @@ Schema:
 """
 
 _FINAL_ITINERARY_PROMPT = """\
-You are an expert travel itinerary finalizer.
+You are Vero's itinerary finalizer on Itinero — polish the plan so it feels ready to travel.
 
 Merge the draft itinerary with hotel check-in/check-out information and
-generate the complete, realistic day-by-day final itinerary.
+produce a complete plan: SUMMARY first, then in-depth day-by-day.
 
 Rules:
-  - Add hotel check-in activity on Day 1 (after airport transfer) at hotel check-in time.
-  - Add hotel check-out activity on the last day before airport transfer.
-  - For multi-hotel trips: add check-out from old hotel and check-in to new hotel on transition days.
-  - Keep all existing sightseeing activities.
-  - Ensure all times are realistic and non-overlapping.
-  - Add nearby attraction suggestions for each area.
-  - Add transportation notes between locations.
+  - Keep / refresh the summary: cities, dates, nights, vibe, dietary_preference,
+    budget_ballpark if known, transport_style, 3–5 highlights.
+  - Put real hotel names into summary.hotels as
+    "Hotel Name (check-in HH:MM / check-out HH:MM)" — use prebook data; never invent IDs.
+  - Add hotel check-in on Day 1 (after airport transfer) at hotel check-in time.
+  - Add hotel check-out on the last day before airport transfer.
+  - Multi-hotel: check-out old / check-in new on transition days.
+  - Each day: hotel_name for that night; morning / afternoon / evening blocks;
+    food_suggestions matching dietary preference + local specialties;
+    transport_notes with cab/metro/auto/walk and rough times;
+    practical_tips (timing, tickets, temple dress if relevant).
+  - Keep sightseeing; ensure times don't overlap; keep buffers — don't overpack.
+  - Never invent booking confirmations or PNRs. Recommendations only for restaurants.
 
 Respond with valid JSON only. No markdown.
 
-Use the same schema as the draft itinerary JSON, but include:
-  - "hotel_name": "<hotel name>" on each day
-  - "hotel_prebook_id": "<prebook id>" on each day
-  - Updated activities with hotel check-in/check-out events
+Use the same schema as the draft itinerary JSON, plus:
+  - "hotel_name" and "hotel_prebook_id" on each day (from real prebooks only)
+  - Updated summary.hotels and activities with check-in/check-out events
 """
 
 
@@ -491,6 +556,13 @@ class ItineraryAgent:
             if pref.sightseeing_interests
             else ""
         )
+        dietary = pref.dietary_preference.value if pref.dietary_preference else "no_preference"
+        vibe = pref.trip_vibe or "not specified"
+        budget = (
+            f"₹{p.max_budget_per_person:,.0f}/person"
+            if p.max_budget_per_person
+            else "not specified"
+        )
 
         context = (
             f"Trip: {p.origin} → {p.destination}\n"
@@ -499,9 +571,13 @@ class ItineraryAgent:
             f"Total days: {total_days}\n"
             f"Outbound flight arrival time: {arrival_time}\n"
             f"Adults: {p.adults}, Children: {p.children}\n"
+            f"dietary_preference: {dietary}\n"
+            f"trip_vibe: {vibe}\n"
+            f"budget_ballpark: {budget}\n"
             f"{interests_str}\n"
-            "Generate a realistic day-by-day draft itinerary. "
-            "Do NOT assign hotels yet — hotels will be added in the next step."
+            "Generate SUMMARY first, then day-by-day. "
+            "Weave meal stops matching dietary_preference and local specialties. "
+            "Include travel_mode between stops. Do NOT invent hotel names — hotels come next."
         )
 
         raw = self._call_llm(_DRAFT_ITINERARY_PROMPT, context)
@@ -515,6 +591,17 @@ class ItineraryAgent:
             return state
 
         days = self._parse_itinerary_days(data.get("days", []), p.departure_date)
+        summary = self._parse_trip_summary(
+            data.get("summary"),
+            origin=p.origin or "",
+            destination=p.destination or "",
+            departure_date=p.departure_date,
+            return_date=p.return_date,
+            total_days=total_days,
+            dietary=dietary,
+            vibe=pref.trip_vibe,
+            budget=budget if p.max_budget_per_person else None,
+        )
 
         draft = DraftItinerary(
             trip_title=data.get("trip_title", f"{p.origin} to {p.destination}"),
@@ -524,6 +611,7 @@ class ItineraryAgent:
             return_date=p.return_date,
             total_days=total_days,
             days=days,
+            summary=summary,
             notes=data.get("notes", ""),
         )
 
@@ -556,8 +644,16 @@ class ItineraryAgent:
         )
 
         draft_json = json.dumps(
-            {"days": [d.model_dump(mode="json") for d in (draft.days if draft else [])]},
+            {
+                "summary": draft.summary.model_dump(mode="json") if draft and draft.summary else None,
+                "days": [d.model_dump(mode="json") for d in (draft.days if draft else [])],
+            },
             default=str,
+        )
+        dietary = (
+            state.preferences.dietary_preference.value
+            if state.preferences.dietary_preference
+            else "no_preference"
         )
 
         context = (
@@ -566,8 +662,10 @@ class ItineraryAgent:
             f"Outbound flight: {flight.airline if flight else 'N/A'} "
             f"{flight.flight_number if flight else ''} "
             f"arriving {flight.arrival_time.strftime('%H:%M') if flight else 'N/A'}\n"
-            "Merge hotels into the itinerary. Add check-in / check-out activities. "
-            "Keep all sightseeing. Generate the final complete day-by-day plan."
+            f"dietary_preference: {dietary}\n"
+            "Merge hotels into SUMMARY + day-by-day. Add check-in / check-out. "
+            "Keep food matching dietary preference. Keep all sightseeing. "
+            "Never invent booking IDs."
         )
 
         raw = self._call_llm(_FINAL_ITINERARY_PROMPT, context)
@@ -577,12 +675,31 @@ class ItineraryAgent:
         except json.JSONDecodeError as exc:
             logger.error("Final itinerary JSON parse error: %s", exc)
             # Fall back to draft-based final itinerary
-            data = {"days": [d.model_dump(mode="json") for d in (draft.days if draft else [])]}
+            data = {
+                "summary": draft.summary.model_dump(mode="json") if draft and draft.summary else None,
+                "days": [d.model_dump(mode="json") for d in (draft.days if draft else [])],
+            }
 
         days = self._parse_itinerary_days(
             data.get("days", []),
             p.departure_date,
             prebooks=prebooks,
+        )
+
+        hotel_lines = [
+            f"{pb.hotel.name} (check-in {pb.check_in}, check-out {pb.check_out})"
+            for pb in prebooks.values()
+        ]
+        summary = self._parse_trip_summary(
+            data.get("summary"),
+            origin=p.origin or "",
+            destination=p.destination or "",
+            departure_date=p.departure_date,
+            return_date=p.return_date,
+            total_days=len(days) or (draft.total_days if draft else 0),
+            dietary=dietary,
+            vibe=state.preferences.trip_vibe,
+            hotels=hotel_lines,
         )
 
         total_hotel_cost = sum(pb.total_price for pb in prebooks.values())
@@ -600,6 +717,7 @@ class ItineraryAgent:
             hotel_names=[pb.hotel.name for pb in prebooks.values()],
             total_days=len(days),
             days=days,
+            summary=summary,
             total_flight_cost=flight_prebook.total_price if flight_prebook else 0.0,
             total_hotel_cost=total_hotel_cost,
             grand_total=(flight_prebook.total_price if flight_prebook else 0.0) + total_hotel_cost,
@@ -806,7 +924,11 @@ class ItineraryAgent:
         if p.max_budget_per_person:
             parts.append(f"Budget: ₹{p.max_budget_per_person:,.0f}/person")
         if pref.meal_preference != MealPlan.BREAKFAST:
-            parts.append(f"Meal: {pref.meal_preference.value}")
+            parts.append(f"Hotel board: {pref.meal_preference.value}")
+        if pref.dietary_preference != DietaryPreference.NO_PREFERENCE:
+            parts.append(f"Dietary: {pref.dietary_preference.value}")
+        if pref.trip_vibe:
+            parts.append(f"Vibe: {pref.trip_vibe}")
         if pref.hotel_preference:
             parts.append(f"Hotel area: {pref.hotel_preference}")
         return "\n".join(f"  - {p}" for p in parts) if parts else "  (nothing collected yet)"
@@ -881,6 +1003,25 @@ class ItineraryAgent:
                 pref.meal_preference = MealPlan(data["meal_preference"])
             except ValueError:
                 pass
+        if data.get("dietary_preference"):
+            raw_diet = str(data["dietary_preference"]).strip().lower().replace("-", "_").replace(" ", "_")
+            aliases = {
+                "vegetarian": "veg",
+                "veggie": "veg",
+                "nonveg": "non_veg",
+                "nonvegetarian": "non_veg",
+                "egg": "eggetarian",
+                "none": "no_preference",
+                "any": "no_preference",
+                "no_pref": "no_preference",
+            }
+            raw_diet = aliases.get(raw_diet, raw_diet)
+            try:
+                pref.dietary_preference = DietaryPreference(raw_diet)
+            except ValueError:
+                pass
+        if data.get("trip_vibe"):
+            pref.trip_vibe = str(data["trip_vibe"]).strip()
         if data.get("sightseeing_interests"):
             pref.sightseeing_interests = list(data["sightseeing_interests"])
         if data.get("free_cancellation") is not None:
@@ -989,7 +1130,20 @@ class ItineraryAgent:
             activities: list[ItineraryActivity] = []
             for raw_act in raw.get("activities", []):
                 try:
-                    activities.append(ItineraryActivity(**raw_act))
+                    # Tolerate extra keys from LLM
+                    allowed = {
+                        "time",
+                        "description",
+                        "category",
+                        "duration_minutes",
+                        "location",
+                        "notes",
+                        "travel_mode",
+                        "travel_minutes",
+                    }
+                    cleaned = {k: v for k, v in raw_act.items() if k in allowed}
+                    if "time" in cleaned and "description" in cleaned:
+                        activities.append(ItineraryActivity(**cleaned))
                 except Exception:
                     pass
 
@@ -1003,6 +1157,10 @@ class ItineraryAgent:
                         hotel_prebook_id = pb.prebook_id
                         break
 
+            food = raw.get("food_suggestions") or []
+            if not isinstance(food, list):
+                food = [str(food)]
+
             parsed.append(ItineraryDay(
                 day_number=day_num,
                 date=day_date,
@@ -1010,70 +1168,155 @@ class ItineraryAgent:
                 hotel_name=hotel_name,
                 hotel_prebook_id=hotel_prebook_id,
                 activities=activities,
-                notes=raw.get("notes", ""),
+                notes=raw.get("notes", "") or "",
+                morning=raw.get("morning"),
+                afternoon=raw.get("afternoon"),
+                evening=raw.get("evening"),
+                food_suggestions=[str(x) for x in food],
+                transport_notes=raw.get("transport_notes", "") or "",
+                practical_tips=raw.get("practical_tips", "") or "",
             ))
 
         return parsed
 
-    def _format_draft_itinerary_message(self, draft: DraftItinerary) -> str:
-        """Format the draft itinerary into a readable message."""
+    @staticmethod
+    def _parse_trip_summary(
+        raw: dict[str, Any] | None,
+        *,
+        origin: str,
+        destination: str,
+        departure_date: date | None,
+        return_date: date | None,
+        total_days: int,
+        dietary: str | None = None,
+        vibe: str | None = None,
+        budget: str | None = None,
+        hotels: list[str] | None = None,
+    ) -> TripSummary:
+        """Build TripSummary from LLM JSON with sensible fallbacks."""
+        raw = raw if isinstance(raw, dict) else {}
+        nights = raw.get("nights")
+        if nights is None and total_days:
+            nights = max(0, total_days - 1)
+        dates = raw.get("dates") or ""
+        if not dates and departure_date:
+            dates = departure_date.isoformat()
+            if return_date:
+                dates = f"{departure_date.isoformat()} → {return_date.isoformat()}"
+        highlights = raw.get("highlights") or []
+        if not isinstance(highlights, list):
+            highlights = [str(highlights)]
+        hotel_list = raw.get("hotels") if isinstance(raw.get("hotels"), list) else []
+        if hotels:
+            hotel_list = hotels
+        return TripSummary(
+            cities=raw.get("cities") or f"{origin} → {destination}",
+            dates=dates,
+            nights=int(nights) if nights is not None else None,
+            vibe=raw.get("vibe") or vibe,
+            budget_ballpark=raw.get("budget_ballpark") or budget,
+            dietary_preference=raw.get("dietary_preference") or dietary,
+            hotels=[str(h) for h in hotel_list],
+            transport_style=raw.get("transport_style")
+            or "Flights + local cab / auto / walk (confirm on Maps)",
+            highlights=[str(h) for h in highlights][:5],
+        )
+
+    def _format_summary_block(self, summary: TripSummary | None, title: str) -> list[str]:
+        """Markdown ## Trip summary section for chat."""
         lines = [
-            f"Here's your draft itinerary for **{draft.trip_title}**:\n",
-            f"  📅 {draft.departure_date} → {draft.return_date or 'N/A'} "
-            f"({draft.total_days} days)\n",
+            f"## Trip summary",
+            f"**{title}**",
         ]
-        for day in draft.days:
-            lines.append(f"\n{'─'*50}")
-            lines.append(f"  Day {day.day_number} — {day.date.strftime('%d %b %Y')} | {day.title}")
-            if day.notes:
-                lines.append(f"  📝 {day.notes}")
+        if not summary:
+            return lines
+        if summary.cities:
+            lines.append(f"- **Where:** {summary.cities}")
+        if summary.dates:
+            night_bit = f" · {summary.nights} night(s)" if summary.nights is not None else ""
+            lines.append(f"- **When:** {summary.dates}{night_bit}")
+        if summary.vibe:
+            lines.append(f"- **Vibe:** {summary.vibe}")
+        if summary.budget_ballpark:
+            lines.append(f"- **Budget (ballpark):** {summary.budget_ballpark}")
+        if summary.dietary_preference:
+            lines.append(f"- **Meals:** {summary.dietary_preference}")
+        if summary.hotels:
+            lines.append("- **Hotels:** " + "; ".join(summary.hotels))
+        elif summary.hotels is not None:
+            lines.append("- **Hotels:** TBD — picking stays next")
+        if summary.transport_style:
+            lines.append(f"- **Getting around:** {summary.transport_style}")
+        if summary.highlights:
+            lines.append("- **Highlights:**")
+            for h in summary.highlights:
+                lines.append(f"  - {h}")
+        return lines
+
+    def _format_day_block(self, day: ItineraryDay) -> list[str]:
+        """Markdown ## Day N section for chat."""
+        lines = [
+            f"\n## Day {day.day_number} — {day.date.strftime('%d %b %Y')} | {day.title}",
+        ]
+        if day.hotel_name:
+            lines.append(f"**Stay:** {day.hotel_name}")
+        if day.morning:
+            lines.append(f"**Morning:** {day.morning}")
+        if day.afternoon:
+            lines.append(f"**Afternoon:** {day.afternoon}")
+        if day.evening:
+            lines.append(f"**Evening:** {day.evening}")
+        if day.food_suggestions:
+            lines.append("**Food:**")
+            for f in day.food_suggestions:
+                lines.append(f"- {f}")
+        if day.transport_notes:
+            lines.append(f"**Getting around:** {day.transport_notes}")
+        if day.practical_tips:
+            lines.append(f"**Good to know:** {day.practical_tips}")
+        if day.activities:
+            lines.append("**Schedule:**")
             for act in day.activities:
-                lines.append(f"    {act.time}  {act.description}")
+                travel = ""
+                if act.travel_mode:
+                    mins = f" ~{act.travel_minutes} min" if act.travel_minutes else ""
+                    travel = f" _(via {act.travel_mode}{mins})_"
+                lines.append(f"- {act.time} — {act.description}{travel}")
                 if act.notes:
-                    lines.append(f"          💡 {act.notes}")
+                    lines.append(f"  - {act.notes}")
+        if day.notes:
+            lines.append(f"_{day.notes}_")
+        return lines
 
+    def _format_draft_itinerary_message(self, draft: DraftItinerary) -> str:
+        """Format the draft itinerary: summary first, then day-by-day."""
+        lines = self._format_summary_block(draft.summary, draft.trip_title)
+        lines.append("")
+        for day in draft.days:
+            lines.extend(self._format_day_block(day))
         if draft.notes:
-            lines.append(f"\n📝 Trip notes: {draft.notes}")
-
+            lines.append(f"\n**Trip notes:** {draft.notes}")
         lines.append(
-            "\n\nWould you like to make any changes to this itinerary, "
-            "or shall I proceed to search for hotels? (approve / suggest changes)"
+            "\n\nWant any changes, or shall I search hotels next? "
+            "(approve / suggest changes)"
         )
         return "\n".join(lines)
 
     def _format_final_itinerary_message(self, final: FinalItinerary) -> str:
-        """Format the complete final itinerary."""
-        lines = [
-            f"\n{'═'*60}",
-            f"  🗺️  FINAL ITINERARY: {final.trip_title.upper()}",
-            f"{'═'*60}\n",
-            f"  ✈  Outbound: {final.outbound_flight.airline if final.outbound_flight else 'N/A'} "
-            f"{final.outbound_flight.flight_number if final.outbound_flight else ''} "
-            f"| Flight Prebook: {final.flight_prebook_id or 'N/A'}",
-        ]
-
-        for i, (name, pid) in enumerate(
-            zip(final.hotel_names, final.hotel_prebook_ids), 1
-        ):
-            lines.append(f"  🏨  Hotel {i}: {name} | Prebook: {pid}")
-
-        lines.append(f"\n  💰 Flight Cost:  ₹{final.total_flight_cost:,.0f}")
-        lines.append(f"  💰 Hotel Cost:   ₹{final.total_hotel_cost:,.0f}")
-        lines.append(f"  💰 Grand Total:  ₹{final.grand_total:,.0f} {final.currency}")
-        lines.append(f"\n{'─'*60}")
-
+        """Format the complete final itinerary: summary then days."""
+        lines = self._format_summary_block(final.summary, final.trip_title)
+        if final.outbound_flight:
+            lines.append(
+                f"- **Outbound flight:** {final.outbound_flight.airline} "
+                f"{final.outbound_flight.flight_number or ''}".rstrip()
+            )
+        if final.grand_total:
+            lines.append(
+                f"- **Estimated total:** ₹{final.grand_total:,.0f} {final.currency} "
+                "(flights + hotels — restaurants not included)"
+            )
+        lines.append("")
         for day in final.days:
-            lines.append(f"\n  Day {day.day_number} — {day.date.strftime('%A, %d %b %Y')} | {day.title}")
-            if day.hotel_name:
-                lines.append(f"  🏨 {day.hotel_name}")
-            for act in day.activities:
-                lines.append(f"    {act.time}  {act.description}")
-                if act.notes:
-                    lines.append(f"          💡 {act.notes}")
-            if day.notes:
-                lines.append(f"  📝 {day.notes}")
-
-        lines.append(f"\n{'═'*60}")
-        lines.append("  ✅ Your travel plan is complete! Have a wonderful trip! 🌟")
-        lines.append(f"{'═'*60}\n")
+            lines.extend(self._format_day_block(day))
+        lines.append("\nYour plan is ready — have a great trip.")
         return "\n".join(lines)

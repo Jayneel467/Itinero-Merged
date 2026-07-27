@@ -1,0 +1,199 @@
+/* ═══════════════════════════════════════════════════════
+   Shared Keyframe Animations — Itinero
+   ═══════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(-6px) rotate(0.5deg); }
+  75%      { transform: translateY(4px) rotate(-0.5deg); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(249, 114, 17, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(249, 114, 17, 0);
+  }
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes slideArrowRight {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(4px); }
+}
+
+@keyframes marqueeScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 40px)); }
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    border-color: rgba(249, 114, 17, 0.3);
+  }
+  50% {
+    border-color: rgba(249, 114, 17, 0.7);
+  }
+}
+
+/* ── Utility Classes ──────────────────────────────── */
+.animate-fade-in {
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--transition-base) ease-out;
+}
+
+/* ── Scroll-Triggered Animations ──────────────────── */
+
+/* Default hidden state */
+[data-animate] {
+  opacity: 0;
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+/* Slide up (default) */
+[data-animate="fade-up"] {
+  transform: translateY(40px);
+}
+
+/* Slide from left */
+[data-animate="fade-left"] {
+  transform: translateX(-40px);
+}
+
+/* Slide from right */
+[data-animate="fade-right"] {
+  transform: translateX(40px);
+}
+
+/* Fade in only */
+[data-animate="fade"] {
+  transform: none;
+}
+
+/* Scale in */
+[data-animate="scale"] {
+  transform: scale(0.95);
+}
+
+/* Visible state (added by Intersection Observer) */
+[data-animate].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Delay helpers */
+[data-delay="100"] { transition-delay: 0.1s; }
+[data-delay="200"] { transition-delay: 0.2s; }
+[data-delay="300"] { transition-delay: 0.3s; }
+[data-delay="400"] { transition-delay: 0.4s; }
+[data-delay="500"] { transition-delay: 0.5s; }
+
+@keyframes slideDownModal {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-slide-down-modal {
+  animation: slideDownModal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpModal {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-slide-up-modal {
+  animation: slideUpModal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dropdownFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-dropdown-fade-up {
+  animation: dropdownFadeUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

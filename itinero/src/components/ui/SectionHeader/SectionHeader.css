@@ -1,0 +1,128 @@
+/* ═══════════════════════════════════════════════════════
+   Section Header Styles
+   ═══════════════════════════════════════════════════════ */
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.section-header__title {
+  color: var(--color-navy);
+  font-size: 32px;
+  font-weight: 700;
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.section-header__title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+  transition: width var(--transition-base);
+}
+
+.section-header:hover .section-header__title::after {
+  width: 80px;
+}
+
+.section-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-header__view-all {
+  color: var(--color-navy);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  position: relative;
+}
+
+.section-header__view-all::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--gradient-primary);
+  border-radius: 1px;
+  transition: width var(--transition-base);
+}
+
+.section-header__view-all:hover {
+  color: var(--color-primary);
+}
+
+.section-header__view-all:hover::after {
+  width: 100%;
+}
+
+.section-header__nav-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-gray-200);
+  background: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  color: var(--color-navy);
+}
+
+.section-header__nav-btn:hover {
+  background: var(--gradient-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.section-header__nav-btn svg {
+  stroke: currentColor;
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .section-header__title {
+    font-size: 26px;
+  }
+  .section-header__view-all {
+    font-size: 14px;
+  }
+  .section-header__nav-btn {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-header__title {
+    font-size: 22px;
+  }
+  .section-header__view-all {
+    font-size: 13px;
+  }
+  .section-header__nav-btn {
+    width: 34px;
+    height: 34px;
+  }
+}

@@ -71,9 +71,15 @@ _BOOKING_HINT = re.compile(
     r")\b",
     re.I,
 )
-_TRANSPORT_WORD = r"train|trains|bus|buses|flight|flights|hotel|hotels"
+_TRANSPORT_WORD = r"train|trains|bus|buses|flight|flights|hotel|hotels|eat|eats|eating"
 _ROUTE_DATE = re.compile(
-    rf"\b(?!{_TRANSPORT_WORD}\b)([A-Za-z]{{3,}})\s+to\s+(?!{_TRANSPORT_WORD}\b)([A-Za-z]{{3,}})\b",
+    rf"\b(?!{_TRANSPORT_WORD}\b|where|what|how|when|whom)([A-Za-z]{{3,}})\s+to\s+"
+    rf"(?!{_TRANSPORT_WORD}\b|eat|eats|eating|do|be|go)([A-Za-z]{{3,}})\b",
+    re.I,
+)
+_FOOD_HINT = re.compile(
+    r"\b(restaurant|food|eat|eating|breakfast|lunch|dinner|cuisine|where\s+to\s+eat|"
+    r"what\s+to\s+eat|locho|thali)\b",
     re.I,
 )
 _FLIGHT_BOOK_HINT = re.compile(
@@ -86,16 +92,16 @@ _HOTEL_HINT = re.compile(r"\b(hotel|hotels|resort|check[- ]?in)\b", re.I)
 _TRAIN_HINT = re.compile(r"\b(train|trains|railway|irctc)\b", re.I)
 _BUS_HINT = re.compile(r"\b(bus|buses|volvo|redbus)\b", re.I)
 
-_GENERAL_SYSTEM = """You are the General Agent for Itinero.
+_GENERAL_SYSTEM = """You are Vero's internal chat router on Itinero (never tell the user this).
 
 ONLY route to:
 - flight: EVERY flight-related OR booking-related message (search, options, passengers,
-  traveler details, hold, pay, PNR, cancel, fare questions). Flight Agent does ALL of this.
-- payment: same as flight (pay / issue ticket) — still Flight Agent
+  traveler details, hold, pay, PNR, cancel, fare questions). Flight booking handles ALL of this.
+- payment: same as flight (pay / issue ticket)
 - hotel / train / bus: ONLY when user clearly wants that mode alone (no flight booking)
 - general: ONLY hi / thanks with no travel content
 
-HARD RULE: booking = Flight Agent. Never send booking steps to hotel/train/bus.
+HARD RULE: booking = flight path. Never send booking steps to hotel/train/bus.
 When unsure → flight.
 """
 
@@ -156,6 +162,10 @@ class GeneralAgent:
     def _heuristic_route(self, message: str, session: SessionContext) -> RouteTarget | None:
         text = message.strip()
 
+        # Food / restaurants are not flights — never treat "where to eat" as a route
+        if _FOOD_HINT.search(text) and not _FLIGHT_HINT.search(text) and not _IATA_HINT.search(text):
+            return "general"
+
         # 1) Active flight booking session → Flight Agent only (ignore hotel/train drift)
         if self._session_active_flight(session):
             return "flight"
@@ -212,17 +222,24 @@ class GeneralAgent:
 
     def _general_reply(self) -> str:
         return (
-            "Hi — I'm your **Itinero** assistant.\n\n"
-            "**Flight search and booking** are fully connected "
-            "(live data → choose → travelers → hold → pay).\n\n"
-            "Try: **Mumbai to Delhi on 26 July**"
+            "Hey — I'm **Vero**. For **flights**, try something like: "
+            "**Mumbai to Delhi on 26 July**.\n\n"
+            "Or ask me about weather, food, or a full trip plan — "
+            "I'm here for all of it."
         )
 
     def _non_flight_stub(self, mode: str) -> str:
+        labels = {
+            "hotel": "Hotels",
+            "train": "Trains",
+            "bus": "Buses",
+        }
+        label = labels.get(mode, mode.title())
         return (
-            f"**{mode.title()}** is not available in this build.\n\n"
-            "I only complete **flight** search and booking right now.\n"
-            "Example: **Hyderabad to Mumbai on 15 July**"
+            f"**{label}** aren't live in this chat yet — sorry about that.\n\n"
+            "I *can* help with **flights** right now. "
+            "Example: **Hyderabad to Mumbai on 15 July**\n\n"
+            "Or switch to **Manual booking** on the site for hotel search."
         )
 
     async def run(self, input_data: OrchestratorInput) -> OrchestratorOutput:

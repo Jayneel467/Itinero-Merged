@@ -1,0 +1,46 @@
+.pageContainer {
+  background-color: #FAFAFA;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+.searchBarWrapper {
+  background-color: white;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.stepperWrapper {
+  background-color: white;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 32px;
+}
+
+.mainLayout {
+  margin: 0 auto;
+  padding: 0 70px;
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.roomsList {
+  flex: 1;
+}
+
+.sidebar {
+  width: 400px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .mainLayout {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+  }
+}

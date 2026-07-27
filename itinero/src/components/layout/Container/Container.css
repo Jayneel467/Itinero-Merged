@@ -1,0 +1,12 @@
+/* ═══════════════════════════════════════════════════════
+   Container Layout Styles
+   ═══════════════════════════════════════════════════════ */
+
+.container-wrapper {
+  width: 100%;
+  max-width: var(--max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding);
+  padding-right: var(--container-padding);
+}

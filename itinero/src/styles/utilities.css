@@ -1,0 +1,44 @@
+/* ═══════════════════════════════════════════════════════
+   Utility Classes — Itinero Design System
+   ═══════════════════════════════════════════════════════
+   Custom utility classes that EXTEND Tailwind (not overlap).
+   All standard utilities (flex, bg-*, text-*, etc.) come from Tailwind.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Custom Design Token Utilities ──────────────────── */
+.text-primary { color: var(--color-primary); }
+.text-navy    { color: var(--color-navy); }
+.text-muted   { color: var(--color-text-muted); }
+.bg-primary-token  { background: var(--color-primary); }
+.bg-navy-token     { background: var(--color-navy); }
+
+/* ── Custom Shadows ──────────────────────────────────── */
+.shadow-soft     { box-shadow: var(--shadow-soft); }
+.shadow-elevated { box-shadow: var(--shadow-elevated); }
+
+/* ── Custom Radii ────────────────────────────────────── */
+.rounded-pill { border-radius: var(--radius-pill); }
+
+/* ── Overflow ────────────────────────────────────────── */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Interaction ─────────────────────────────────────── */
+.transition-base { transition: all var(--transition-base); }
+.transition-fast { transition: all var(--transition-fast); }
+
+/* ── Accessibility ───────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

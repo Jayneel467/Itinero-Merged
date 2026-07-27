@@ -1,0 +1,14 @@
+/* ═══════════════════════════════════════════════════════
+   Home Page Styles
+   ═══════════════════════════════════════════════════════ */
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #FFFFFF;
+}
+
+.home-page main {
+  flex: 1;
+}

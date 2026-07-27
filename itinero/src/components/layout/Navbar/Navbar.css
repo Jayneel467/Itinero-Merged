@@ -1,0 +1,326 @@
+/* ═══════════════════════════════════════════════════════
+   Navbar Styles
+   ═══════════════════════════════════════════════════════ */
+
+.navbar {
+  padding: 16px 29px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: padding 0.3s ease, background-color 0.3s ease;
+}
+
+.navbar--scrolled {
+  padding: 8px 29px;
+}
+
+.navbar--scrolled .navbar__inner {
+  box-shadow: 0 4px 30px rgba(0, 20, 56, 0.1);
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  background-color: transparent;
+  padding: 10px 0;
+  border-radius: var(--radius-pill);
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+/* ── Hamburger ───────────────────────────────────── */
+.navbar__hamburger {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Logo ────────────────────────────────────────── */
+.navbar__logo {
+  display: flex;
+  align-items: center;
+  margin-left: 0;
+  transition: margin-left 0.3s ease;
+}
+
+.navbar--scrolled .navbar__logo {
+  margin-left: 30px;
+}
+
+.navbar__logo-icon {
+  width: 40px;
+  height: 40px;
+  margin-right: 26px;
+  object-fit: contain;
+  transition: transform var(--transition-base);
+}
+
+.navbar__logo:hover .navbar__logo-icon {
+  transform: rotate(-8deg) scale(1.05);
+}
+
+.navbar__logo-text {
+  width: 135px;
+  height: 28px;
+  object-fit: contain;
+}
+
+/* ── Spacer ──────────────────────────────────────── */
+.navbar__spacer {
+  flex: 1;
+}
+
+/* ── Notification ────────────────────────────────── */
+.navbar__notification {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex-shrink: 0;
+  background-color: var(--color-primary-bg);
+  padding: 3px 36px 3px 3px;
+  margin-right: 10px;
+  border-radius: var(--radius-xl);
+  transition: all var(--transition-base);
+}
+
+.navbar__notification:hover {
+  background-color: rgba(249, 114, 17, 0.15);
+}
+
+.navbar__notification-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--gradient-primary);
+  padding: 5px 6px;
+  border-radius: var(--radius-xl);
+  border: 0;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(249, 114, 17, 0.25);
+}
+
+.navbar__notification-btn:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.navbar__notification-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+/* ── Ask Vero ────────────────────────────────────── */
+.navbar__ask-vero {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--gradient-navy);
+  padding: 5px 0;
+  margin-right: 10px;
+  border-radius: var(--radius-xl);
+  border: 0;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 2px 12px rgba(0, 20, 56, 0.2);
+}
+
+.navbar__ask-vero:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow-navy);
+}
+
+.navbar__vero-avatar {
+  width: 40px;
+  height: 40px;
+  margin-left: 5px;
+  margin-right: 6px;
+  object-fit: contain;
+  transition: transform var(--transition-base);
+}
+
+.navbar__ask-vero:hover .navbar__vero-avatar {
+  transform: scale(1.08);
+}
+
+.navbar__vero-text {
+  color: var(--color-white);
+  font-size: 20px;
+  margin-right: 11px;
+}
+
+.navbar__vero-arrow {
+  width: 20px;
+  height: 20px;
+  margin-right: 16px;
+  object-fit: contain;
+  transition: transform var(--transition-base);
+}
+
+.navbar__ask-vero:hover .navbar__vero-arrow {
+  transform: translateX(3px);
+}
+
+/* ── Profile Button ──────────────────────────────── */
+.navbar__profile-btn {
+  margin-right: 0;
+  transition: margin-right 0.3s ease;
+}
+
+.navbar--scrolled .navbar__profile-btn {
+  margin-right: 10px;
+}
+
+/* ── Action Button ───────────────────────────────── */
+.navbar__action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex-shrink: 0;
+  background: var(--gradient-primary);
+  padding: 15px;
+  margin-right: 12px;
+  border-radius: var(--radius-xl);
+  border: 0;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 2px 8px rgba(249, 114, 17, 0.25);
+}
+
+.navbar__action-btn:hover {
+  background: var(--gradient-primary-hover);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.navbar__action-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+/* ── Responsive Styles ───────────────────────────── */
+@media (max-width: 1440px) {
+  .navbar {
+    padding: 10px 20px;
+  }
+  .navbar__inner {
+    padding: 6px 0;
+  }
+  .navbar--scrolled .navbar__logo {
+    margin-left: 30px;
+  }
+  .navbar--scrolled .navbar__profile-btn {
+    margin-right: 30px;
+  }
+  .navbar__logo-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 30px;
+  }
+  .navbar__logo-text {
+    width: 110px;
+    height: 23px;
+  }
+  .navbar__notification {
+    padding: 2px 20px 2px 2px;
+  }
+  .navbar__notification-btn {
+    padding: 4px 5px;
+  }
+  .navbar__notification-icon {
+    width: 13px;
+    height: 13px;
+  }
+  .navbar__ask-vero {
+    padding: 4px 0;
+  }
+  .navbar__vero-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  .navbar__vero-text {
+    font-size: 16px;
+    margin-right: 8px;
+  }
+  .navbar__vero-arrow {
+    width: 16px;
+    height: 16px;
+    margin-right: 12px;
+  }
+  .navbar__action-btn {
+    padding: 12px;
+    margin-right: 10px;
+  }
+  .navbar__action-icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+@media (max-width: 1024px) {
+  .navbar {
+    padding: 12px 16px;
+  }
+  .navbar--scrolled {
+    padding: 8px 16px;
+  }
+  .navbar--scrolled .navbar__logo {
+    margin-left: 20px;
+  }
+  .navbar--scrolled .navbar__profile-btn {
+    margin-right: 20px;
+  }
+  .navbar__logo-icon {
+    margin-right: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 8px 16px;
+  }
+  .navbar--scrolled {
+    padding: 4px 16px;
+  }
+  .navbar--scrolled .navbar__logo {
+    margin-left: 10px;
+  }
+  .navbar--scrolled .navbar__profile-btn {
+    margin-right: 10px;
+  }
+  .navbar__logo-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 10px;
+  }
+  .navbar__logo-text {
+    width: 100px;
+  }
+  .navbar__notification {
+    padding: 3px;
+  }
+  .navbar__vero-text,
+  .navbar__vero-arrow {
+    display: none;
+  }
+  .navbar__ask-vero {
+    padding: 5px;
+  }
+  .navbar__vero-avatar {
+    margin: 0;
+  }
+  .navbar__action-btn {
+    padding: 10px;
+  }
+}
+

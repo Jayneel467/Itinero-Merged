@@ -437,3 +437,25 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Extra env patterns (covers .env.local etc.)
+.env.*
+!.env.example
+
+# Local dev / smoke artifacts (repo root)
+/_*.txt
+/_*.json
+/_*.ps1
+/_*.py
+/_*.mjs
+/_*.html
+/_*.png
+/build-out*.txt
+/smoke-out.txt
+/download-out.txt
+/extract-out*.txt
+/pixano-*.html
+/pixano-*.css
+/pixano-*.js
+/pixano-*.svg
+

@@ -244,16 +244,36 @@ def build_flight_tools(
         try:
             result = await service.search(params)
         except LiteAPIError as exc:
+            err = str(exc).lower()
+            status = getattr(exc, "status_code", None)
+            auth_fail = status in (401, 403) or "unauthorized" in err or "forbidden" in err
+            if auth_fail:
+                prompt = (
+                    "I reached the flight provider, but the API key was rejected "
+                    f"(HTTP {status or '401'}).\n\n"
+                    "Ask whoever runs Itinero to update **API_KEY / LITEAPI_API_KEY** "
+                    "in Travel_Agent/.env (or supervisor/.env), restart the supervisor, "
+                    "then try again — e.g. *Mumbai to Delhi on 26 July*.\n\n"
+                    f"Route checked: **{resolved_origin} → {resolved_dest}** on **{params.departure_date}**"
+                )
+            else:
+                prompt = (
+                    "Sorry — live flight search failed just now.\n\n"
+                    f"**Detail:** {exc}\n\n"
+                    "Double-check the route and date, then try again.\n"
+                    f"Route: **{resolved_origin} → {resolved_dest}** on **{params.departure_date}**"
+                )
             return json.dumps(
                 {
                     "status": "search_failed",
                     "error": str(exc),
-                    "user_prompt": (
-                        "I couldn't fetch flights right now. Please check your route and date, "
-                        "then try again in a moment.\n\n"
-                        f"Route: **{resolved_origin} → {resolved_dest}** on **{params.departure_date}**"
+                    "http_status": status,
+                    "user_prompt": prompt,
+                    "llm_instruction": (
+                        "Share the user_prompt almost as-is. Be warm and clear. "
+                        "If it's an API key issue, say the flight key needs updating — "
+                        "don't invent fares."
                     ),
-                    "llm_instruction": "Tell user search failed briefly. Suggest retry or different date.",
                 }
             )
         session.last_search_results = result.get("offers") or []
@@ -263,10 +283,13 @@ def build_flight_tools(
                     "status": "no_flights",
                     "total_offers": 0,
                     "user_prompt": (
-                        f"No flights found for **{resolved_origin} → {resolved_dest}** "
-                        f"on **{params.departure_date}**. Try another date or nearby airports."
+                        f"No flights for **{resolved_origin} → {resolved_dest}** "
+                        f"on **{params.departure_date}**. Want to try another date "
+                        f"or a nearby airport?"
                     ),
-                    "llm_instruction": "Tell user no flights found. Suggest different date.",
+                    "llm_instruction": (
+                        "Say no flights found warmly. Suggest another date or nearby airport."
+                    ),
                 }
             )
         return json.dumps(_trim_search_result(result))
@@ -748,25 +771,21 @@ def build_flight_tools(
         try:
             result = await service.prebook(oid, passengers, contact)
         except LiteAPIError as exc:
+            from flight_agent.llm.booking_requirements import friendly_liteapi_prebook_error
+
+            friendly = friendly_liteapi_prebook_error(exc)
             detail = ""
             if isinstance(exc.details, dict):
                 detail = str(exc.details.get("description") or "")
-            msg = detail or str(exc)
-            friendly = (
-                "I couldn't hold this fare yet. "
-                + (
-                    "Please check the phone number looks real (not 1234567890), "
-                    "and that name, email, DOB, and ID are correct — then try again."
-                    if "phone" in msg.lower()
-                    else "Please review passenger details and try again in a moment."
-                )
-            )
             return json.dumps(
                 {
                     "status": "prebook_failed",
-                    "error": msg[:300],
+                    "error": (detail or str(exc))[:300],
                     "user_prompt": friendly,
-                    "llm_instruction": "Apologize briefly using user_prompt. Ask user to fix details if needed.",
+                    "llm_instruction": (
+                        "Apologize briefly using user_prompt only — never say LiteAPIError. "
+                        "If phone/DOB is mentioned, ask them to fix that field."
+                    ),
                 }
             )
         session.prebook_id = result.get("prebook_id")

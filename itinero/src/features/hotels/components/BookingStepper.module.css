@@ -1,0 +1,74 @@
+.stepperContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0;
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Hide scrollbar for clean look */
+.stepperContainer::-webkit-scrollbar {
+  display: none;
+}
+.stepperContainer {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9CA3AF;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.stepActive {
+  color: #E86A10;
+  font-weight: 700;
+}
+
+.stepCompleted {
+  color: #111827;
+  font-weight: 600;
+}
+
+.stepNumber {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #E5E7EB;
+  color: #9CA3AF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stepNumberActive {
+  background-color: #E86A10;
+  color: white;
+}
+
+.stepNumberCompleted {
+  background-color: #059669;
+  color: white;
+}
+
+.separator {
+  color: #D1D5DB;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .stepperContainer {
+    justify-content: flex-start;
+    padding: 16px 0;
+  }
+}

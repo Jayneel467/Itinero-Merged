@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@import "./styles/variables.css";
+/* @import "./styles/reset.css"; */
+@import "./styles/typography.css";
+@import "./styles/animations.css";
+@import "./styles/responsive.css";
+@import "./styles/utilities.css";
+
+@theme {
+  --font-sans: "TT Hoves Pro Trial Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom DatePicker Styling overrides */
+.react-datepicker {
+  font-family: inherit !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 16px !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12) !important;
+  overflow: hidden;
+  padding: 8px;
+}
+.react-datepicker__header {
+  background-color: white !important;
+  border-bottom: 1px solid #F3F4F6 !important;
+}
+.react-datepicker__current-month {
+  color: #001439 !important;
+  font-weight: 700 !important;
+}
+.react-datepicker__day-name {
+  color: #6B7280 !important;
+  font-weight: 600 !important;
+}
+.react-datepicker__day {
+  color: #001439 !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+.react-datepicker__day--selected, 
+.react-datepicker__day--in-selecting-range, 
+.react-datepicker__day--in-range {
+  background-color: #E86A10 !important;
+  color: white !important;
+}
+.react-datepicker__day--keyboard-selected {
+  background-color: rgba(232, 106, 16, 0.15) !important;
+  color: #E86A10 !important;
+}
+.react-datepicker__day:hover {
+  background-color: #F3F4F6 !important;
+}
+.react-datepicker__day--selected:hover {
+  background-color: #d15a0c !important;
+}
+.react-datepicker__navigation-icon::before {
+  border-color: #6B7280 !important;
+}

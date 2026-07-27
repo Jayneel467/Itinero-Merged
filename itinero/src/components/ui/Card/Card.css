@@ -1,0 +1,33 @@
+/* ═══════════════════════════════════════════════════════
+   Card Component Styles
+   ═══════════════════════════════════════════════════════ */
+
+.card {
+  background-color: var(--color-white);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+/* ── Shadows ────────────────────────────────────── */
+.card--shadow {
+  box-shadow: var(--shadow-card);
+}
+
+.card--shadow:hover {
+  box-shadow: 0px 24px 48px #0000002A;
+}
+
+/* ── Bordered ───────────────────────────────────── */
+.card--bordered {
+  border: 2px solid var(--color-gray-200);
+}
+
+/* ── Rounded Variants ───────────────────────────── */
+.card--rounded-md { border-radius: var(--radius-md); }
+.card--rounded-lg { border-radius: var(--radius-lg); }
+.card--rounded-xl { border-radius: var(--radius-xl); }
+.card--rounded-2xl { border-radius: var(--radius-2xl); }
+.card--rounded-3xl { border-radius: var(--radius-3xl); }

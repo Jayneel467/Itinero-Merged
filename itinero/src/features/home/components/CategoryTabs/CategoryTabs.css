@@ -1,0 +1,131 @@
+/* ═══════════════════════════════════════════════════════
+   Category Tabs Styles
+   ═══════════════════════════════════════════════════════ */
+
+.category-tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 44px;
+}
+
+.category-tabs__list {
+  display: flex;
+  align-items: center;
+  gap: 70px;
+}
+
+.category-tabs__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+
+.category-tabs__btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  width: 90px;
+  height: 90px;
+  padding: 0;
+  border-radius: 20px;
+  border: var(--glass-border-strong);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.category-tabs__btn--active {
+  background: var(--gradient-primary);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.category-tabs__btn:hover {
+  transform: translateY(-4px) scale(1.05);
+  background: var(--glass-bg-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.category-tabs__btn--active:hover {
+  background: var(--gradient-primary);
+}
+
+.category-tabs__icon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  transition: transform var(--transition-base);
+}
+
+.category-tabs__btn:hover .category-tabs__icon {
+  transform: scale(1.1);
+}
+
+.category-tabs__icon--active {
+  width: 55px;
+  height: 55px;
+}
+
+.category-tabs__label {
+  color: var(--color-white);
+  font-size: 17px;
+  font-weight: 500;
+  transition: opacity var(--transition-base);
+}
+
+@media (max-width: 1440px) {
+  .category-tabs {
+    margin-bottom: 15px;
+  }
+  .category-tabs__list {
+    gap: 30px;
+  }
+  .category-tabs__btn {
+    width: 60px;
+    height: 60px;
+  }
+  .category-tabs__icon {
+    width: 28px;
+    height: 28px;
+  }
+  .category-tabs__icon--active {
+    width: 36px;
+    height: 36px;
+  }
+  .category-tabs__label {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .category-tabs__list {
+    gap: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .category-tabs__list {
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .category-tabs__btn {
+    width: 70px;
+    height: 70px;
+  }
+  .category-tabs__icon {
+    width: 32px;
+    height: 32px;
+  }
+  .category-tabs__icon--active {
+    width: 40px;
+    height: 40px;
+  }
+  .category-tabs__label {
+    font-size: 14px;
+  }
+}

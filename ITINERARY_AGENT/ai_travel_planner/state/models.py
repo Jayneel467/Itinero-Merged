@@ -62,11 +62,23 @@ class CabinClass(str, Enum):
 
 
 class MealPlan(str, Enum):
+    """Hotel board plan (room only / breakfast included / etc.)."""
+
     ROOM_ONLY = "Room Only"
     BREAKFAST = "Breakfast Included"
     HALF_BOARD = "Half Board"
     FULL_BOARD = "Full Board"
     ALL_INCLUSIVE = "All Inclusive"
+
+
+class DietaryPreference(str, Enum):
+    """Cuisine / dietary preference for restaurant recommendations."""
+
+    VEG = "veg"
+    NON_VEG = "non_veg"
+    JAIN = "jain"
+    EGGETARIAN = "eggetarian"
+    NO_PREFERENCE = "no_preference"
 
 
 class TripType(str, Enum):
@@ -309,6 +321,9 @@ class ItineraryActivity(BaseModel):
     duration_minutes: int | None = None
     location: str | None = None
     notes: str = ""
+    # How to get here from the previous stop (cab / metro / walk / auto / rideshare)
+    travel_mode: str | None = None
+    travel_minutes: int | None = None
 
 
 class ItineraryDay(BaseModel):
@@ -321,6 +336,27 @@ class ItineraryDay(BaseModel):
     hotel_prebook_id: str | None = None
     activities: list[ItineraryActivity] = Field(default_factory=list)
     notes: str = ""
+    # Optional narrative blocks for richer UI / chat formatting
+    morning: str | None = None
+    afternoon: str | None = None
+    evening: str | None = None
+    food_suggestions: list[str] = Field(default_factory=list)
+    transport_notes: str = ""
+    practical_tips: str = ""
+
+
+class TripSummary(BaseModel):
+    """High-level trip overview shown before day-by-day detail."""
+
+    cities: str = ""
+    dates: str = ""
+    nights: int | None = None
+    vibe: str | None = None
+    budget_ballpark: str | None = None
+    dietary_preference: str | None = None
+    hotels: list[str] = Field(default_factory=list)
+    transport_style: str | None = None
+    highlights: list[str] = Field(default_factory=list)
 
 
 class DraftItinerary(BaseModel):
@@ -333,6 +369,7 @@ class DraftItinerary(BaseModel):
     return_date: date | None
     total_days: int
     days: list[ItineraryDay] = Field(default_factory=list)
+    summary: TripSummary | None = None
     generated_at: datetime = Field(default_factory=datetime.now)
     version: int = 1
     notes: str = ""
@@ -359,6 +396,7 @@ class FinalItinerary(BaseModel):
     # Day-wise plan
     total_days: int = 0
     days: list[ItineraryDay] = Field(default_factory=list)
+    summary: TripSummary | None = None
 
     # Meta
     total_flight_cost: float = 0.0
@@ -438,12 +476,15 @@ class UserPreferences(BaseModel):
 
     hotel_preference: str | None = None       # "beach", "city center", "near airport"
     room_preference: str | None = None        # "sea view", "suite", "standard"
-    meal_preference: MealPlan = MealPlan.BREAKFAST
+    meal_preference: MealPlan = MealPlan.BREAKFAST  # hotel board plan
+    # Cuisine / diet for restaurants (veg, Jain, etc.) — separate from hotel board
+    dietary_preference: DietaryPreference = DietaryPreference.NO_PREFERENCE
     amenities_wanted: list[str] = Field(default_factory=list)
     free_cancellation: bool = False
     brand_preference: str | None = None
     special_requests: str | None = None
     sightseeing_interests: list[str] = Field(default_factory=list)
+    trip_vibe: str | None = None  # relaxing, exploring, adventure, mix
 
 
 # ─────────────────────────────────────────────────────────────────────────────

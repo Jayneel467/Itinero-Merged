@@ -1,0 +1,39 @@
+/* ═══════════════════════════════════════════════════════
+   Flight Deals Section Styles
+   ═══════════════════════════════════════════════════════ */
+
+.flight-deals {
+  margin-bottom: 120px;
+}
+
+.flight-deals__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 29px;
+}
+
+.flight-deals__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .flight-deals {
+    margin-bottom: 80px;
+  }
+  .flight-deals__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+  }
+}
+
+@media (max-width: 768px) {
+  .flight-deals {
+    margin-bottom: 50px;
+  }
+  .flight-deals__grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}

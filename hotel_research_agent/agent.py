@@ -4,7 +4,5 @@ from langgraph.graph import StateGraph
 
 builder = StateGraph(hotelmemory)
 
-builder.add_node
-
-
-graph = builder.compiler()
+# Incomplete scaffold — real hotel flow lives in hotel_booking_backend.py
+graph = builder.compile()

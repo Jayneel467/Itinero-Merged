@@ -1,0 +1,823 @@
+/* ═══════════════════════════════════════════════════════
+   Flight Search Form Styles
+   ═══════════════════════════════════════════════════════ */
+
+.search-form {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-white);
+  padding: 13px 23px;
+  margin-bottom: 18px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 20, 56, 0.15), 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  position: relative;
+  z-index: 20;
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.search-form:hover,
+.search-form:focus-within {
+  box-shadow: 0 16px 48px rgba(0, 20, 56, 0.2), 0 4px 16px rgba(249, 114, 17, 0.12);
+  border-color: rgba(249, 114, 17, 0.3);
+}
+
+/* ── Location Field ──────────────────────────────── */
+.search-form__field--location {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.search-form__field--location:hover,
+.search-form__field--location:focus-within {
+  background-color: rgba(249, 114, 17, 0.04);
+}
+
+.search-form__field-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.search-form__field-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.search-form__field-label {
+  color: var(--color-gray-500);
+  font-weight: 500; 
+  font-size: 16px;
+}
+
+.search-form__field-value {
+  font-weight: 600;
+  color: var(--color-navy);
+  font-size: 16px;
+}
+
+.search-form__input {
+  color: var(--color-black);
+  font-size: 20px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.search-form__input::placeholder {
+  color: var(--color-gray-400);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* ── Location Dropdown ───────────────────────────── */
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 15px);
+  left: -10px;
+  width: calc(100% + 40px);
+  min-width: 350px;
+  background-color: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-dropdown__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.search-dropdown__item {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.search-dropdown__item:hover {
+  background-color: #FFF8F3;
+  transform: translateX(4px);
+}
+
+.search-dropdown__icon-bg {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-warm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.search-dropdown__item:hover .search-dropdown__icon-bg {
+  background: var(--gradient-primary);
+  color: var(--color-white);
+  transform: scale(1.05);
+}
+
+.search-dropdown__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search-dropdown__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-dropdown__city {
+  font-weight: 700;
+  color: var(--color-black);
+  font-size: 15px;
+}
+
+.search-dropdown__code {
+  color: var(--color-primary);
+  background: rgba(249, 114, 17, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.search-dropdown__subtitle {
+  color: var(--color-gray-500);
+  font-size: 13px;
+}
+
+.search-dropdown__checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-gray-300);
+  margin-left: 16px;
+  flex-shrink: 0;
+}
+
+.search-dropdown__empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-gray-500);
+}
+
+.search-dropdown__footer {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: var(--color-gray-50);
+  border-top: 1px solid var(--color-gray-200);
+  gap: 12px;
+  color: var(--color-black);
+}
+
+.search-dropdown__user-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-navy);
+}
+
+.search-dropdown__footer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search-dropdown__links {
+  font-size: 14px;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.search-dropdown__link {
+  cursor: pointer;
+}
+
+.search-dropdown__link:hover {
+  text-decoration: underline;
+}
+
+.search-dropdown__sub-link {
+  font-size: 12px;
+  color: var(--color-gray-600);
+}
+
+/* ── Swap ────────────────────────────────────────── */
+.search-form__swap-icon {
+  width: 28px;
+  height: 28px;
+  margin: 0 16px;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform var(--transition-base), background-color var(--transition-fast);
+}
+
+.search-form__swap-icon:hover {
+  transform: rotate(180deg) scale(1.1);
+  background: var(--gradient-primary);
+  filter: brightness(1.2);
+}
+
+/* ── Divider ─────────────────────────────────────── */
+.search-form__divider {
+  width: 1px;
+  height: 48px;
+  background: linear-gradient(180deg, transparent, var(--color-gray-200), transparent);
+  margin: 0 24px;
+}
+
+/* ── Date & Travelers Group ──────────────────────── */
+.search-form__group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 5px 15px 5px 0;
+}
+
+.search-form__date-field {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 20px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.search-form__date-field:hover {
+  background-color: rgba(249, 114, 17, 0.04);
+}
+
+.search-form__date-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search-form__calendar-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.search-form__travelers-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* ── Submit Button ───────────────────────────────── */
+.search-form__submit {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--gradient-primary);
+  padding: 16px 36px;
+  margin-left: auto;
+  border-radius: var(--radius-md);
+  border: 0;
+  color: var(--color-white);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.search-form__submit:hover {
+  background: var(--gradient-primary-hover);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(249, 114, 17, 0.45);
+}
+
+.search-form__submit-icon {
+  width: 26px;
+  height: 26px;
+  margin-right: 8px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+/* ── Date Wrapper ────────────────────────────────── */
+.search-form__date-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.search-form__date-fields {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* ── Date Dropdown ───────────────────────────────── */
+.date-dropdown {
+  position: absolute;
+  top: calc(100% + 20px);
+  left: -20px;
+  width: 780px;
+  background-color: var(--color-white);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-float);
+  z-index: 100;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 30px 40px;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.date-dropdown__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.date-dropdown__tabs {
+  display: flex;
+  gap: 32px;
+}
+
+.date-dropdown__tab {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-gray-500);
+  cursor: pointer;
+  padding-bottom: 4px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.date-dropdown__tab--active {
+  color: var(--color-primary);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.date-dropdown__options {
+  display: flex;
+  gap: 32px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.date-dropdown__option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.date-dropdown__option-highlight {
+  color: var(--color-primary);
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.date-dropdown__calendars-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.date-dropdown__calendars {
+  display: flex;
+  flex: 1;
+  gap: 40px;
+}
+
+.date-dropdown__month {
+  flex: 1;
+}
+
+.date-dropdown__month-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: var(--color-navy);
+}
+
+.date-dropdown__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 12px;
+  text-align: center;
+}
+
+.date-dropdown__day-header {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-navy);
+  margin-bottom: 12px;
+}
+
+.date-dropdown__day {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.date-dropdown__day:not(.date-dropdown__day--empty):hover {
+  background-color: #FFF0E0;
+  color: var(--color-primary);
+}
+
+.date-dropdown__day--empty {
+  cursor: default;
+}
+
+.date-dropdown__day--in-range {
+  background-color: #FFEADB;
+  color: var(--color-primary);
+  border-radius: 0;
+}
+
+.date-dropdown__day--selected-start {
+  background: var(--gradient-primary);
+  color: var(--color-white);
+  border-radius: 8px 0 0 8px;
+}
+
+.date-dropdown__day--selected-end {
+  background: var(--gradient-primary);
+  color: var(--color-white);
+  border-radius: 0 8px 8px 0;
+}
+
+/* ── Travelers Wrapper ───────────────────────────── */
+.search-form__travelers-wrapper {
+  position: relative;
+}
+
+.search-form__date-field--travelers {
+  cursor: pointer;
+}
+
+/* ── Travelers Dropdown ──────────────────────────── */
+.travelers-dropdown {
+  position: absolute;
+  top: calc(100% + 20px);
+  right: -20px;
+  width: 380px;
+  background-color: var(--color-white);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-float);
+  z-index: 100;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.travelers-dropdown__section {
+  padding: 24px;
+}
+
+.travelers-dropdown__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-navy);
+  margin-bottom: 20px;
+}
+
+.travelers-dropdown__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.travelers-dropdown__row:last-child {
+  margin-bottom: 0;
+}
+
+.travelers-dropdown__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-black);
+}
+
+.travelers-dropdown__sublabel {
+  color: var(--color-gray-500);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.travelers-dropdown__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.travelers-dropdown__btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--color-gray-300);
+  background: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-navy);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.travelers-dropdown__btn:hover {
+  background: var(--gradient-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.travelers-dropdown__count {
+  font-weight: 700;
+  width: 20px;
+  text-align: center;
+  color: var(--color-navy);
+}
+
+.travelers-dropdown__divider {
+  height: 1px;
+  background-color: var(--color-gray-200);
+}
+
+.travelers-dropdown__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.travelers-dropdown__pill {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-gray-200);
+  background: var(--color-white);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-black);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.travelers-dropdown__pill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.travelers-dropdown__pill--active {
+  border-color: var(--color-primary);
+  background: #FFF0E0;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+@media (max-width: 1440px) {
+  .search-form {
+    padding: 8px 15px;
+    margin-bottom: 15px;
+  }
+  .search-form__field-label {
+    font-size: 13px;
+  }
+  .search-form__field-value {
+    font-size: 14px;
+  }
+  .search-form__input {
+    font-size: 16px;
+  }
+  .search-form__input::placeholder {
+    font-size: 14px;
+  }
+  .search-form__divider {
+    height: 32px;
+    margin: 0 15px;
+  }
+  .search-form__group {
+    padding: 8px 15px 8px 0;
+  }
+  .search-form__date-field {
+    gap: 20px;
+  }
+  .search-form__submit {
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+  .search-form__field-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .search-form__calendar-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .search-form__travelers-icon {
+    width: 18px;
+    height: 18px;
+  }
+  .search-form__submit-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .search-form__swap-icon {
+    width: 16px;
+    height: 16px;
+    margin: 0 15px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .search-form {
+    padding: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .search-form__field--location {
+    flex: 1 1 calc(50% - 50px);
+  }
+  .search-form__date-field {
+    gap: 15px;
+  }
+  .search-form__group {
+    padding: 0;
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+  .search-form__divider {
+    margin: 0;
+  }
+  .search-form__submit {
+    margin-left: 0;
+  }
+  .search-dropdown,
+  .travelers-dropdown {
+    width: 100%;
+    min-width: 100%;
+    left: 0;
+  }
+  .date-dropdown {
+    width: 100%;
+    min-width: 100%;
+    left: 0;
+    padding: 20px;
+  }
+  .date-dropdown__calendars {
+    flex-direction: column;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-form__field--location {
+    width: 100%;
+    flex: none;
+  }
+  .search-form__divider {
+    width: 100%;
+    height: 1px;
+    margin: 10px 0;
+  }
+  .search-form__swap-icon {
+    transform: rotate(90deg);
+    margin: 10px auto;
+  }
+  .search-form__swap-icon:hover {
+    transform: rotate(270deg);
+  }
+  .search-form__group {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 0;
+    gap: 15px;
+  }
+  
+  /* Make date fields share width side-by-side */
+  .search-form__date-wrapper {
+    width: 100%;
+  }
+  .search-form__date-fields {
+    width: 100%;
+    display: flex;
+    align-items: center;
+  }
+  .search-form__date-field {
+    flex: 1;
+    width: auto;
+    justify-content: space-between;
+  }
+  /* Keep divider between dates vertical */
+  .search-form__date-fields .search-form__divider {
+    width: 1px;
+    height: 48px;
+    margin: 0 10px;
+  }
+  
+  .search-form__date-field--travelers {
+    width: 100%;
+  }
+  
+  .search-form__submit {
+    width: 100%;
+    justify-content: center;
+    margin-top: 15px;
+  }
+  
+  /* Dropdowns */
+  .search-dropdown,
+  .date-dropdown,
+  .travelers-dropdown {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100vw - 30px);
+    max-width: 400px;
+    min-width: unset;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1000;
+  }
+  .date-dropdown__tabs {
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .date-dropdown__options {
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+  }
+  .search-dropdown__list {
+    max-height: 50vh;
+  }
+}
+
+/* Compact glass search bar used in the home hero. */
+.hero .search-form {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 16px;
+  background: rgba(26, 19, 47, .62);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .2);
+  backdrop-filter: blur(16px);
+}
+.hero .search-form:hover, .hero .search-form:focus-within { border-color: rgba(255, 255, 255, .32); box-shadow: 0 12px 30px rgba(0, 0, 0, .24); }
+.hero .search-form__field--location { min-width: 0; padding: 4px 8px; }
+.hero .search-form__field-header { gap: 7px; }
+.hero .search-form__field-icon { width: 17px; height: 17px; filter: brightness(0) invert(1); }
+.hero .search-form__field-label { color: rgba(255,255,255,.94); font-size: 11px; font-weight: 700; }
+.hero .search-form__input, .hero .search-form__field-value { color: #fff; font-size: 11px; font-weight: 600; }
+.hero .search-form__input::placeholder { color: rgba(255,255,255,.65); font-size: 11px; }
+.hero .search-form__swap-icon { width: 16px; height: 16px; margin: 0 8px; filter: brightness(0) invert(1); }
+.hero .search-form__divider { height: 38px; margin: 0 10px; background: rgba(255,255,255,.2); }
+.hero .search-form__group { gap: 0; padding: 0; }
+.hero .search-form__date-field { gap: 8px; padding: 5px 8px; }
+.hero .search-form__calendar-icon, .hero .search-form__travelers-icon { width: 16px; height: 16px; filter: brightness(0) invert(1); }
+.hero .search-form__submit { margin-left: 6px; padding: 11px 17px; border-radius: 11px; font-size: 12px; box-shadow: none; }
+.hero .search-form__submit-icon { width: 15px; height: 15px; margin-right: 4px; }
+
+@media (max-width: 980px) {
+  .hero .search-form { flex-wrap: wrap; gap: 4px; }
+  .hero .search-form__field--location { flex: 1 1 36%; }
+  .hero .search-form__group { flex: 1 1 auto; }
+}

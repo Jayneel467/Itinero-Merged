@@ -1,0 +1,473 @@
+.pageContainer {
+  background-color: #FAFAFA;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+.stepperWrapper {
+  background-color: white;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 40px;
+}
+
+.mainLayout {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+.confirmationColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.summaryColumn {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: sticky;
+  top: 100px;
+}
+
+/* Success Banner */
+.successBanner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  border: 1px solid #A7F3D0;
+  border-radius: 20px;
+  padding: 32px;
+}
+
+.successIconWrap {
+  flex-shrink: 0;
+}
+
+.successIcon {
+  color: #059669;
+  display: block;
+}
+
+.successTitle {
+  font-size: 28px;
+  font-weight: 800;
+  color: #065F46;
+  margin: 0 0 8px 0;
+}
+
+.successSubtitle {
+  font-size: 15px;
+  color: #047857;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Reference Card */
+.refCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 24px 32px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.refBlock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.refLabel {
+  font-size: 12px;
+  color: #9CA3AF;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.refValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  font-family: 'Courier New', monospace;
+}
+
+.refDivider {
+  width: 1px;
+  height: 40px;
+  background-color: #E5E7EB;
+  margin: 0 32px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background-color: #ECFDF5;
+  color: #059669;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Hotel Card */
+.hotelCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  box-shadow: rgba(0, 0, 0, 0.12) 0px 15px 30px;
+  overflow: hidden;
+  display: flex;
+}
+
+.hotelImage {
+  width: 200px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.hotelContent {
+  padding: 28px;
+  flex: 1;
+}
+
+.hotelName {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.hotelLocation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6B7280;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.bookingDetails {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.detailItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 130px;
+}
+
+.detailIcon {
+  color: #E86A10;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.detailLabel {
+  display: block;
+  font-size: 12px;
+  color: #9CA3AF;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.detailValue {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.detailDivider {
+  width: 1px;
+  height: 36px;
+  background-color: #E5E7EB;
+  margin: 0 20px;
+}
+
+/* Important Info Card */
+.infoCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  box-shadow: rgba(0, 0, 0, 0.12) 0px 15px 30px;
+  padding: 28px 32px;
+}
+
+.infoTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px 0;
+}
+
+.infoList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.infoIcon {
+  color: #E86A10;
+  flex-shrink: 0;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.downloadBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: #E86A10;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.downloadBtn:hover {
+  background-color: #d15a0c;
+}
+
+.shareBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: white;
+  color: #374151;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.shareBtn:hover {
+  background-color: #F9FAFB;
+}
+
+.homeBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: white;
+  color: #6B7280;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: auto;
+}
+
+.homeBtn:hover {
+  background-color: #F9FAFB;
+}
+
+/* Summary Card */
+.summaryCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.summaryTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 24px 0;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #4B5563;
+  margin-bottom: 14px;
+}
+
+.summaryDivider {
+  height: 1px;
+  background-color: #E5E7EB;
+  margin: 16px 0;
+}
+
+.summaryTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.summaryTotal span:first-child {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.summaryTotalPrice {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.paidBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #ECFDF5;
+  color: #059669;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.paymentId {
+  text-align: center;
+  font-size: 12px;
+  color: #9CA3AF;
+  font-family: 'Courier New', monospace;
+}
+
+/* Explore Card */
+.exploreCard {
+  background: linear-gradient(135deg, #1e3a5f 0%, #E86A10 100%);
+  border-radius: 16px;
+  padding: 28px;
+  color: white;
+}
+
+.exploreTitle {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.exploreText {
+  font-size: 14px;
+  opacity: 0.85;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.exploreBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: white;
+  color: #E86A10;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.exploreBtn:hover {
+  opacity: 0.9;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .mainLayout {
+    flex-direction: column;
+    padding: 0 16px;
+  }
+
+  .summaryColumn {
+    width: 100%;
+    position: static;
+  }
+
+  .refCard {
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .refDivider {
+    width: 100%;
+    height: 1px;
+    margin: 0;
+  }
+
+  .hotelCard {
+    flex-direction: column;
+  }
+
+  .hotelImage {
+    width: 100%;
+    height: 200px;
+  }
+
+  .bookingDetails {
+    gap: 16px;
+  }
+
+  .detailDivider {
+    display: none;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+
+  .homeBtn {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .actions {
+    flex-direction: column;
+  }
+  .downloadBtn, .shareBtn, .homeBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}

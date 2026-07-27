@@ -43,6 +43,7 @@ CITY_IATA: dict[str, str] = {
     "JAIPUR": "JAI",
     "KOCHI": "COK",
     "COCHIN": "COK",
+    "SURAT": "STV",
     "LUCKNOW": "LKO",
     "CHANDIGARH": "IXC",
     "INDORE": "IDR",
@@ -55,14 +56,30 @@ CITY_IATA: dict[str, str] = {
     "PARIS": "CDG",
     "LONDON": "LHR",
     "NEW YORK": "JFK",
+    "NYC": "JFK",
     "LOS ANGELES": "LAX",
     "DUBAI": "DXB",
+    "ABU DHABI": "AUH",
     "SINGAPORE": "SIN",
     "BANGKOK": "BKK",
     "DOHA": "DOH",
 }
 
-MAX_OFFERS_RETURNED = 20
+# Codes we trust as literal IATA without an airport lookup.
+KNOWN_IATA: frozenset[str] = frozenset(
+    {
+        "BOM", "DEL", "BLR", "MAA", "CCU", "HYD", "PNQ", "GOI", "AMD", "COK",
+        "JAI", "LKO", "GAU", "IXC", "BBI", "TRV", "VNS", "PAT", "IDR", "NAG",
+        "STV", "SXR", "ATQ", "DXB", "AUH", "SHJ", "DOH", "JFK", "EWR", "LGA",
+        "LAX", "SFO", "ORD", "LHR", "LGW", "CDG", "AMS", "FRA", "SIN", "BKK",
+        "HKG", "NRT", "HND", "ICN", "KUL", "SYD", "MEL", "IST", "FCO", "MAD",
+        "BCN", "MIA", "SEA", "BOS", "DFW", "DEN", "ATL", "YYZ", "YVR",
+    }
+)
+
+# Return the full result set (sorted cheapest-first) so the UI can page/filter
+# client-side. Kept as a generous safety cap rather than a small display limit.
+MAX_OFFERS_RETURNED = 250
 
 
 class FlightService:
@@ -349,7 +366,8 @@ class FlightService:
     async def resolve_airport_code(self, location: str) -> str:
         """Resolve a city name or partial code to a 3-letter IATA code."""
         cleaned = location.strip().upper()
-        if len(cleaned) == 3 and cleaned.isalpha():
+        # Only accept literal 3-letter codes we know — never "NEW" from "New York".
+        if len(cleaned) == 3 and cleaned.isalpha() and cleaned in KNOWN_IATA:
             return cleaned
 
         if cleaned in self._airport_cache:
@@ -380,10 +398,10 @@ class FlightService:
         tasks: list[Any] = []
         keys: list[str] = []
 
-        if len(origin_clean) != 3 or not origin_clean.isalpha():
+        if origin_clean not in KNOWN_IATA:
             tasks.append(self.resolve_airport_code(origin))
             keys.append("origin")
-        if len(dest_clean) != 3 or not dest_clean.isalpha():
+        if dest_clean not in KNOWN_IATA:
             tasks.append(self.resolve_airport_code(destination))
             keys.append("destination")
 
@@ -427,6 +445,14 @@ class FlightService:
                     except (TypeError, ValueError):
                         sort_price = float("inf")
 
+                    seg_summary = self._summarize_segments(segments)
+                    # Stops = connections on the outbound leg only (ignore INBOUND return)
+                    outbound_segs = [
+                        s
+                        for s in segments
+                        if str(s.get("direction") or "").upper() != "INBOUND"
+                    ] or list(segments)
+                    baggage = self._summarize_baggage(offer)
                     offers.append(
                         (
                             sort_price,
@@ -434,15 +460,26 @@ class FlightService:
                                 "offer_id": offer.get("offerId"),
                                 "total_price": total,
                                 "currency": display.get("currency"),
+                                "price_base": display.get("base"),
+                                "price_taxes": display.get("taxes"),
+                                "price_fees": display.get("fees"),
                                 "cabin_class": self._extract_cabin_class(offer, journey),
                                 "fare_family": fare.get("fareFamily") or fare.get("family"),
+                                "seats_remaining": fare.get("seatsRemaining"),
                                 "is_cheapest": offer.get("offerId")
                                 == (cheapest or {}).get("offerId")
                                 or journey.get("isCheapest"),
                                 "expiration": offer.get("expiration"),
-                                "segments_summary": self._summarize_segments(segments),
-                                "stops": max(0, len(segments) - 1) if segments else None,
+                                "segments_summary": seg_summary,
+                                "stops": max(0, len(outbound_segs) - 1) if outbound_segs else None,
                                 "journey_key": journey.get("journeyKey"),
+                                "airline_logo": next(
+                                    (s.get("logo") for s in seg_summary if s.get("logo")),
+                                    None,
+                                ),
+                                "baggage": baggage.get("summary"),
+                                "baggage_detail": baggage.get("detail"),
+                                "amenities": self._summarize_amenities(offer),
                             },
                         )
                     )
@@ -487,26 +524,81 @@ class FlightService:
             ),
         }
 
+    @staticmethod
+    def _first_str(*candidates: Any) -> str | None:
+        for value in candidates:
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
     def _normalize_prebook_result(self, raw: dict[str, Any]) -> dict[str, Any]:
         data = raw.get("data") or []
         if not data:
             return {"success": False}
 
-        entry = data[0]
-        prebook = entry.get("prebook") or entry
-        services_raw = prebook.get("servicesAttachable")
+        entry = data[0] if isinstance(data, list) else data
+        if not isinstance(entry, dict):
+            return {"success": False}
+
+        prebook = entry.get("prebook") if isinstance(entry.get("prebook"), dict) else entry
+        payment = (
+            prebook.get("payment")
+            if isinstance(prebook.get("payment"), dict)
+            else entry.get("payment") if isinstance(entry.get("payment"), dict) else {}
+        )
+        services_raw = prebook.get("servicesAttachable") or entry.get("servicesAttachable")
         services = summarize_attachable_services(services_raw)
+
+        # LiteAPI Payment SDK: secretKey = Stripe PI client_secret; publishableKey optional.
+        secret_key = self._first_str(
+            prebook.get("secretKey"),
+            prebook.get("secret_key"),
+            prebook.get("clientSecret"),
+            prebook.get("client_secret"),
+            entry.get("secretKey"),
+            entry.get("secret_key"),
+            entry.get("clientSecret"),
+            payment.get("secretKey"),
+            payment.get("clientSecret"),
+            payment.get("client_secret"),
+        )
+        publishable_key = self._first_str(
+            prebook.get("publishableKey"),
+            prebook.get("publishable_key"),
+            entry.get("publishableKey"),
+            entry.get("publishable_key"),
+            payment.get("publishableKey"),
+            payment.get("publishable_key"),
+            (self._settings.stripe_publishable_key or "").strip() or None,
+        )
+        transaction_id = self._first_str(
+            prebook.get("transactionId"),
+            prebook.get("transaction_id"),
+            entry.get("transactionId"),
+            entry.get("transaction_id"),
+            payment.get("transactionId"),
+            payment.get("transaction_id"),
+        )
+        prebook_id = self._first_str(
+            prebook.get("prebookId"),
+            prebook.get("prebook_id"),
+            entry.get("prebookId"),
+            entry.get("prebook_id"),
+        )
+
         return {
-            "success": True,
-            "prebook_id": prebook.get("prebookId"),
-            "transaction_id": prebook.get("transactionId") or entry.get("transactionId"),
-            "secret_key": prebook.get("secretKey") or entry.get("secretKey"),
-            "publishable_key": prebook.get("publishableKey") or entry.get("publishableKey"),
-            "price": prebook.get("price"),
-            "currency": prebook.get("currency"),
-            "payment_methods": prebook.get("paymentMethodsAvailable"),
+            "success": bool(prebook_id),
+            "prebook_id": prebook_id,
+            "transaction_id": transaction_id,
+            "secret_key": secret_key,
+            "publishable_key": publishable_key,
+            "price": prebook.get("price") if prebook.get("price") is not None else entry.get("price"),
+            "currency": prebook.get("currency") or entry.get("currency"),
+            "payment_methods": prebook.get("paymentMethodsAvailable")
+            or entry.get("paymentMethodsAvailable"),
             "services_attachable": bool(services_raw),
             "services": services,
+            "payment_sdk_ready": bool(secret_key and publishable_key),
         }
 
     def _normalize_booking_result(self, raw: dict[str, Any]) -> dict[str, Any]:
@@ -529,8 +621,31 @@ class FlightService:
             display = {}
 
         payment = booking.get("payment") if isinstance(booking.get("payment"), dict) else {}
-        total_price = display.get("total") or payment.get("amount")
-        currency = display.get("currency") or payment.get("currency")
+        # Prefer display.total, then booking.pricing.totalAmount, then payment.amount
+        total_price = (
+            display.get("total")
+            or (pricing.get("totalAmount") if isinstance(pricing, dict) else None)
+            or payment.get("amount")
+            or booking.get("distributorPrice")
+        )
+        currency = (
+            display.get("currency")
+            or (pricing.get("currency") if isinstance(pricing, dict) else None)
+            or payment.get("currency")
+        )
+
+        ticket_data = booking.get("ticketData") if isinstance(booking.get("ticketData"), dict) else {}
+        airline_locators = self._extract_airline_locators(booking)
+        ticket_numbers = self._extract_ticket_numbers(booking)
+        eticket_url = self._extract_eticket_url(booking)
+
+        pricing_out: dict[str, Any] = {}
+        if display:
+            pricing_out.update(display)
+        if isinstance(pricing, dict):
+            for key in ("subtotal", "servicesAmount", "seatsAmount", "baggageAmount", "totalAmount", "currency"):
+                if pricing.get(key) is not None and key not in pricing_out:
+                    pricing_out[key] = pricing[key]
 
         return {
             "found": True,
@@ -539,12 +654,35 @@ class FlightService:
             "payment_status": booking.get("paymentStatus"),
             "airline_pnr": self._extract_airline_pnr(booking),
             "booking_ref": booking.get("bookingRef"),
+            "timestamp": booking.get("timestamp"),
+            "ticket_limit_time": booking.get("ticketLimitTime"),
+            "airline_locators": airline_locators,
+            "ticket_numbers": ticket_numbers,
+            "eticket_url": eticket_url,
+            "ticket_data": {
+                "confirmation_id": ticket_data.get("confirmationId"),
+                "ticketed_at": ticket_data.get("ticketedAt"),
+                "provider": ticket_data.get("provider"),
+                "source": ticket_data.get("source"),
+            }
+            if ticket_data
+            else {},
             "segments_summary": self._summarize_segments(journey.get("segments") or []),
-            "passengers": booking.get("passengers") or [],
-            "contact": booking.get("contact") or {},
-            "pricing": display or pricing,
+            "passengers": self._normalize_passengers(booking.get("passengers") or []),
+            "contact": self._normalize_contact(booking.get("contact") or {}),
+            "pricing": pricing_out or display or pricing,
+            "payment": {
+                "amount": payment.get("amount"),
+                "currency": payment.get("currency"),
+            }
+            if payment
+            else {},
             "total_price": total_price,
+            "price": total_price,
             "currency": currency,
+            "order_status": (booking.get("order") or {}).get("status")
+            if isinstance(booking.get("order"), dict)
+            else None,
         }
 
     def _normalize_booking_list(self, raw: dict[str, Any]) -> dict[str, Any]:
@@ -595,12 +733,196 @@ class FlightService:
                     return str(ref["pnr"])
                 provider = ref.get("provider") or {}
                 if isinstance(provider, dict):
+                    if provider.get("pnr"):
+                        return str(provider["pnr"])
                     meta = provider.get("metadata") or {}
                     if isinstance(meta, dict):
                         data = meta.get("data") or {}
                         if isinstance(data, dict) and data.get("pnrCode"):
                             return str(data["pnrCode"])
+            for ab in order.get("airlineBookings") or []:
+                if isinstance(ab, dict) and (ab.get("airlinePnr") or ab.get("pnr")):
+                    return str(ab.get("airlinePnr") or ab.get("pnr"))
         return booking.get("bookingRef")
+
+    @staticmethod
+    def _extract_airline_locators(booking: dict[str, Any]) -> list[dict[str, Any]]:
+        """Return airline locator rows only when LiteAPI provides them."""
+        out: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        def _add(code: Any, pnr: Any, name: Any = None) -> None:
+            pnr_s = str(pnr).strip() if pnr else ""
+            if not pnr_s:
+                return
+            key = f"{code or ''}|{pnr_s}"
+            if key in seen:
+                return
+            seen.add(key)
+            row: dict[str, Any] = {"airline_pnr": pnr_s}
+            if code:
+                row["airline_code"] = str(code)
+            if name:
+                row["airline_name"] = str(name)
+            out.append(row)
+
+        for loc in booking.get("airlineLocators") or []:
+            if isinstance(loc, dict):
+                _add(loc.get("airlineCode"), loc.get("airlinePnr") or loc.get("pnr"))
+
+        order = booking.get("order") if isinstance(booking.get("order"), dict) else {}
+        ref = order.get("reference") if isinstance(order.get("reference"), dict) else {}
+        for ab in ref.get("airlineBookings") or order.get("airlineBookings") or []:
+            if isinstance(ab, dict):
+                _add(ab.get("airlineCode"), ab.get("airlinePnr") or ab.get("pnr"), ab.get("airlineName"))
+
+        return out
+
+    @staticmethod
+    def _extract_ticket_numbers(booking: dict[str, Any]) -> list[str]:
+        """Collect ticket / confirmation numbers only if present on the LiteAPI payload."""
+        found: list[str] = []
+        seen: set[str] = set()
+
+        def _push(val: Any) -> None:
+            if val is None:
+                return
+            s = str(val).strip()
+            if not s or s in seen:
+                return
+            seen.add(s)
+            found.append(s)
+
+        ticket_data = booking.get("ticketData") if isinstance(booking.get("ticketData"), dict) else {}
+        _push(ticket_data.get("confirmationId"))
+        _push(ticket_data.get("ticketNumber"))
+        _push(ticket_data.get("ticketNo"))
+
+        for key in ("ticketNumbers", "tickets", "documents", "etickets", "eTickets"):
+            items = booking.get(key)
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, str):
+                        _push(item)
+                    elif isinstance(item, dict):
+                        _push(
+                            item.get("ticketNumber")
+                            or item.get("number")
+                            or item.get("ticketNo")
+                            or item.get("confirmationId")
+                        )
+            elif isinstance(items, str):
+                _push(items)
+
+        for pax in booking.get("passengers") or []:
+            if not isinstance(pax, dict):
+                continue
+            _push(pax.get("ticketNumber") or pax.get("ticketNo"))
+            for t in pax.get("tickets") or []:
+                if isinstance(t, str):
+                    _push(t)
+                elif isinstance(t, dict):
+                    _push(t.get("ticketNumber") or t.get("number") or t.get("ticketNo"))
+
+        return found
+
+    @staticmethod
+    def _extract_eticket_url(booking: dict[str, Any]) -> str | None:
+        """Return an e-ticket / document URL only when LiteAPI includes one."""
+        url_keys = (
+            "eticketUrl",
+            "eTicketUrl",
+            "ticketUrl",
+            "ticketURL",
+            "documentUrl",
+            "documentsUrl",
+            "url",
+            "href",
+            "link",
+        )
+
+        def _is_http(val: Any) -> str | None:
+            if not isinstance(val, str):
+                return None
+            s = val.strip()
+            if s.startswith("http://") or s.startswith("https://"):
+                return s
+            return None
+
+        for key in url_keys:
+            hit = _is_http(booking.get(key))
+            if hit:
+                return hit
+
+        ticket_data = booking.get("ticketData") if isinstance(booking.get("ticketData"), dict) else {}
+        for key in url_keys:
+            hit = _is_http(ticket_data.get(key))
+            if hit:
+                return hit
+
+        for key in ("tickets", "documents", "etickets", "eTickets", "links"):
+            items = booking.get(key)
+            if not isinstance(items, list):
+                continue
+            for item in items:
+                if isinstance(item, str):
+                    hit = _is_http(item)
+                    if hit:
+                        return hit
+                elif isinstance(item, dict):
+                    for uk in url_keys:
+                        hit = _is_http(item.get(uk))
+                        if hit:
+                            return hit
+        return None
+
+    @staticmethod
+    def _normalize_passengers(passengers: list[Any]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for p in passengers:
+            if not isinstance(p, dict):
+                continue
+            row: dict[str, Any] = {}
+            mapping = {
+                "title": "title",
+                "firstName": "first_name",
+                "lastName": "last_name",
+                "first_name": "first_name",
+                "last_name": "last_name",
+                "gender": "gender",
+                "birthday": "date_of_birth",
+                "dateOfBirth": "date_of_birth",
+                "dob": "date_of_birth",
+                "nationality": "nationality",
+                "passengerType": "passenger_type",
+                "documentType": "document_type",
+                "documentNumber": "document_number",
+                "ticketNumber": "ticket_number",
+                "ticketNo": "ticket_number",
+            }
+            for src, dest in mapping.items():
+                if p.get(src) is not None and dest not in row:
+                    row[dest] = p.get(src)
+            if row:
+                out.append(row)
+        return out
+
+    @staticmethod
+    def _normalize_contact(contact: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(contact, dict):
+            return {}
+        out: dict[str, Any] = {}
+        for src, dest in (
+            ("email", "email"),
+            ("phoneNumber", "phone"),
+            ("phone", "phone"),
+            ("phoneCountryCode", "phone_country_code"),
+            ("firstName", "first_name"),
+            ("lastName", "last_name"),
+        ):
+            if contact.get(src) is not None:
+                out[dest] = contact.get(src)
+        return out
 
     @staticmethod
     def _extract_cabin_class(offer: dict[str, Any], journey: dict[str, Any] | None = None) -> str | None:
@@ -630,6 +952,7 @@ class FlightService:
         for seg in segments:
             carrier = seg.get("carrier") or {}
             flight = seg.get("flight") or {}
+            duration = seg.get("duration") or {}
             summary.append(
                 {
                     "from": seg.get("originCode"),
@@ -639,11 +962,81 @@ class FlightService:
                     "departure": seg.get("departureTime"),
                     "arrival": seg.get("arrivalTime"),
                     "airline": carrier.get("marketingName") or carrier.get("marketingCode"),
+                    "airline_code": carrier.get("marketingCode"),
+                    "operating_airline": carrier.get("operatingName"),
+                    "logo": carrier.get("marketingLogo") or carrier.get("operatingLogo"),
                     "flight_number": flight.get("marketingNumber"),
+                    "duration_minutes": duration.get("minutes"),
                     "direction": seg.get("direction"),
                 }
             )
         return summary
+
+    @staticmethod
+    def _summarize_baggage(offer: dict[str, Any]) -> dict[str, Any]:
+        """Extract included cabin/checked baggage allowance from a LiteAPI offer.
+
+        Only reports what LiteAPI actually returns — never invents an allowance.
+        """
+        bag = offer.get("baggage") or {}
+        included = bag.get("included") or []
+        cabin_kg: float | None = None
+        checked_kg: float | None = None
+        cabin_pieces: int | None = None
+        checked_pieces: int | None = None
+        for item in included:
+            btype = str(item.get("bagType") or "").lower()
+            weight = item.get("weightKg")
+            pieces = item.get("pieces")
+            if btype in {"cabin", "carry-on", "carryon", "carry_on"}:
+                cabin_kg = weight if weight is not None else cabin_kg
+                cabin_pieces = pieces if pieces is not None else cabin_pieces
+            elif btype in {"checked", "check-in", "checkin", "hold"}:
+                checked_kg = weight if weight is not None else checked_kg
+                checked_pieces = pieces if pieces is not None else checked_pieces
+
+        parts: list[str] = []
+        if cabin_kg is not None:
+            parts.append(f"Cabin {cabin_kg:g}kg")
+        elif bag.get("hasCarryOnBag"):
+            parts.append("Cabin included")
+        if checked_kg is not None:
+            parts.append(f"Checked {checked_kg:g}kg")
+        elif bag.get("hasCheckedBag"):
+            parts.append("Checked included")
+
+        detail = {
+            "cabin_kg": cabin_kg,
+            "checked_kg": checked_kg,
+            "cabin_pieces": cabin_pieces,
+            "checked_pieces": checked_pieces,
+            "has_carry_on": bag.get("hasCarryOnBag"),
+            "has_checked": bag.get("hasCheckedBag"),
+        }
+        return {"summary": (" · ".join(parts) or None), "detail": detail}
+
+    @staticmethod
+    def _summarize_amenities(offer: dict[str, Any]) -> list[dict[str, Any]]:
+        """Flatten unique per-segment amenities (only those LiteAPI marks available)."""
+        seen: set[str] = set()
+        out: list[dict[str, Any]] = []
+        for seg in offer.get("segmentAmenities") or []:
+            for am in seg.get("amenities") or []:
+                name = am.get("name")
+                if not name or not am.get("available"):
+                    continue
+                key = str(name).lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(
+                    {
+                        "name": name,
+                        "category": am.get("category"),
+                        "chargeable": bool(am.get("chargeable")),
+                    }
+                )
+        return out
 
     def select_offer_from_index(
         self,

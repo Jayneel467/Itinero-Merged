@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import date
 from typing import Any
 
 from flight_agent.llm.tools import build_flight_tools
@@ -61,15 +61,15 @@ def _parse_date(message: str) -> str | None:
     month = _MONTHS.get(match.group(2).lower()[:3], _MONTHS.get(match.group(2).lower()))
     if not month:
         return None
-    year = int(match.group(3)) if match.group(3) else datetime.utcnow().year
+    year = int(match.group(3)) if match.group(3) else date.today().year
     # If month/day already passed this year, prefer next year for booking demos
-    today = datetime.utcnow().date()
+    today = date.today()
     try:
-        dt = datetime(year, month, day).date()
+        dt = date(year, month, day)
     except ValueError:
         return None
     if not match.group(3) and dt < today:
-        dt = datetime(year + 1, month, day).date()
+        dt = date(year + 1, month, day)
     return dt.isoformat()
 
 
@@ -163,6 +163,11 @@ async def try_booking_progress(
                     session_context=session,
                     operation_result=data if isinstance(data, dict) else None,
                     needs_follow_up=True,
+                    error=(
+                        str((data or {}).get("error"))
+                        if isinstance(data, dict) and data.get("status") == "search_failed"
+                        else None
+                    ),
                 )
             # Build a short option list for the user
             lines = [

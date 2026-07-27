@@ -1,0 +1,215 @@
+/* ═══════════════════════════════════════════════════════
+   Footer — Itinero
+   Matches the reference design: white bg, 4-col grid,
+   brand + socials | Product | Explore | Contact
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Shell ─────────────────────────────────────────────── */
+.footer {
+  /* background: #ffffff; */
+  border-top: 1px solid #c4c4c4;
+}
+
+.footer__inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 56px 40px 0;
+}
+
+/* ── Top grid ───────────────────────────────────────────── */
+.footer__top {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr 1fr 1.5fr;
+  gap: 48px;
+  padding-bottom: 48px;
+}
+
+/* ── Brand column ───────────────────────────────────────── */
+.footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.footer__logo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 38px;
+  letter-spacing: 3px;
+  color: #001438;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.footer__logo em {
+  color: #f97211;
+  font-style: normal;
+}
+
+.footer__tagline {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #555;
+  margin: 0 0 20px;
+  max-width: 280px;
+}
+
+/* ── Social icons ───────────────────────────────────────── */
+.footer__socials {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer__social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  color: #444;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+
+.footer__social svg {
+  width: 15px;
+  height: 15px;
+}
+
+.footer__social:hover {
+  background: #f97211;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* ── Nav columns ────────────────────────────────────────── */
+.footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.footer__col-heading {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #111;
+  margin: 0 0 4px;
+}
+
+.footer__col-link {
+  font-size: 15px;
+  font-weight: 500;
+  color: #6b6a6a;
+  text-decoration: none;
+  line-height: 1.4;
+  transition: color 0.2s;
+}
+
+.footer__col-link:hover {
+  color: #f97211;
+}
+
+/* ── Contact column ─────────────────────────────────────── */
+.footer__col--contact {
+  gap: 14px;
+}
+
+.footer__contact-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-decoration: none;
+  color: #222;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: color 0.2s;
+}
+
+.footer__contact-row:hover {
+  color: #f97211;
+}
+
+.footer__contact-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.footer__contact-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Bottom bar ─────────────────────────────────────────── */
+.footer__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid #e0e0e0;
+  padding: 18px 0 20px;
+  font-size: 12.5px;
+  color: #444;
+}
+
+.footer__bottom nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.footer__bottom a {
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.footer__bottom a:hover {
+  color: #f97211;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .footer__top {
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 36px;
+  }
+  .footer__col--contact {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .footer__inner {
+    padding: 40px 24px 0;
+  }
+  .footer__top {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px 20px;
+  }
+  .footer__brand {
+    grid-column: 1 / -1;
+  }
+  .footer__col--contact {
+    grid-column: 1 / -1;
+  }
+  .footer__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .footer__bottom nav {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+}

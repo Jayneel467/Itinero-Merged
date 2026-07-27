@@ -31,8 +31,14 @@ tavily_search = TavilySearch(
     description=(
         "Search the web for up-to-date destination information: attractions, "
         "sightseeing spots, local events, travel advisories, visa rules, "
-        "opening hours, or anything about a place the agent doesn't already "
-        "know confidently. Input should be a focused search query."
+        "opening hours, famous local dishes / food culture "
+        "(e.g. 'what is Surat locho', 'Gujarati thali dishes'), "
+        "or anything about a place the agent doesn't already know confidently. "
+        "Do NOT use this as the primary tool for restaurant / where-to-eat lists — "
+        "call search_places first for real venues. Only fall back here if "
+        "search_places fails, and then extract named restaurants (prefer map links), "
+        "never answer with blog roundup / listicle URLs alone. "
+        "Input should be a focused search query."
     ),
 )
 
@@ -174,17 +180,26 @@ def get_route(origin: str, destination: str, mode: str = "DRIVE") -> str:
 # Place search (Google Places API New)
 # ---------------------------------------------------------------------------
 @tool
-def search_places(query: str, max_results: int = 5) -> str:
+def search_places(query: str, max_results: int = 8) -> str:
     """
-    Search for real places - attractions, restaurants, temples, landmarks,
-    etc. - via Google Places API. Use this for "what's near X", "find a
-    restaurant/attraction in Y", or to confirm a real place's rating,
-    address, or open-now status. More reliable for named-place facts than a
-    general web search.
+    Search for real places via Google Places API — REQUIRED first tool for any
+    "where to eat" / restaurant / cafe / street-food / cuisine query.
+    Also use for attractions, temples, landmarks, "what's near X".
+
+    Query tips for food:
+    - "best restaurants in Mumbai", "vegetarian restaurant Bandra Mumbai",
+      "street food Colaba Mumbai", "fine dining Surat", "locho Surat"
+    - Include city + cuisine/diet/area when the user mentioned them.
+
+    Returns real venue names with rating, area, open/closed, price level,
+    plus a machine JSON block for the chat UI cards. Never invent places —
+    only report what this tool returns. Prefer this over destination_search
+    for named venues. After calling, reply with a short intro only — the UI
+    shows the venue cards (do not paste Maps/Website markdown into chat).
 
     Args:
-        query: Natural-language place search, e.g. "budget hotels near Mahakaleshwar Temple Ujjain".
-        max_results: Maximum number of places to return. Defaults to 5.
+        query: Natural-language place search, e.g. "restaurants in Mumbai".
+        max_results: Maximum places to return (5–8 for food lists). Defaults to 8.
     """
     return travel_service.search_places_summary(query, max_results)
 

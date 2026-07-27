@@ -1,0 +1,91 @@
+/* ═══════════════════════════════════════════════════════
+   Floating Vero Bot Styles
+   ═══════════════════════════════════════════════════════ */
+
+.vero-bot {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  animation: floatGentle 4s ease-in-out infinite;
+  text-decoration: none;
+  color: inherit;
+}
+
+.vero-bot:focus-visible {
+  outline: 3px solid #f97211;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.vero-bot__chat-bubble {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 8px 18px;
+  border-radius: 20px 20px 4px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: all var(--transition-base);
+}
+
+.vero-bot__chat-bubble span {
+  color: var(--color-navy, #001439);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.vero-bot__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: contain;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 4px 20px rgba(249, 114, 17, 0.25);
+  position: relative;
+}
+
+.vero-bot__avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px rgba(249, 114, 17, 0.4);
+}
+
+/* Pulse ring around the avatar */
+.vero-bot::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--color-primary, #f97211);
+  animation: pulseRing 2s ease-out infinite;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .vero-bot {
+    bottom: 16px;
+    right: 16px;
+  }
+  .vero-bot__avatar {
+    width: 52px;
+    height: 52px;
+  }
+  .vero-bot::after {
+    width: 52px;
+    height: 52px;
+  }
+  .vero-bot__chat-bubble {
+    font-size: 12px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+}

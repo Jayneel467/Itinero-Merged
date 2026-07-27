@@ -155,7 +155,7 @@ def booking_summary_prompt(session: SessionContext) -> str:
     req = session.booking_requirements or {}
     route_note = req.get("route_note", "")
     lines = [
-        "Please **confirm** your booking details before I proceed:",
+        "Quick check before I hold the fare — does this look right?",
         "",
     ]
     if route_note:
@@ -198,7 +198,7 @@ def booking_summary_prompt(session: SessionContext) -> str:
             f"- **Flight option:** #{offer}" if offer else "- **Flight:** verified offer",
             f"- **Fare:** {price_line}",
             "",
-            "Reply **YES** or **CONFIRM** to proceed with prebook, or tell me what to change.",
+            "Reply **YES** to hold this fare, or tell me what to change.",
         ]
     )
     return "\n".join(lines)
@@ -216,21 +216,21 @@ def payment_summary_prompt(session: SessionContext) -> str:
     if settings.liteapi_use_payment_sdk:
         if session.payment_captured:
             return (
-                f"Payment received for {price_line}.\n\n"
-                "Reply **YES** or click **Issue ticket** to get your booking confirmation.\n\n"
+                f"Payment received for {price_line} — nice.\n\n"
+                "Reply **YES** or click **Issue ticket** and I'll get your confirmation.\n\n"
                 "Say **NO** if you want to stop here."
             )
         return (
-            f"Your flight is on hold. Total fare: {price_line}.\n\n"
+            f"Your flight is on hold. Total: {price_line}.\n\n"
             "Pay securely with your **card** in the payment box below "
             "(test card: `4242 4242 4242 4242`, any future expiry, any CVC).\n\n"
             "After payment succeeds, click **Issue ticket** or reply **YES**.\n\n"
-            "Say **NO** if you want to stop here (the hold may expire)."
+            "Say **NO** to stop (the hold may expire)."
         )
 
     return (
-        f"Your flight is on hold. Total fare: {price_line}.\n\n"
-        "Reply **YES** or **CONFIRM** to issue your ticket. "
-        "Sandbox mode: booking completes on your LiteAPI credit line (no card charged).\n\n"
-        "Say **NO** if you want to stop here (the hold may expire)."
+        f"Your flight is on hold. Total: {price_line}.\n\n"
+        "Reply **YES** to issue your ticket "
+        "(sandbox: completes on the test booking balance — no card charged).\n\n"
+        "Say **NO** to stop (the hold may expire)."
     )

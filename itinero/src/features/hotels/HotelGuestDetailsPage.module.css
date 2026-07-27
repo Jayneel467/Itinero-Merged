@@ -1,0 +1,43 @@
+.pageContainer {
+  background-color: #FAFAFA;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+.stepperWrapper {
+  background-color: white;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 32px;
+}
+
+.mainLayout {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+.formColumn {
+  flex: 1;
+}
+
+.sidebar {
+  width: 360px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 100px;
+}
+
+@media (max-width: 1024px) {
+  .mainLayout {
+    flex-direction: column;
+    padding: 0 16px;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: static;
+  }
+}

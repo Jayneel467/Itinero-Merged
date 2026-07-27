@@ -36,7 +36,9 @@ class Settings(BaseSettings):
     # LiteAPI
     liteapi_api_key: str = Field(
         default="",
-        validation_alias=AliasChoices("LITEAPI_API_KEY", "API_KEY", "liteapi_api_key"),
+        validation_alias=AliasChoices(
+            "LITEAPI_API_KEY", "API_KEY", "LITEAPI_KEY", "liteapi_api_key"
+        ),
     )
     liteapi_base_url: str = Field(
         default="https://api.liteapi.travel/v3.0",

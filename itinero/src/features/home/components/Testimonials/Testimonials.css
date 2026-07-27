@@ -1,0 +1,39 @@
+/* ═══════════════════════════════════════════════════════
+   Testimonials Section Styles
+   ═══════════════════════════════════════════════════════ */
+
+.testimonials {
+  margin-bottom: 110px;
+  position: relative;
+}
+
+.testimonials__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 39px;
+}
+
+.testimonials__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+/* ── Responsive Styles ───────────────────────────── */
+@media (max-width: 1024px) {
+  .testimonials {
+    margin-bottom: 80px;
+  }
+  .testimonials__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .testimonials {
+    margin-bottom: 50px;
+  }
+  .testimonials__grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,110 @@
+/* ═══════════════════════════════════════════════════════
+   CSS Custom Properties — Itinero Design Tokens
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Brand Colors ─────────────────────────────────── */
+  --color-primary: #F97211;
+  --color-primary-light: #F8E7DA;
+  --color-primary-bg: #F972111A;
+  --color-primary-hover: #E5670F;
+
+  --color-navy: #001438;
+  --color-navy-dark: #0B2A6F;
+
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+
+  /* ── Neutral Palette ──────────────────────────────── */
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-200: #E7E7E7;
+  --color-gray-300: #D1D5DB;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #888888;
+  --color-gray-600: #868686;
+  --color-gray-700: #666666;
+  --color-gray-800: #61676A;
+  --color-gray-900: #242931;
+
+  --color-text-muted: #49607E;
+
+  /* ── Overlay Colors ───────────────────────────────── */
+  --overlay-dark: #00000066;
+  --overlay-light: #FFFFFF1C;
+  --overlay-white: #FFFFFFCC;
+  --overlay-white-dim: #FFFFFF5C;
+
+  /* ── Gradients ─────────────────────────────────────── */
+  --gradient-hero: linear-gradient(
+    160deg,
+    rgba(0, 20, 56, 0.75) 0%,
+    rgba(11, 42, 111, 0.55) 40%,
+    rgba(249, 114, 17, 0.25) 100%
+  );
+  --gradient-primary: linear-gradient(135deg, #F97211 0%, #FF9A44 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #E5670F 0%, #F97211 100%);
+  --gradient-navy: linear-gradient(135deg, #001438 0%, #0B2A6F 100%);
+  --gradient-warm: linear-gradient(135deg, #FFF8F3 0%, #FFF0E6 50%, #F9FAFB 100%);
+  --gradient-cool: linear-gradient(135deg, #F0F4FF 0%, #F9FAFB 50%, #FFF8F3 100%);
+  --gradient-section-alt: linear-gradient(180deg, #F5F7FA 0%, #FFFFFF 100%);
+  --gradient-card-shine: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --gradient-accent-border: linear-gradient(135deg, #F97211, #FF9A44, #FFD5A8);
+  --gradient-footer: linear-gradient(180deg, #001028 0%, #001438 50%, #000C24 100%);
+
+  /* ── Glassmorphism ─────────────────────────────────── */
+  --glass-bg: rgba(255, 255, 255, 0.12);
+  --glass-bg-strong: rgba(255, 255, 255, 0.2);
+  --glass-bg-light: rgba(255, 255, 255, 0.85);
+  --glass-blur: blur(16px);
+  --glass-blur-strong: blur(24px);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.25);
+  --glass-border-strong: 1px solid rgba(255, 255, 255, 0.4);
+
+  /* ── Shadows ──────────────────────────────────────── */
+  --shadow-card: 0px 19px 36px #0000001F;
+  --shadow-review: 0px 0px 16px #C9BABA26;
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-glow-primary: 0 4px 20px rgba(249, 114, 17, 0.35);
+  --shadow-glow-navy: 0 4px 20px rgba(0, 20, 56, 0.25);
+  --shadow-card-hover: 0 20px 50px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 24px 60px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  /* ── Border Radii ─────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 19px;
+  --radius-xl: 25px;
+  --radius-2xl: 30px;
+  --radius-3xl: 40px;
+  --radius-pill: 50px;
+  --radius-round: 9999px;
+
+  /* ── Spacing ──────────────────────────────────────── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 80px;
+  --space-5xl: 120px;
+
+  /* ── Layout ───────────────────────────────────────── */
+  --max-width: 1280px;
+  --container-padding: 0px;
+
+  /* ── Transitions ──────────────────────────────────── */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}

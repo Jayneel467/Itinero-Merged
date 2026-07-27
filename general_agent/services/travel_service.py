@@ -8,6 +8,8 @@ can be reused outside the LangChain tool-calling path later (a future API
 endpoint, a different agent framework, etc.) without duplicating logic.
 """
 from typing import Optional
+import json
+import re
 
 from general_agent.exceptions import ProviderRequestError
 from providers import liteapi_provider, google_maps_provider, weather_provider
@@ -267,29 +269,160 @@ def get_route_summary(origin: str, destination: str, mode: str = "DRIVE") -> str
 # ---------------------------------------------------------------------------
 # Place search (Google Places API New)
 # ---------------------------------------------------------------------------
-def search_places_summary(query: str, max_results: int = 5) -> str:
+_PRICE_LABELS = {
+    "PRICE_LEVEL_FREE": "free",
+    "PRICE_LEVEL_INEXPENSIVE": "₹",
+    "PRICE_LEVEL_MODERATE": "₹₹",
+    "PRICE_LEVEL_EXPENSIVE": "₹₹₹",
+    "PRICE_LEVEL_VERY_EXPENSIVE": "₹₹₹₹",
+}
+
+# Prefer human-readable food/venue types over generic Place types.
+_TYPE_LABELS = {
+    "restaurant": "restaurant",
+    "cafe": "cafe",
+    "coffee_shop": "coffee shop",
+    "bakery": "bakery",
+    "bar": "bar",
+    "meal_takeaway": "takeaway",
+    "meal_delivery": "delivery",
+    "fine_dining_restaurant": "fine dining",
+    "fast_food_restaurant": "fast food",
+    "indian_restaurant": "Indian",
+    "vegetarian_restaurant": "vegetarian",
+    "seafood_restaurant": "seafood",
+    "pizza_restaurant": "pizza",
+    "chinese_restaurant": "Chinese",
+    "italian_restaurant": "Italian",
+    "japanese_restaurant": "Japanese",
+    "thai_restaurant": "Thai",
+    "mexican_restaurant": "Mexican",
+    "american_restaurant": "American",
+    "mediterranean_restaurant": "Mediterranean",
+    "steak_house": "steakhouse",
+    "sushi_restaurant": "sushi",
+    "ice_cream_shop": "ice cream",
+    "street_food": "street food",
+}
+
+
+def _place_type_label(place: dict) -> str:
+    primary = (place.get("primaryType") or "").strip()
+    if primary in _TYPE_LABELS:
+        return _TYPE_LABELS[primary]
+    if primary:
+        return primary.replace("_", " ")
+    for t in place.get("types") or []:
+        if t in _TYPE_LABELS:
+            return _TYPE_LABELS[t]
+    return ""
+
+
+def _short_area(address: str) -> str:
+    """Prefer neighbourhood / locality over the full postal address."""
+    if not address:
+        return ""
+    parts = [p.strip() for p in address.split(",") if p.strip()]
+    if len(parts) >= 3:
+        # e.g. "Shop 12, Linking Road, Bandra West, Mumbai, ..." → Linking Road, Bandra West
+        return ", ".join(parts[-4:-2] if len(parts) >= 4 else parts[:2])
+    return parts[0] if parts else address
+
+
+# Machine-readable block appended to search_places tool output so the
+# supervisor can attach structured `places[]` for Vero restaurant cards.
+PLACES_JSON_START = "<<<PLACES_JSON>>>"
+PLACES_JSON_END = "<<<END_PLACES_JSON>>>"
+
+
+def normalize_place(place: dict) -> dict:
+    """Map a Google Places (New) result into the Vero card schema."""
+    address = (place.get("formattedAddress") or "").strip()
+    open_now = (place.get("currentOpeningHours") or {}).get("openNow")
+    if open_now is not True and open_now is not False:
+        open_now = None
+    return {
+        "name": (place.get("displayName") or {}).get("text") or "Unknown",
+        "rating": place.get("rating"),
+        "rating_count": place.get("userRatingCount"),
+        "type": _place_type_label(place) or None,
+        "price": _PRICE_LABELS.get(place.get("priceLevel") or "", "") or None,
+        "open_now": open_now,
+        "area": _short_area(address) or None,
+        "address": address or None,
+        "maps_url": (place.get("googleMapsUri") or "").strip() or None,
+        "website_url": (place.get("websiteUri") or "").strip() or None,
+    }
+
+
+def search_places_list(query: str, max_results: int = 8) -> list[dict]:
+    """Structured place results for chat cards / APIs."""
+    body = google_maps_provider.search_places_text(query, max_results)
+    raw = body.get("places") or []
+    return [normalize_place(p) for p in raw[:max_results]]
+
+
+def search_places_summary(query: str, max_results: int = 8) -> str:
     try:
-        body = google_maps_provider.search_places_text(query, max_results)
+        places = search_places_list(query, max_results)
     except ProviderRequestError as e:
         return f"Place search failed: {e}"
 
-    places = body.get("places") or []
     if not places:
         return f"No places found for '{query}'."
 
-    lines = [f"Places for '{query}':"]
-    for p in places[:max_results]:
-        name = p.get("displayName", {}).get("text", "Unknown")
-        address = p.get("formattedAddress", "")
-        rating = p.get("rating")
-        rating_count = p.get("userRatingCount")
-        open_now = p.get("currentOpeningHours", {}).get("openNow")
+    lines = [
+        f"Places for '{query}' ({len(places)} results). "
+        "The chat UI will render these as cards. "
+        "Your reply to the user should be ONE short warm intro only "
+        "(e.g. 'Here are great places in Bangalore:') — do NOT list venues, "
+        "Maps/Website markdown links, or full addresses. "
+        "Do NOT replace with blog listicles."
+    ]
+    for p in places:
+        bits = []
+        if p.get("rating"):
+            rc = p.get("rating_count")
+            bits.append(f"{p['rating']}★" + (f" ({rc})" if rc else ""))
+        if p.get("type"):
+            bits.append(p["type"])
+        if p.get("price"):
+            bits.append(p["price"])
+        if p.get("open_now") is True:
+            bits.append("open now")
+        elif p.get("open_now") is False:
+            bits.append("closed now")
+        if p.get("area"):
+            bits.append(p["area"])
+        meta = " · ".join(bits)
+        lines.append(f"- {p['name']}" + (f" — {meta}" if meta else ""))
 
-        rating_str = f", {rating}★ ({rating_count} reviews)" if rating else ""
-        open_str = " · open now" if open_now is True else (" · closed now" if open_now is False else "")
-        address_str = f" — {address}" if address else ""
-        lines.append(f"- {name}{rating_str}{open_str}{address_str}")
+    # Trailing machine block (LLM should ignore; supervisor extracts it).
+    lines.append(PLACES_JSON_START)
+    lines.append(json.dumps(places, ensure_ascii=False))
+    lines.append(PLACES_JSON_END)
     return "\n".join(lines)
+
+
+def extract_places_json(text: str) -> list[dict]:
+    """Parse <<<PLACES_JSON>>>…<<<END_PLACES_JSON>>> from tool output."""
+    if not text or PLACES_JSON_START not in text:
+        return []
+
+    match = re.search(
+        re.escape(PLACES_JSON_START) + r"\s*(.*?)\s*" + re.escape(PLACES_JSON_END),
+        text,
+        flags=re.DOTALL,
+    )
+    if not match:
+        return []
+    try:
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    return [p for p in data if isinstance(p, dict) and p.get("name")]
 
 
 # ---------------------------------------------------------------------------

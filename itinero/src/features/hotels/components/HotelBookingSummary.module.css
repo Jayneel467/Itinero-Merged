@@ -1,0 +1,167 @@
+.summaryCard {
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: rgba(0, 0, 0, 0.12) 0px 15px 30px;
+  padding: 24px;
+  position: sticky;
+  top: 24px;
+}
+
+.summaryTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px 0;
+}
+
+.hotelInfo {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.hotelImage {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: #E5E7EB;
+}
+
+.hotelDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.hotelName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+  color: #F59E0B;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.hotelLocation {
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.datesSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 20px;
+}
+
+.dateBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dateLabel {
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.dateValue {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.dateDay {
+  color: #6B7280;
+  font-weight: 400;
+}
+
+.priceBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 20px;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #4B5563;
+}
+
+.priceValue {
+  font-weight: 500;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.totalLabel {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.totalPrice {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.inclusiveText {
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 24px;
+}
+
+.continueBtn {
+  background-color: #E86A10;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.continueBtn:hover {
+  background-color: #d15a0c;
+}
+
+.badgeInfo {
+  background-color: #ECFDF5;
+  color: #059669;
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}

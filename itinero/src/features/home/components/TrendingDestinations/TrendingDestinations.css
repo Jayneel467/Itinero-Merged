@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════
+   Trending Destinations Section Styles
+   ═══════════════════════════════════════════════════════ */
+
+.trending {
+  background: linear-gradient(180deg, #F5F7FA 0%, #EEF2F7 50%, #F5F7FA 100%);
+  padding: 70px 0;
+  margin: 0 0 120px;
+  position: relative;
+}
+
+/* Subtle decorative element */
+.trending::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(249, 114, 17, 0.15), transparent);
+}
+
+.trending::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(249, 114, 17, 0.15), transparent);
+}
+
+.trending__header {
+  margin: 0 auto 27px auto;
+}
+
+.trending__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 20px 0 40px;
+}
+
+/* ── Responsive Styles ───────────────────────────── */
+@media (max-width: 1024px) {
+  .trending {
+    padding: 50px 0;
+    margin-bottom: 80px;
+  }
+  .trending__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+  }
+}
+
+@media (max-width: 768px) {
+  .trending {
+    padding: 30px 0;
+    margin-bottom: 50px;
+  }
+  .trending__grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}

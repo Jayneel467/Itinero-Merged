@@ -18,7 +18,7 @@ INDIAN_AIRPORTS = frozenset(
     }
 )
 
-# LiteAPI accepts passport or id — not id_card (see flights prebook API).
+# LiteAPI accepts passport or id — not id_card (API rejects id_card explicitly).
 _LITEAPI_DOCUMENT_TYPES = frozenset({"passport", "id"})
 _DOCUMENT_TYPE_ALIASES = {
     "id_card": "id",
@@ -27,12 +27,107 @@ _DOCUMENT_TYPE_ALIASES = {
     "govt_id": "id",
 }
 
+# Common fake / sequential numbers LiteAPI rejects as placeholders.
+_PLACEHOLDER_PHONES = frozenset(
+    {
+        "0000000000",
+        "1111111111",
+        "1234567890",
+        "0123456789",
+        "9876543210",
+        "9999999999",
+        "8888888888",
+        "7777777777",
+        "6666666666",
+        "5555555555",
+        "4444444444",
+        "3333333333",
+        "2222222222",
+        "1010101010",
+        "1212121212",
+    }
+)
+
 
 def is_valid_email(email: str | None) -> bool:
     """Basic email format check (LiteAPI contact.email must be a valid address)."""
     if not email or not str(email).strip():
         return False
     return bool(_EMAIL_RE.match(str(email).strip()))
+
+
+def normalize_phone_digits(phone: str | None) -> str:
+    """Strip non-digits from a phone (or phone+country) string."""
+    return re.sub(r"\D", "", str(phone or ""))
+
+
+def is_placeholder_phone(phone: str | None) -> bool:
+    """
+    True when LiteAPI is likely to reject the number as a placeholder.
+
+    LiteAPI returns HTTP 500 message "unable to process prebook request" with
+    description mentioning sequential / placeholder digits.
+    """
+    digits = normalize_phone_digits(phone)
+    if not digits:
+        return True
+    # Compare national number (last 10) and full digit string.
+    candidates = {digits, digits[-10:] if len(digits) >= 10 else digits}
+    if candidates & _PLACEHOLDER_PHONES:
+        return True
+    national = digits[-10:] if len(digits) >= 10 else digits
+    if len(national) >= 8 and len(set(national)) == 1:
+        return True
+    # Strictly ascending / descending runs (e.g. 1234567890, 9876543210).
+    if len(national) >= 8:
+        asc = all(int(national[i]) == (int(national[i - 1]) + 1) % 10 for i in range(1, len(national)))
+        desc = all(int(national[i]) == (int(national[i - 1]) - 1) % 10 for i in range(1, len(national)))
+        if asc or desc:
+            return True
+    return False
+
+
+def friendly_liteapi_prebook_error(exc: BaseException) -> str:
+    """Map LiteAPI / prebook exceptions to short user-facing copy (no stack / type names)."""
+    details = getattr(exc, "details", None)
+    description = ""
+    if isinstance(details, dict):
+        description = str(details.get("description") or "").strip()
+        body = details.get("body")
+        if not description and isinstance(body, dict):
+            err = body.get("error") if isinstance(body.get("error"), dict) else {}
+            description = str(err.get("description") or err.get("message") or "").strip()
+    message = str(getattr(exc, "message", None) or exc).strip()
+    raw = f"{description} {message}".lower()
+
+    if "placeholder" in raw or "sequential" in raw or ("phone" in raw and "valid" in raw):
+        return (
+            "That phone number looks invalid or like a test placeholder "
+            "(e.g. 9876543210). Enter a real mobile number and try again."
+        )
+    if "documenttype" in raw or "document type" in raw or "must be one of: passport, id" in raw:
+        return "Travel document type was invalid. Use a government ID (domestic) or passport."
+    if "birthday" in raw or "date of birth" in raw or "dob" in raw or "age" in raw:
+        return (
+            "Date of birth does not match this traveller type. "
+            "Adults must be 12+ on the travel date — update DOB and try again."
+        )
+    if "offer" in raw and ("expir" in raw or "not found" in raw or "unavailable" in raw):
+        return "This fare expired. Go back, search again, and pick another flight."
+    if "email" in raw:
+        return "Please enter a valid email address for the booking contact."
+    if description and "unable to process" not in description.lower():
+        # Prefer LiteAPI's concrete description over the generic message.
+        cleaned = description
+        if cleaned.lower().startswith("contact phone:"):
+            cleaned = cleaned.split(":", 1)[-1].strip()
+        return cleaned[:280]
+    if message and "unable to process" not in message.lower() and "liteapi" not in message.lower():
+        return message[:280]
+    return (
+        "We couldn't hold this fare. Check name, phone, email, date of birth, "
+        "and ID — then try again. If it keeps failing, pick another flight."
+    )
 
 
 def passenger_saved_summary(draft: dict[str, Any], slot: dict[str, Any]) -> dict[str, str]:
@@ -57,7 +152,7 @@ def passenger_saved_message(draft: dict[str, Any], slot: dict[str, Any]) -> str:
     """User-facing confirmation that this passenger's details (incl. email) were saved."""
     s = passenger_saved_summary(draft, slot)
     lines = [
-        f"**{s['passenger']}** details saved:",
+        f"Got it — **{s['passenger']}** saved:",
         f"- **Name:** {s['name']}",
         f"- **Email:** {s['email']}",
         f"- **Phone:** {s['phone']}",
@@ -65,7 +160,7 @@ def passenger_saved_message(draft: dict[str, Any], slot: dict[str, Any]) -> str:
         f"- **ID:** {s['document']}",
     ]
     if slot.get("needs_contact") and not is_valid_email(draft.get("contact_email")):
-        lines.append("\n⚠️ **Email is still missing or invalid** — please send a valid email for this adult.")
+        lines.append("\n**Email is still missing or invalid** — please send a valid email for this adult.")
     return "\n".join(lines)
 
 
@@ -596,7 +691,7 @@ def next_traveler_details_prompt(session: SessionContext, default_country: str =
 
     return (
         "\n".join(header)
-        + f"Please share **{slot['label']}** details in one message:\n\n"
+        + f"Send **{slot['label']}** details in one message:\n\n"
         + f"{lines}\n\n"
         + f"Example: *{example}*"
         + contact_note
@@ -643,7 +738,7 @@ def booking_details_prompt(
         lines = "\n".join(f"- **{label}**" for label in still_need)
         return (
             "\n".join(header)
-            + "Please share **all remaining details** in one message:\n\n"
+            + "I still need a few details — send them in one message:\n\n"
             + lines
         )
 
@@ -655,7 +750,7 @@ def booking_details_prompt(
     )
     return (
         "\n".join(header)
-        + "To proceed with booking, please share **all traveler details** in one message:\n\n"
+        + "To book this, send **traveler details** in one message:\n\n"
         + f"{lines}\n\n"
         + f"Example: *{example}*"
     )

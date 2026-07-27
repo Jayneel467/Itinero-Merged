@@ -1,0 +1,4 @@
+/* LoginPage styles */
+.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.auth-card { max-width: 440px; width: 100%; padding: var(--space-2xl); }
+

@@ -1,0 +1,497 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 10, 26, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modalContent {
+  width: 100%;
+  max-width: 1200px;
+  height: 90vh;
+  max-height: 900px;
+  background: #FFFFFF;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Left Side: Airplane Layout */
+.airplaneSection {
+  flex: 1;
+  background: #F1F5F9;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.fuselageContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding-bottom: 80px; /* Space at bottom for scrolling */
+  transform: scale(1);
+  transform-origin: top center;
+}
+
+/* Airplane Graphics */
+.cockpit {
+  width: 220px;
+  height: 100px;
+  background: linear-gradient(180deg, #E2E8F0 0%, #FFFFFF 100%);
+  border-radius: 110px 110px 0 0;
+  border: 4px solid #CBD5E1;
+  border-bottom: none;
+  margin-bottom: -4px; /* Connect to fuselage */
+  position: relative;
+  box-shadow: inset 0 10px 20px rgba(255,255,255,0.8);
+}
+.cockpitWindow {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 40px;
+  background: #94A3B8;
+  border-radius: 40px 40px 10px 10px;
+  opacity: 0.6;
+}
+
+.fuselage {
+  width: 300px; /* Base width */
+  background: #FFFFFF;
+  border: 4px solid #CBD5E1;
+  border-radius: 0 0 50px 50px;
+  padding: 30px 16px 60px 16px;
+  box-shadow: 
+    inset 12px 0 16px rgba(0,0,0,0.02),
+    inset -12px 0 16px rgba(0,0,0,0.02);
+  position: relative;
+}
+
+.wingLeft, .wingRight {
+  position: absolute;
+  top: 250px;
+  width: 80px;
+  height: 200px;
+  background: #E2E8F0;
+  z-index: -1;
+}
+.wingLeft {
+  left: -80px;
+  border-radius: 60px 0 0 80px;
+  border: 4px solid #CBD5E1;
+  border-right: none;
+}
+.wingRight {
+  right: -80px;
+  border-radius: 0 60px 80px 0;
+  border: 4px solid #CBD5E1;
+  border-left: none;
+}
+
+/* Section Dividers */
+.divider {
+  width: 100%;
+  text-align: center;
+  margin: 24px 0;
+  position: relative;
+}
+.divider span {
+  background: #FFFFFF;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 1px solid #E2E8F0;
+  position: relative;
+  z-index: 2;
+}
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, #E2E8F0, #E2E8F0 4px, transparent 4px, transparent 8px);
+  z-index: 1;
+}
+
+/* Rows & Seats */
+.seatRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 4px;
+}
+
+.rowNumber {
+  width: 20px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94A3B8;
+  margin: 0 4px;
+}
+
+.seatGroup {
+  display: flex;
+  gap: 4px;
+}
+
+/* The Seat Design */
+.seatWrapper {
+  position: relative;
+}
+
+.seat {
+  width: 32px;
+  height: 36px;
+  background: #FFFFFF;
+  border: 2px solid #CBD5E1;
+  border-radius: 6px 6px 4px 4px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Seat Headrest */
+.seat::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 4px;
+  right: 4px;
+  height: 6px;
+  background: #CBD5E1;
+  border-radius: 3px 3px 0 0;
+  transition: all 0.2s ease;
+}
+
+.seat:hover:not(.occupied) {
+  transform: translateY(-2px);
+  border-color: #F97211;
+  box-shadow: 0 4px 8px rgba(249, 114, 17, 0.2);
+}
+.seat:hover:not(.occupied)::before {
+  background: #F97211;
+}
+
+/* Selected State */
+.seat.selected {
+  background: #F97211;
+  border-color: #E06005;
+  transform: scale(1.05);
+}
+.seat.selected::before {
+  background: #FF9B4D;
+}
+
+/* Occupied State */
+.seat.occupied {
+  background: #F1F5F9;
+  border-color: #E2E8F0;
+  cursor: not-allowed;
+}
+.seat.occupied::before {
+  background: #E2E8F0;
+}
+.seat.occupied .cross {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #CBD5E1;
+  font-size: 14px;
+}
+
+/* Premium Seat */
+.seat.premium {
+  border-color: #089C2F;
+}
+.seat.premium::before {
+  background: #089C2F;
+}
+.seat.premium:hover:not(.occupied) {
+  border-color: #F97211;
+}
+.seat.premium:hover:not(.occupied)::before {
+  background: #F97211;
+}
+
+/* Business Seat */
+.seat.business {
+  border-color: #64748B;
+  width: 40px; /* Wider seat for business class */
+}
+.seat.business::before {
+  background: #64748B;
+}
+.seat.business:hover:not(.occupied) {
+  border-color: #F97211;
+}
+.seat.business:hover:not(.occupied)::before {
+  background: #F97211;
+}
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  background: #001439;
+  color: #FFF;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: #001439 transparent transparent transparent;
+}
+.seatWrapper:hover .tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+.ttPrice {
+  color: #F97211;
+  margin-left: 4px;
+}
+
+/* Right Side: Summary Panel */
+.summarySection {
+  width: 360px;
+  background: #FFFFFF;
+  border-left: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.summaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #001439;
+}
+.closeBtn {
+  background: #F1F5F9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748B;
+  transition: all 0.2s ease;
+}
+.closeBtn:hover {
+  background: #E2E8F0;
+  color: #001439;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748B;
+  font-weight: 500;
+}
+.legendBox {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+.boxAvailable { background: #2563EB; }
+.boxSelected { background: #F97211; }
+.boxOccupied { background: #CBD5E1; }
+.boxPremium { background: #089C2F; }
+.boxBusiness { background: #64748B; }
+
+.selectedSeatCard {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.sscHeader {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.sscSeatNo {
+  font-size: 40px;
+  font-weight: 800;
+  color: #001439;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.sscType {
+  font-size: 15px;
+  color: #F97211;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.sscPrice {
+  font-size: 24px;
+  font-weight: 700;
+  color: #001439;
+  background: #FFFFFF;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #E2E8F0;
+  display: inline-block;
+}
+.sscEmpty {
+  color: #94A3B8;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 20px 0;
+}
+
+.footer {
+  margin-top: auto;
+}
+.confirmBtn {
+  width: 100%;
+  background: #F97211;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.confirmBtn:hover:not(:disabled) {
+  background: #E06005;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(249, 114, 17, 0.2);
+}
+.confirmBtn:disabled {
+  background: #CBD5E1;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .modalContent {
+    flex-direction: column;
+    height: 95vh;
+  }
+  
+  .airplaneSection {
+    flex: 1;
+    min-height: 50vh;
+  }
+
+  .fuselageContainer {
+    /* Scale down plane slightly for small screens to fit width */
+    transform: scale(0.9);
+  }
+  
+  .summarySection {
+    width: 100%;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid #E2E8F0;
+    padding: 16px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+  }
+
+  .summaryHeader {
+    margin-bottom: 16px;
+  }
+  
+  .legend {
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+  
+  .selectedSeatCard {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .sscSeatNo {
+    font-size: 32px;
+  }
+  
+  .sscPrice {
+    font-size: 18px;
+    padding: 6px 12px;
+  }
+
+  .confirmBtn {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fuselageContainer {
+    transform: scale(0.85); /* Even smaller for very small screens */
+  }
+}

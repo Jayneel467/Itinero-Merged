@@ -96,12 +96,12 @@ def node_greeting(state_dict: dict[str, Any]) -> dict[str, Any]:
     state = _load(state_dict)
 
     greeting = (
-        "Hi! I'm Vero Ai, your AI Travel Consultant.\n\n"
-        "To get started, just tell me about your trip in one go — for example:\n"
-        "  \"Delhi to Goa, 15th to 20th August, 2 adults, economy class\"\n\n"
-        "You can also mention things like your budget, interests (beach, history, food), "
-        "or hotel preferences — I'll pick it all up automatically.\n\n"
-        "Where are you headed and when?"
+        "Hey — I'm **Vero**. Happy to plan this trip with you.\n\n"
+        "Tell me the basics in one go if you like — for example:\n"
+        "  \"Delhi to Goa, 15th to 20th August, 2 adults\"\n\n"
+        "Budget, vibe (beach, food, history), or hotel preferences help too — "
+        "I'll pick them up as we go.\n\n"
+        "Where are you headed, and roughly when?"
     )
 
     state.add_assistant_message(greeting)

@@ -1,0 +1,49 @@
+.filtersContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 24px;
+}
+
+/* Hide scrollbar for clean look */
+.filtersContainer::-webkit-scrollbar {
+  display: none;
+}
+.filtersContainer {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.filterBtn, .filterDropdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.filterBtn:hover, .filterDropdown:hover {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+}
+
+.filterBtnActive {
+  background: #F3F4F6;
+  font-weight: 600;
+}
+
+.sparkleIcon {
+  font-size: 14px;
+}

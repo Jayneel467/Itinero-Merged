@@ -1,0 +1,21 @@
+/* ═══════════════════════════════════════════════════════
+   Typography — Itinero
+   ═══════════════════════════════════════════════════════ */
+
+/* Note: Using local TT Hoves Pro Trial Variable font */
+
+@font-face {
+  font-family: 'TT Hoves Pro Trial Variable';
+  src: url('/fonts/TTHovesProTrial-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: 'TT Hoves Pro Trial Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-weight: 400;
+  color: var(--color-black);
+  background-color: var(--color-white);
+}

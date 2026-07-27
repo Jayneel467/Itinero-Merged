@@ -1,0 +1,215 @@
+.mapContainer {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px 0 0 16px;
+  overflow: hidden;
+}
+
+.priceMarker {
+  background: white;
+  border: 1.5px solid #d1d5db;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.priceMarker::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0;
+  border-style: solid;
+  border-color: white transparent transparent transparent;
+}
+
+.priceMarkerActive,
+.priceMarker:hover {
+  background: #F97211;
+  color: white;
+  border-color: #F97211;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(249, 114, 17, 0.3);
+}
+
+.priceMarkerActive::after,
+.priceMarker:hover::after {
+  border-color: #F97211 transparent transparent transparent;
+}
+
+/* Customize Leaflet Popup */
+:global(.leaflet-popup-content-wrapper) {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+:global(.leaflet-popup-content) {
+  margin: 0;
+  width: 280px !important;
+}
+
+:global(.leaflet-popup-tip-container) {
+  display: none; /* Hide default tip as we are using a card style */
+}
+
+:global(.leaflet-container a.leaflet-popup-close-button) {
+  color: #333;
+  padding: 8px 8px 0 0;
+  z-index: 10;
+  font-size: 20px;
+  background: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  top: 8px;
+  right: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.popupCard {
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+.popupImageContainer {
+  position: relative;
+  width: 100%;
+  height: 160px;
+}
+
+.popupImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.popupFavoriteBtn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.popupFavoriteBtn svg {
+  stroke: #333;
+}
+
+.popupPagination {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.popupPagination span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.popupPagination span:first-child {
+  background: white;
+}
+
+.popupDetails {
+  padding: 16px;
+}
+
+.popupName {
+  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 8px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popupRating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stars {
+  color: #333;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.ratingText {
+  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-size: 12px;
+  color: #333;
+}
+
+.popupFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.popupPrice {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.currency {
+  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.viewDealBtn {
+  background: #F97211;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.viewDealBtn:hover {
+  background: #E86100;
+}

@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Pixano Itinero design tokens — mirrored from https://pixano.in/itinero/ */
+:root {
+  --color-primary: #f97211;
+  --color-primary-light: #f8e7da;
+  --color-primary-bg: #f972111a;
+  --color-primary-hover: #e5670f;
+  --color-navy: #001438;
+  --color-navy-dark: #0b2a6f;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e7e7e7;
+  --color-gray-500: #888;
+  --color-gray-600: #868686;
+  --color-gray-700: #666;
+  --color-gray-900: #242931;
+  --color-text-muted: #49607e;
+  --gradient-hero: linear-gradient(160deg, #001438bf 0%, #0b2a6f8c 40%, #f9721140 100%);
+  --gradient-primary: linear-gradient(135deg, #f97211 0%, #ff9a44 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #e5670f 0%, #f97211 100%);
+  --gradient-navy: linear-gradient(135deg, #001438 0%, #0b2a6f 100%);
+  --gradient-warm: linear-gradient(135deg, #fff8f3 0%, #fff0e6 50%, #f9fafb 100%);
+  --gradient-footer: linear-gradient(180deg, #001028 0%, #001438 50%, #000c24 100%);
+  --shadow-card: 0px 19px 36px #0000001f;
+  --shadow-glow-primary: 0 4px 20px #f9721159;
+  --shadow-soft: 0 4px 20px #00000014;
+  --radius-pill: 50px;
+  --max-width: 1280px;
+  --font-itinero: "TT Hoves Pro", "Outfit", system-ui, sans-serif;
+}
+
+@font-face {
+  font-family: "TT Hoves Pro";
+  src: url("/fonts/TTHovesPro.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--color-black);
+  background: var(--color-white);
+  font-family: var(--font-itinero);
+  font-weight: 400;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes slideArrowRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s ease-out;
+}
+
+.animate-slide-up {
+  animation: 0.5s ease-out slideUp both;
+}
+
+.animate-float {
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-glow-primary);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--gradient-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px #f9731699;
+}
+
+.btn-navy {
+  background: var(--gradient-navy);
+  color: white;
+  border-radius: var(--radius-pill);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-navy:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-navy {
+  color: var(--color-navy);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+/* Chat markdown-ish bold */
+.prose-itinero strong {
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+/* /ai — Layla-like immersive chat */
+.ai-shell {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, #dff0ff 0%, transparent 55%),
+    radial-gradient(900px 500px at 88% 0%, #ffe8d6 0%, transparent 50%),
+    linear-gradient(165deg, #f3f7fb 0%, #eef4f8 42%, #f7f1ea 100%);
+}
+
+.ai-shell__glow {
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 100%, rgba(249, 114, 17, 0.07), transparent 70%);
+}
+
+.ai-hero__title {
+  font-family: var(--font-fraunces), "Fraunces", Georgia, serif;
+  font-optical-sizing: auto;
+}
+
+.ai-pulse {
+  animation: aiPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes aiPulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
