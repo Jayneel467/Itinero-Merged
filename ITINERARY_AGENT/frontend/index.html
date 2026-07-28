@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✈️ AI Travel Itinerary Planner</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=20260726c" />
+  <!-- Marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════ TOP NAV -->
+  <nav class="navbar">
+    <button id="btn-toggle-sidebar" class="btn btn-outline btn-sm" title="Toggle progress sidebar"
+      aria-label="Toggle progress sidebar">
+      ☰
+    </button>
+    <div class="navbar-brand">
+      <span class="brand-icon">✈️</span>
+      <span class="brand-name">AI Travel Planner</span>
+    </div>
+    <div class="navbar-actions">
+      <button id="btn-new-trip" class="btn btn-outline" title="Start a new trip">
+        🔄 New Trip
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════ SIDEBAR BACKDROP (MOBILE) -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ═══════════════════════════════════════════════════════ MAIN LAYOUT -->
+  <div class="app-layout">
+
+    <!-- ─── LEFT SIDEBAR: progress steps ─── -->
+    <aside class="sidebar">
+      <div class="progress-title">Trip Progress</div>
+      <ul class="progress-steps" id="progress-steps">
+        <li class="step active" data-step="requirements">
+          <span class="step-icon">📋</span>
+          <span class="step-label">Requirements</span>
+        </li>
+        <li class="step" data-step="flights">
+          <span class="step-icon">✈️</span>
+          <span class="step-label">Flights</span>
+        </li>
+        <li class="step" data-step="draft">
+          <span class="step-icon">📄</span>
+          <span class="step-label">Draft Itinerary</span>
+        </li>
+        <li class="step" data-step="compare">
+          <span class="step-icon">🔀</span>
+          <span class="step-label">Compare Versions</span>
+        </li>
+        <li class="step" data-step="hotels">
+          <span class="step-icon">🏨</span>
+          <span class="step-label">Hotels</span>
+        </li>
+        <li class="step" data-step="final">
+          <span class="step-icon">🎉</span>
+          <span class="step-label">Final Itinerary</span>
+        </li>
+      </ul>
+
+      <!-- Trip summary card (populated dynamically) -->
+      <div class="trip-summary-card" id="trip-summary-card" style="display:none;">
+        <div class="trip-summary-title">📍 Your Trip</div>
+        <div id="trip-summary-content"></div>
+      </div>
+    </aside>
+
+    <!-- ─── MAIN CONTENT AREA ─── -->
+    <main class="main-content">
+
+      <!-- ══════════ REQUIREMENTS FORM MODAL ══════════ -->
+      <div class="modal-overlay" id="modal-requirements" role="dialog" aria-modal="true"
+        aria-labelledby="modal-requirements-title">
+        <div class="modal modal-wide modal-req">
+          <div class="modal-header modal-req-header">
+            <h3 id="modal-requirements-title">✈️ Plan Your Dream Trip</h3>
+            <p class="modal-req-subtitle">Fill in the details below and let AI create the perfect itinerary for you!</p>
+          </div>
+          <div class="modal-body modal-req-body">
+            <div class="requirements-form-card">
+              <div class="requirements-form-body">
+                <div class="req-form-row req-form-row-3">
+                  <div class="req-form-group">
+                    <label class="req-form-label" for="req-departure-city">
+                      <span class="req-form-icon">🛫</span> Departure City
+                    </label>
+                    <input type="text" id="req-departure-city" class="req-form-input" placeholder="e.g. Mumbai, Delhi…"
+                      required />
+                  </div>
+                  <div class="req-form-group">
+                    <label class="req-form-label" for="req-destination">
+                      <span class="req-form-icon">🛬</span> Destination
+                    </label>
+                    <input type="text" id="req-destination" class="req-form-input" placeholder="e.g. Goa, Kerala…"
+                      required />
+                  </div>
+                  <div class="req-form-group">
+                    <label class="req-form-label" for="req-trip-type">
+                      <span class="req-form-icon">🎯</span> Trip Type
+                    </label>
+                    <select id="req-trip-type" class="req-form-input req-form-select" required>
+                      <option value="" disabled selected>— Select —</option>
+                      <option value="leisure">🏖️ Leisure</option>
+                      <option value="adventure">🧗 Adventure</option>
+                      <option value="business">💼 Business</option>
+                      <option value="honeymoon">💕 Honeymoon</option>
+                      <option value="family">👨‍👩‍👧‍👦 Family</option>
+                      <option value="solo">🧑 Solo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="req-form-row">
+                  <div class="req-form-group">
+                    <label class="req-form-label" for="req-departure-date">
+                      <span class="req-form-icon">📅</span> Departure Date
+                    </label>
+                    <input type="date" id="req-departure-date" class="req-form-input" required />
+                  </div>
+                  <div class="req-form-group">
+                    <label class="req-form-label" for="req-return-date">
+                      <span class="req-form-icon">📅</span> Return Date
+                    </label>
+                    <input type="date" id="req-return-date" class="req-form-input" required />
+                  </div>
+                </div>
+
+                <div class="req-form-row">
+                  <div class="req-form-group">
+                    <label class="req-form-label" for="req-travelers">
+                      <span class="req-form-icon">👥</span> Travellers
+                    </label>
+                    <input type="number" id="req-travelers" class="req-form-input" placeholder="e.g. 2" min="1" max="50"
+                      value="1" required />
+                  </div>
+                  <div class="req-form-group">
+                    <label class="req-form-label" for="req-budget">
+                      <span class="req-form-icon">💰</span> Budget (₹ INR)
+                    </label>
+                    <input type="number" id="req-budget" class="req-form-input" placeholder="e.g. 50000" min="0"
+                      step="1000" required />
+                  </div>
+                </div>
+
+                <div class="req-form-group">
+                  <label class="req-form-label" for="req-special-requests">
+                    <span class="req-form-icon">📝</span> Special Requests <span
+                      class="req-form-optional">(optional)</span>
+                  </label>
+                  <textarea id="req-special-requests" class="req-form-input req-form-textarea" rows="2"
+                    placeholder="e.g. Prefer vegetarian food, need wheelchair accessibility, want beach-view hotel…"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer modal-req-footer">
+            <button id="btn-submit-requirements" class="btn btn-primary btn-lg req-submit-btn">
+              <span class="req-submit-icon">✨</span>
+              <span class="req-submit-text">Generate My Trip Plan</span>
+              <span class="req-submit-arrow">➤</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ PANEL: CHAT ══════════ -->
+      <section class="panel" id="panel-chat">
+        <div class="panel-header">
+          <h2>💬 Chat with your AI Travel Assistant</h2>
+        </div>
+        <div class="chat-window" id="chat-window" role="log" aria-live="polite">
+          <!-- Messages injected here -->
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-input-wrapper">
+            <textarea id="chat-input" class="chat-input" placeholder="Tell me about your dream trip…" rows="1"
+              aria-label="Chat message input"></textarea>
+            <button id="btn-send" class="btn btn-primary btn-send" aria-label="Send message">
+              <span class="send-icon">➤</span>
+            </button>
+          </div>
+          <div class="chat-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</div>
+        </div>
+      </section>
+
+      <!-- ══════════ PANEL: FLIGHTS ══════════ -->
+      <section class="panel" id="panel-flights">
+        <div class="panel-header">
+          <h2>✈️ Available Flights</h2>
+          <div class="panel-header-actions">
+            <button class="btn btn-outline btn-sm" id="btn-sort-price">💰 Sort by Price</button>
+            <button class="btn btn-outline btn-sm" id="btn-sort-duration">⏱ Sort by Duration</button>
+            <button class="btn btn-outline btn-sm btn-active" id="btn-sort-value">⭐ Best Value</button>
+          </div>
+        </div>
+        <div class="cards-grid" id="flight-cards">
+          <!-- Flight cards injected here -->
+        </div>
+        <div class="panel-footer" id="flight-panel-footer" style="display:none;">
+          <button class="btn btn-secondary" id="btn-back-from-flights">← Back to Chat</button>
+        </div>
+      </section>
+
+      <!-- ══════════ PANEL: DRAFT ITINERARY ══════════ -->
+      <section class="panel" id="panel-draft">
+        <div class="panel-header">
+          <h2>📄 Draft Itinerary</h2>
+          <div class="panel-header-actions">
+            <button class="btn btn-outline btn-sm" id="btn-version-history">🕐 History</button>
+            <button class="btn btn-outline btn-sm" id="btn-edit-draft">✏️ Edit</button>
+            <button class="btn btn-primary btn-sm" id="btn-continue-hotels">🏨 Book Hotels</button>
+          </div>
+        </div>
+        <div class="itinerary-content" id="draft-content">
+          <!-- Draft itinerary rendered here -->
+        </div>
+      </section>
+
+      <!-- ══════════ PANEL: COMPARE ITINERARIES ══════════ -->
+      <section class="panel" id="panel-compare">
+        <div class="panel-header">
+          <h2>🔀 Compare Itinerary Versions</h2>
+          <div class="panel-header-actions">
+            <button class="btn btn-outline btn-sm" id="btn-back-to-draft">← Back to Draft</button>
+          </div>
+        </div>
+        <div id="compare-content">
+          <!-- Comparison UI rendered here by itinerary.js -->
+        </div>
+      </section>
+
+      <!-- ══════════ PANEL: HOTELS ══════════ -->
+      <section class="panel" id="panel-hotels">
+        <div class="panel-header">
+          <h2>🏨 Select Hotels</h2>
+          <div class="panel-header-actions">
+            <button class="btn btn-outline btn-sm" id="btn-sort-hotel-rating">⭐ By Rating</button>
+            <button class="btn btn-outline btn-sm" id="btn-sort-hotel-price">💰 By Price</button>
+            <button class="btn btn-outline btn-sm btn-active" id="btn-sort-hotel-value">🏆 Best Value</button>
+          </div>
+        </div>
+
+        <!-- Day selector tabs -->
+        <div class="day-tabs" id="day-tabs"></div>
+
+        <div class="hotel-selection-info" id="hotel-selection-info">
+          <!-- "Select hotel for Day X" prompt -->
+        </div>
+
+        <div class="cards-grid" id="hotel-cards">
+          <!-- Hotel cards injected here -->
+        </div>
+
+        <!-- Selected hotels per day summary -->
+        <div class="selected-hotels-summary" id="selected-hotels-summary" style="display:none;">
+          <h3>📋 Your Hotel Selections</h3>
+          <div id="selected-hotels-list"></div>
+          <button class="btn btn-primary" id="btn-prebook-hotels" style="margin-top:1rem;">
+            ✅ Confirm &amp; Pre-book All Hotels
+          </button>
+        </div>
+      </section>
+
+      <!-- ══════════ PANEL: FINAL ITINERARY ══════════ -->
+      <section class="panel" id="panel-final">
+        <div class="panel-header">
+          <h2>🎉 Your Complete Itinerary</h2>
+          <div class="panel-header-actions">
+            <button class="btn btn-primary btn-sm" id="btn-download-itinerary">⬇️ Download</button>
+            <button class="btn btn-outline btn-sm" id="btn-start-new-trip-final">🔄 New Trip</button>
+          </div>
+        </div>
+        <div class="itinerary-content" id="final-content">
+          <!-- Final itinerary markdown rendered here -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ MODALS -->
+
+  <!-- Flight confirmation modal -->
+  <div class="modal-overlay" id="modal-flight-confirm" role="dialog" aria-modal="true"
+    aria-labelledby="modal-flight-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-flight-title">✈️ Confirm Flight</h3>
+        <button class="modal-close" id="btn-close-flight-modal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-flight-body">
+        <!-- Flight details filled in dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-cancel-flight">Cancel</button>
+        <button class="btn btn-primary" id="btn-confirm-prebook-flight">✅ Pre-book Flight</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hotel bulk confirm modal -->
+  <div class="modal-overlay" id="modal-hotel-confirm" role="dialog" aria-modal="true"
+    aria-labelledby="modal-hotel-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-hotel-title">🏨 Confirm Hotel Bookings</h3>
+        <button class="modal-close" id="btn-close-hotel-modal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-hotel-body">
+        <!-- Hotel selections summary -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-cancel-hotel">Cancel</button>
+        <button class="btn btn-primary" id="btn-confirm-prebook-hotels">✅ Pre-book All Hotels</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Itinerary modal -->
+  <div class="modal-overlay" id="modal-edit-itinerary" role="dialog" aria-modal="true"
+    aria-labelledby="modal-edit-title">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3 id="modal-edit-title">✏️ Edit Itinerary</h3>
+        <button class="modal-close" id="btn-close-edit-modal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-edit-hint">Change any field below and regenerate a new version. Previous versions are always
+          preserved.</p>
+        <div class="edit-form-grid">
+          <div class="edit-form-group">
+            <label for="edit-destination">📍 Destination</label>
+            <input type="text" id="edit-destination" class="edit-input" placeholder="e.g. Goa, Kerala…" />
+          </div>
+          <div class="edit-form-group">
+            <label for="edit-budget">💰 Budget (₹)</label>
+            <input type="number" id="edit-budget" class="edit-input" placeholder="e.g. 75000" min="0" step="1000" />
+          </div>
+          <div class="edit-form-group">
+            <label for="edit-departure-date">📅 Departure Date</label>
+            <input type="date" id="edit-departure-date" class="edit-input" />
+          </div>
+          <div class="edit-form-group">
+            <label for="edit-return-date">📅 Return Date</label>
+            <input type="date" id="edit-return-date" class="edit-input" />
+          </div>
+          <div class="edit-form-group">
+            <label for="edit-travelers">👥 Travellers</label>
+            <input type="number" id="edit-travelers" class="edit-input" placeholder="e.g. 2" min="1" max="20" />
+          </div>
+          <div class="edit-form-group">
+            <label for="edit-trip-type">🎯 Trip Type</label>
+            <select id="edit-trip-type" class="edit-input">
+              <option value="">— No change —</option>
+              <option value="leisure">Leisure</option>
+              <option value="adventure">Adventure</option>
+              <option value="business">Business</option>
+              <option value="honeymoon">Honeymoon</option>
+              <option value="family">Family</option>
+              <option value="solo">Solo</option>
+            </select>
+          </div>
+          <div class="edit-form-group edit-form-full">
+            <label for="edit-special-requests">📝 Special Requests / Changes</label>
+            <textarea id="edit-special-requests" class="edit-input edit-textarea" rows="3"
+              placeholder="e.g. More beach activities, prefer vegetarian restaurants…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-cancel-edit">Cancel</button>
+        <button class="btn btn-primary" id="btn-confirm-regenerate">✨ Generate New Version</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Version History modal -->
+  <div class="modal-overlay" id="modal-version-history" role="dialog" aria-modal="true"
+    aria-labelledby="modal-history-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-history-title">🕐 Version History</h3>
+        <button class="modal-close" id="btn-close-history-modal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-version-history-body">
+        <!-- Version list rendered here -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-close-history">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loading-overlay" aria-hidden="true">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p class="loading-text" id="loading-text">Planning your trip…</p>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- ═══════════════════════════════════════════════════════ SCRIPTS -->
+  <!-- ?v=20260726b forces the browser to bypass any stale cached version -->
+  <script src="/static/js/api.js?v=20260726b"></script>
+  <script src="/static/js/chat.js?v=20260726b"></script>
+  <script src="/static/js/flight.js?v=20260726b"></script>
+  <script src="/static/js/hotel.js?v=20260726b"></script>
+  <script src="/static/js/itinerary.js?v=20260726b"></script>
+  <script src="/static/js/app.js?v=20260726b"></script>
+
+</body>
+
+</html>
