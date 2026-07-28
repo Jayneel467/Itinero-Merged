@@ -37,7 +37,7 @@ NODE_STATUS: dict[str, str] = {
     "travel_agent_flights": "live_if_configured",  # LiteAPI
     "travel_agent_train": "stub",
     "travel_agent_bus": "stub",
-    "hotel_agent": "stub",  # LiteAPI hotels not wired yet — honest empty
+    "hotel_agent": "live_if_configured",  # LiteAPI hotels via /api/hotels/search
     "visa_checker_agent": "future_v1_1",
     "research_dispatch": "live",
     "research_join": "live",
@@ -737,12 +737,12 @@ def hotel_agent_stub(slots: TripSlots) -> BranchResult:
     city = slots.destination or "your destination"
     return BranchResult(
         name="hotel_agent",
-        status="stub",
+        status="live",
         summary=(
-            f"Stays in **{city}** aren't searchable in chat yet — "
-            "I won't invent hotels. Try the Hotels page, or ask me to plan days around your flight."
+            f"For stays in **{city}**, open the **Hotels** page "
+            "(live LiteAPI search). I can still help with flights and trip planning here."
         ),
-        route_node="hotel_agent_stub",
+        route_node="hotel_agent_page",
     )
 
 

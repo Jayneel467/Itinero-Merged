@@ -3,8 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { hotelService } from "../services/hotelService";
 
 /**
- * Live hotel search against supervisor GET /api/hotels/search.
- * Supervisor returns honest empty/degraded until LiteAPI hotels are live — no mocks.
+ * Live hotel search against supervisor GET /api/hotels/search (LiteAPI).
  */
 export default function useHotelSearch() {
   const [searchParams] = useSearchParams();

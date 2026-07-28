@@ -158,7 +158,7 @@ def get_coordinates2(state:HotelState):
         query=f"{state['area']}, {state['country']}"
 
       elif state.get("destination") and state.get("country"):
-        query=f"{state['destination'], state['country']}"
+        query=f"{state['destination']}, {state['country']}"
 
       elif state.get("destination"):
         query=f"{state['destination']}"
@@ -268,7 +268,7 @@ def fetch_hotels_from_api(state:HotelState)-> List[Dict[str,Any]]:
             params = {
                 "latitude":state["latitude"],
                 "longitude":state["longitude"],
-                "radius": 1000       # radius is in meters
+                "radius": 5000       # radius is in meters
                         
             } 
 
@@ -285,10 +285,9 @@ def fetch_hotels_from_api(state:HotelState)-> List[Dict[str,Any]]:
     
      hotel_data=[]
      if response.status_code == 200:
-        print(response.text)
         hotel_data = response.json()
         print("Success! Found hotels.")
-        print(hotel_data)
+        print("Hotel count:", len(hotel_data.get("data") or []))
      else:
         print(f"Error {response.status_code}: {response.text}")
      return  (hotel_data['data'])

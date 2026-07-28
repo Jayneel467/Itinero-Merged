@@ -6,17 +6,25 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 export const HotelCard = ({ hotel }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const navigate = useNavigate();
-  const images = hotel.images || [hotel.image];
+  const images = (hotel.images && hotel.images.length ? hotel.images : null) || [hotel.image].filter(Boolean);
+  const tags = Array.isArray(hotel.tags) ? hotel.tags : [];
+  const pricePerNight = Number(hotel.pricePerNight) || 0;
+  const totalPrice = Number(hotel.totalPrice) || 0;
+  const rating = hotel.rating ?? "—";
+  const ratingText = hotel.ratingText || "";
+  const reviewCount = hotel.reviewCount ?? 0;
 
   const nextImage = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!images.length) return;
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
   const prevImage = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!images.length) return;
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
@@ -34,9 +42,13 @@ export const HotelCard = ({ hotel }) => {
             className={styles.carouselTrack} 
             style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
           >
-            {images.map((img, idx) => (
+            {images.length ? images.map((img, idx) => (
               <img key={idx} src={img} alt={`${hotel.name} - ${idx}`} className={styles.hotelImage} />
-            ))}
+            )) : (
+              <div className={styles.hotelImage} style={{ background: "#EEF2F6", display: "flex", alignItems: "center", justifyContent: "center", color: "#667085", fontWeight: 600 }}>
+                No photo
+              </div>
+            )}
           </div>
         </div>
         
@@ -63,7 +75,7 @@ export const HotelCard = ({ hotel }) => {
         </button>
         <div className={styles.imageBadgeBottomLeft}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="8" width="18" height="12" rx="2" ry="2"></rect><circle cx="12" cy="14" r="3"></circle><path d="M7 8v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path></svg>
-          {currentImageIndex + 1}/{images.length}
+          {images.length ? `${currentImageIndex + 1}/${images.length}` : "0/0"}
         </div>
       </div>
 
@@ -74,15 +86,15 @@ export const HotelCard = ({ hotel }) => {
           
           <div className={styles.hotelLocationRow}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            <span className={styles.hotelLocation}>{hotel.location}</span>
+            <span className={styles.hotelLocation}>{hotel.location || "Nearby"}</span>
             <span className={styles.locationDot}>•</span>
-            <span className={styles.hotelDistance}>{hotel.distance}</span>
+            <span className={styles.hotelDistance}>{hotel.distance || ""}</span>
           </div>
           
           <div className={styles.hotelRatingRow}>
-            <div className={styles.ratingBadge}>{hotel.rating}</div>
-            <span className={styles.ratingText}>{hotel.ratingText}</span>
-            <span className={styles.reviewCount}>({hotel.reviewCount} reviews)</span>
+            <div className={styles.ratingBadge}>{rating}</div>
+            <span className={styles.ratingText}>{ratingText}</span>
+            <span className={styles.reviewCount}>({reviewCount} reviews)</span>
           </div>
 
           <div className={styles.hotelAmenitiesRow}>
@@ -106,7 +118,7 @@ export const HotelCard = ({ hotel }) => {
           </div>
 
           <div className={styles.hotelTagsRow}>
-            {hotel.tags.map((tag, index) => (
+            {tags.map((tag, index) => (
               <span key={index} className={tag === 'Free cancellation' ? styles.tagGreen : styles.tagGray}>
                 {tag}
               </span>
@@ -116,10 +128,18 @@ export const HotelCard = ({ hotel }) => {
 
         <div className={styles.hotelDetailsRight}>
           <div className={styles.priceLabel}>Per Night</div>
-          <div className={styles.pricePerNight}>₹{hotel.pricePerNight.toLocaleString()}</div>
+          <div className={styles.pricePerNight}>
+            {pricePerNight > 0 ? `₹${pricePerNight.toLocaleString()}` : "Rate on request"}
+          </div>
           <div className={styles.totalPrice}>
-            ₹{hotel.totalPrice.toLocaleString()} total<br />
-            <span className={styles.taxesText}>incl. taxes & fees</span>
+            {totalPrice > 0 ? (
+              <>
+                ₹{totalPrice.toLocaleString()} total<br />
+                <span className={styles.taxesText}>incl. taxes & fees</span>
+              </>
+            ) : (
+              <span className={styles.taxesText}>Live rates vary by room</span>
+            )}
           </div>
           
           <button className={styles.bookNowBtn}>Book Now</button>

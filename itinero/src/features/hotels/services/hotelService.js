@@ -2,8 +2,7 @@ import api from "@/services/api";
 import { ENDPOINTS } from "@/services/endpoints";
 
 /**
- * Hotel API — supervisor gateway. Live inventory not connected yet;
- * search returns honest empty/degraded (no sample properties).
+ * Hotel API — supervisor gateway (LiteAPI live inventory).
  */
 export const hotelService = {
   search: async (params) => {
