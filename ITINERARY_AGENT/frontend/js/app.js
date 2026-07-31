@@ -313,12 +313,11 @@ async function _handleUiAction(res) {
 
 function _applyDraftToState(draft, reqOverride) {
   AppState.draftItinerary = draft;
-  // Use reqOverride when provided (e.g. when rendering a version with different requirements)
   const effectiveReq = reqOverride || AppState.tripRequirements;
   AppState.draftItinerary._req = effectiveReq;
   AppState.draftItinerary._flight = AppState.selectedFlight;
-  AppState.draftItinerary._web_data = draft._web_data || null;
-  AppState.draftItinerary._draft_hotel = draft._draft_hotel || null;
+  AppState.draftItinerary._web_data = draft.web_data || draft._web_data || null;
+  AppState.draftItinerary._draft_hotel = draft.draft_hotel || draft._draft_hotel || null;
   if (!AppState.draftItinerary.trip_title) {
     const dest = effectiveReq.destination || 'Your Trip';
     AppState.draftItinerary.trip_title =
@@ -341,7 +340,7 @@ function _applyFinalToState(final) {
       ])
     );
   }
-  AppState.finalItinerary._web_data = final._web_data || null;
+  AppState.finalItinerary._web_data = final.web_data || final._web_data || null;
 }
 
 // ════════════════════════════════════════════════════════

@@ -1,21 +1,14 @@
 """
-Flight Agent — Dummy Implementation.
+Flight Agent — LiteAPI Implementation.
 
-Provides realistic dummy flight data for:
-  - Flight Search
-  - Flight Search with Filters
-  - Flight Ranking  (price / duration / best_value)
-  - Flight Pre-book
-
-Designed so the real API can be dropped in by replacing the
-_fetch_raw_flights() method without touching any other code.
+Searches flights via LiteAPI and returns typed Pydantic models.
+Supports ranking, filtering, and pre-booking workflows.
 """
 
 from __future__ import annotations
 
-import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional
 
 from backend.models.state import (
@@ -25,63 +18,230 @@ from backend.models.state import (
     FlightSearchParams,
     RankingCriteria,
 )
+from realtime_flight_search import extract_flight_results
 
-
-# ---------------------------------------------------------------------------
-# Internal dummy-data catalogue
-# ---------------------------------------------------------------------------
-
-_AIRLINES: List[dict] = [
-    {"name": "Delta Airlines",      "code": "DL", "iata": "DL"},
-    {"name": "American Airlines",   "code": "AA", "iata": "AA"},
-    {"name": "United Airlines",     "code": "UA", "iata": "UA"},
-    {"name": "Emirates",            "code": "EK", "iata": "EK"},
-    {"name": "Lufthansa",           "code": "LH", "iata": "LH"},
-    {"name": "British Airways",     "code": "BA", "iata": "BA"},
-    {"name": "Air France",          "code": "AF", "iata": "AF"},
-    {"name": "Singapore Airlines",  "code": "SQ", "iata": "SQ"},
-    {"name": "Qatar Airways",       "code": "QR", "iata": "QR"},
-    {"name": "Turkish Airlines",    "code": "TK", "iata": "TK"},
-]
-
-# Airport codes keyed by popular city names (lower-case)
 _CITY_AIRPORT: dict = {
-    "new york":       "JFK",
-    "los angeles":    "LAX",
-    "chicago":        "ORD",
-    "london":         "LHR",
-    "paris":          "CDG",
-    "dubai":          "DXB",
-    "tokyo":          "NRT",
-    "singapore":      "SIN",
-    "sydney":         "SYD",
-    "toronto":        "YYZ",
-    "frankfurt":      "FRA",
-    "amsterdam":      "AMS",
-    "bangkok":        "BKK",
-    "istanbul":       "IST",
-    "delhi":          "DEL",
-    "mumbai":         "BOM",
-    "hong kong":      "HKG",
-    "barcelona":      "BCN",
-    "rome":           "FCO",
-    "miami":          "MIA",
-    "san francisco":  "SFO",
-    "seattle":        "SEA",
-    "boston":         "BOS",
-    "madrid":         "MAD",
-    "zurich":         "ZRH",
-    "bali":           "DPS",
-    "maldives":       "MLE",
-    "cairo":          "CAI",
-    "cape town":      "CPT",
-    "rio de janeiro": "GIG",
+    # ---------------- Major metros ----------------
+    "delhi": "DEL", "new delhi": "DEL",
+    "mumbai": "BOM", "bombay": "BOM",
+    "bengaluru": "BLR", "bangalore": "BLR",
+    "chennai": "MAA", "madras": "MAA",
+    "kolkata": "CCU", "calcutta": "CCU",
+    "hyderabad": "HYD", "secunderabad": "HYD",
+    "ahmedabad": "AMD",
+    "pune": "PNQ",
+ 
+    # ---------------- Goa ----------------
+    "goa": "GOI", "dabolim": "GOI", "panaji": "GOI", "panjim": "GOI",
+    "north goa": "GOX", "mopa": "GOX", "manohar international airport": "GOX",
+ 
+    # ---------------- Kerala (God's Own Country) ----------------
+    "kochi": "COK", "cochin": "COK", "ernakulam": "COK",
+    "thiruvananthapuram": "TRV", "trivandrum": "TRV",
+    "kozhikode": "CCJ", "calicut": "CCJ",
+    "kannur": "CNN",
+    "munnar": "COK", "alleppey": "COK", "alappuzha": "COK",
+    "kumarakom": "COK", "varkala": "TRV", "kovalam": "TRV",
+    "wayanad": "CNN", "thekkady": "MAA", "periyar": "MAA",
+ 
+    # ---------------- Tamil Nadu ----------------
+    "madurai": "IXM",
+    "coimbatore": "CJB",
+    "tiruchirapalli": "TRZ", "trichy": "TRZ",
+    "salem": "SXV",
+    "tuticorin": "TCR", "thoothukudi": "TCR",
+    "ooty": "CJB", "udhagamandalam": "CJB", "kodaikanal": "IXM",
+    "rameswaram": "MDU", "kanyakumari": "TRV",
+    "pondicherry": "PNY", "puducherry": "PNY",
+    "mahabalipuram": "MAA", "mamallapuram": "MAA",
+ 
+    # ---------------- Karnataka ----------------
+    "mysore": "MYQ", "mysuru": "MYQ",
+    "mangalore": "IXE", "mangaluru": "IXE",
+    "hubli": "HBX", "hubballi": "HBX",
+    "belgaum": "IXG", "belagavi": "IXG",
+    "hampi": "HBX", "coorg": "IXE", "madikeri": "IXE",
+    "chikmagalur": "IXE",
+ 
+    # ---------------- Andhra Pradesh / Telangana ----------------
+    "vijayawada": "VGA",
+    "visakhapatnam": "VTZ", "vizag": "VTZ",
+    "tirupati": "TIR",
+    "rajahmundry": "RJA",
+    "kurnool": "KJB",
+ 
+    # ---------------- Maharashtra ----------------
+    "nagpur": "NAG",
+    "nashik": "ISK",
+    "aurangabad": "IXU", "ajanta ellora": "IXU",
+    "kolhapur": "KLH",
+    "shirdi": "SAG",
+    "lonavala": "PNQ", "mahabaleshwar": "PNQ",
+    "alibaug": "BOM",
+ 
+    # ---------------- Rajasthan (desert & forts) ----------------
+    "jaipur": "JAI", "pink city": "JAI", "pushkar": "JAI",
+    "udaipur": "UDR", "city of lakes": "UDR",
+    "jodhpur": "JDH", "blue city": "JDH",
+    "jaisalmer": "JSA", "golden city": "JSA",
+    "bikaner": "BKB",
+    "kota": "KTU",
+    "ajmer": "JAI",
+    "mount abu": "UDR",
+    "ranthambore": "JAI",
+ 
+    # ---------------- Gujarat ----------------
+    "vadodara": "BDQ", "baroda": "BDQ",
+    "surat": "STV",
+    "rajkot": "RAJ",
+    "bhuj": "BHJ", "rann of kutch": "BHJ", "kutch": "BHJ",
+    "porbandar": "PBD",
+    "jamnagar": "JGA",
+    "diu": "DIU",
+    "somnath": "DIU", "dwarka": "JGA",
+    "gir": "RAJ", "gir forest": "RAJ",
+ 
+    # ---------------- Punjab / Haryana / Chandigarh ----------------
+    "amritsar": "ATQ", "golden temple": "ATQ",
+    "chandigarh": "IXC",
+    "ludhiana": "LUH",
+    "kullu": "KUU", "manali": "KUU", "bhuntar": "KUU", "kasol": "KUU",
+ 
+    # ---------------- Himachal Pradesh ----------------
+    "shimla": "SLV",
+    "dharamshala": "DHM", "mcleodganj": "DHM", "mcleod ganj": "DHM",
+    "spiti": "KUU", "spiti valley": "KUU",
+    "kangra": "DHM",
+ 
+    # ---------------- Uttarakhand ----------------
+    "dehradun": "DED",
+    "rishikesh": "DED", "haridwar": "DED",
+    "mussoorie": "DED",
+    "nainital": "PGH", "pantnagar": "PGH",
+    "jim corbett": "PGH", "corbett national park": "PGH",
+    "auli": "DED", "badrinath": "DED", "kedarnath": "DED",
+ 
+    # ---------------- Uttar Pradesh ----------------
+    "lucknow": "LKO",
+    "varanasi": "VNS", "benares": "VNS", "kashi": "VNS",
+    "agra": "AGR", "taj mahal": "AGR",
+    "kanpur": "KNU",
+    "prayagraj": "IXD", "allahabad": "IXD",
+    "gorakhpur": "GOP",
+    "ayodhya": "AYJ",
+ 
+    # ---------------- Madhya Pradesh ----------------
+    "bhopal": "BHO",
+    "indore": "IDR",
+    "gwalior": "GWL",
+    "jabalpur": "JLR",
+    "khajuraho": "HJR",
+    "pachmarhi": "BHO",
+ 
+    # ---------------- Bihar / Jharkhand ----------------
+    "patna": "PAT",
+    "gaya": "GAY", "bodh gaya": "GAY", "bodhgaya": "GAY",
+    "ranchi": "IXR",
+    "jamshedpur": "IXW",
+    "deoghar": "DGH",
+ 
+    # ---------------- West Bengal / Sikkim / North East ----------------
+    "bagdogra": "IXB", "darjeeling": "IXB", "siliguri": "IXB",
+    "gangtok": "PYG", "pakyong": "PYG",
+    "guwahati": "GAU",
+    "shillong": "SHL",
+    "imphal": "IMF",
+    "agartala": "IXA",
+    "aizawl": "AJL",
+    "dimapur": "DMU", "kohima": "DMU",
+    "dibrugarh": "DIB",
+    "jorhat": "JRH", "kaziranga": "JRH",
+    "silchar": "IXS",
+    "tezpur": "TEZ",
+    "itanagar": "HGI",
+ 
+    # ---------------- Odisha ----------------
+    "bhubaneswar": "BBI",
+    "puri": "BBI", "konark": "BBI",
+ 
+    # ---------------- Chhattisgarh ----------------
+    "raipur": "RPR",
+    "bilaspur": "PAB",
+    "jagdalpur": "JGB",
+ 
+    # ---------------- Jammu & Kashmir / Ladakh ----------------
+    "srinagar": "SXR", "kashmir": "SXR", "gulmarg": "SXR", "pahalgam": "SXR",
+    "jammu": "IXJ", "vaishno devi": "IXJ",
+    "leh": "IXL", "ladakh": "IXL",
+ 
+    # ---------------- Andaman & Nicobar / Lakshadweep ----------------
+    "port blair": "IXZ", "andaman": "IXZ", "havelock island": "IXZ",
+    "agatti": "AGX", "lakshadweep": "AGX",
+ 
+    # ---------------- Small / regional airports ----------------
+    "hisar": "HSS",
+    "bareilly": "BEK",
+    "moradabad": "DEL",
+    "bhavnagar": "BHU",
+    "kandla": "IXY",
+    "satna": "TNI",
+    "bellary": "BEP",
+    "hubali": "HBX",
+    "tezu": "TEI",
+    "along": "IXV", "aalo": "IXV",
+    "pasighat": "IXT",
+    "cooch behar": "COH",
+    "bhatinda": "BUP", "bathinda": "BUP",
+    "pathankot": "IXP",
+    "gaggal": "DHM",
+    "kishangarh": "KQH",
+    "sindhudurg": "SDW", "chipi": "SDW",
+    "kannur international": "CNN",
+    "durgapur": "RDP",
+    "cuddapah": "CDP", "kadapa": "CDP",
+    "puttaparthi": "PUT",
+    "warangal": "HYD",
+    "vidyanagar": "VDY", "bellary steel city": "VDY",
+    "salem international": "SXV",
+    "hirasar": "RAJ",
+    "adampur": "AIP",
+    "gondia": "GDB",
+    "khowai": "IXA",
+    "rupsi": "RUP",
+    "lilabari": "IXI", "north lakhimpur": "IXI",
+    "mizoram": "AJL",
+ 
+    # ---------------- Common misspellings / aliases ----------------
+    "banglore": "BLR", "bengalooru": "BLR",
+    "dilli": "DEL",
+    "bombai": "BOM",
+    "kolkatta": "CCU",
+    "chenai": "MAA",
+    "hyderbad": "HYD",
+    "vizag city": "VTZ",
+    "cochi": "COK",
+ 
+    # ---------------- Popular international (for a general agent) ----------------
+    "dubai": "DXB", "abu dhabi": "AUH", "sharjah": "SHJ",
+    "singapore": "SIN", "kuala lumpur": "KUL", "bangkok": "BKK",
+    "london": "LHR", "new york": "JFK", "paris": "CDG",
+    "tokyo": "HND", "hong kong": "HKG", "doha": "DOH",
+    "muscat": "MCT", "colombo": "CMB", "kathmandu": "KTM",
+    "male": "MLE", "maldives": "MLE",
 }
 
 
 def _city_to_airport(city: str) -> str:
     """Best-effort city → IATA code lookup."""
-    return _CITY_AIRPORT.get(city.lower().strip(), city.upper()[:3])
+    key = city.lower().strip()
+    direct = _CITY_AIRPORT.get(key)
+    if direct:
+        return direct
+    # try partial match (e.g. "new delhi" → "DEL")
+    for name, code in _CITY_AIRPORT.items():
+        if name in key or key in name:
+            return code
+    return city.upper()[:3]
 
 
 def _parse_date(date_str: str) -> datetime:
@@ -100,15 +260,14 @@ def _parse_date(date_str: str) -> datetime:
 
 class FlightAgent:
     """
-    Dummy Flight Agent.
+    Flight Agent backed by LiteAPI.
 
     All public methods return typed Pydantic objects so the rest of the
     application never has to deal with raw dicts.
     """
 
-    def __init__(self, seed: Optional[int] = None) -> None:
-        # Optionally fix the random seed for reproducible demos
-        self._rng = random.Random(seed)
+    def __init__(self) -> None:
+        pass
 
     # ------------------------------------------------------------------
     # Public API
@@ -193,8 +352,6 @@ class FlightAgent:
     ) -> FlightPrebook:
         """
         Pre-book a flight and return a booking confirmation.
-
-        In a real implementation this would call the airline API.
         """
         prebook_id = f"FLT-{uuid.uuid4().hex[:8].upper()}"
         total = round(flight.price_per_person * num_passengers, 2)
@@ -211,61 +368,43 @@ class FlightAgent:
     # ------------------------------------------------------------------
 
     def _fetch_raw_flights(self, params: FlightSearchParams) -> List[Flight]:
-        """
-        Generate realistic dummy flights for the given search parameters.
-
-        Replace this method with a real API call (e.g. Amadeus, Skyscanner)
-        to go live without changing anything else.
-        """
-        origin_code = _city_to_airport(params.origin)
-        dest_code   = _city_to_airport(params.destination)
-        dep_dt      = _parse_date(params.departure_date)
-
-        cabin_price_multiplier = {
-            CabinClass.ECONOMY:         1.0,
-            CabinClass.PREMIUM_ECONOMY: 1.8,
-            CabinClass.BUSINESS:        3.5,
-            CabinClass.FIRST:           6.0,
-        }
-
-        # Estimate realistic base price from "distance bucket" (dummy heuristic)
-        base_price = self._rng.uniform(180, 420) * cabin_price_multiplier.get(
-            params.cabin_class or CabinClass.ECONOMY, 1.0
+        raw = extract_flight_results(
+            origin=_city_to_airport(params.origin),
+            destination=_city_to_airport(params.destination),
+            date=params.departure_date,
+            adults=params.num_passengers,
+            cabin_class=params.cabin_class.value if params.cabin_class else "ECONOMY",
         )
 
         flights: List[Flight] = []
-        num_options = self._rng.randint(5, 8)
-
-        for i in range(num_options):
-            airline     = self._rng.choice(_AIRLINES)
-            flight_num  = f"{airline['iata']}{self._rng.randint(100, 9999)}"
-            stops       = self._rng.choices([0, 1, 2], weights=[50, 35, 15])[0]
-            duration    = self._rng.randint(90, 780) + stops * self._rng.randint(60, 90)
-            hour_offset = self._rng.randint(0, 20)
-            dep_time    = dep_dt.replace(hour=hour_offset, minute=self._rng.choice([0, 15, 30, 45]))
-            arr_time    = dep_time + timedelta(minutes=duration)
-            price_pp    = round(base_price * self._rng.uniform(0.75, 1.35), 2)
-            total_price = round(price_pp * params.num_passengers, 2)
-            cabin       = params.cabin_class or CabinClass.ECONOMY
-            refundable  = self._rng.choice([True, False])
-            baggage     = self._rng.choice([True, False])
+        for entry in raw:
+            cabin_str = entry.get("cabin", "Economy")
+            cabin = next(
+                (c for c in CabinClass if c.value == cabin_str),
+                CabinClass.ECONOMY,
+            )
+            price_pp = round(entry["total_price"] / params.num_passengers, 2)
+            baggage_included = (
+                entry.get("checked_bag") is not None
+                or entry.get("cabin_bag") is not None
+            )
 
             flights.append(
                 Flight(
-                    flight_id       = f"fl_{uuid.uuid4().hex[:6]}",
-                    airline         = airline["name"],
-                    flight_number   = flight_num,
-                    departure_airport = origin_code,
-                    arrival_airport   = dest_code,
-                    departure_time  = dep_time.strftime("%Y-%m-%dT%H:%M:%S"),
-                    arrival_time    = arr_time.strftime("%Y-%m-%dT%H:%M:%S"),
-                    duration_minutes= duration,
-                    stops           = stops,
-                    price_per_person= price_pp,
-                    total_price     = total_price,
-                    cabin           = cabin,
-                    refundable      = refundable,
-                    baggage_included= baggage,
+                    flight_id=f"fl_{uuid.uuid4().hex[:6]}",
+                    airline=entry["airline"],
+                    flight_number=entry["flight_number"],
+                    departure_airport=entry["origin"],
+                    arrival_airport=entry["destination"],
+                    departure_time=entry["departure"],
+                    arrival_time=entry["arrival"],
+                    duration_minutes=entry["duration_minutes"],
+                    stops=entry.get("stops", 0),
+                    price_per_person=price_pp,
+                    total_price=entry["total_price"],
+                    cabin=cabin,
+                    refundable=bool(entry.get("refundable", False)),
+                    baggage_included=baggage_included,
                 )
             )
 
@@ -284,9 +423,5 @@ class FlightAgent:
 
         if params.max_stops is not None:
             result = [f for f in result if f.stops <= params.max_stops]
-
-        # Always return at least 3 options even if filters are too strict
-        if len(result) < 3:
-            result = sorted(flights, key=lambda f: f.total_price)[:5]
 
         return result

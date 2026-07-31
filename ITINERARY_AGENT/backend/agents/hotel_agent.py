@@ -1,19 +1,12 @@
 """
-Hotel Agent — Dummy Implementation.
+Hotel Agent — LiteAPI Implementation.
 
-Provides realistic dummy hotel data for:
-  - Hotel Search
-  - Hotel Search with Filters
-  - Hotel Ranking  (rating / price / distance)
-  - Hotel Pre-book
-
-Designed so the real API can be dropped in by replacing the
-_fetch_raw_hotels() method without touching any other code.
+Searches hotels via LiteAPI and returns typed Pydantic models.
+Supports ranking, filtering, and pre-booking workflows.
 """
 
 from __future__ import annotations
 
-import random
 import uuid
 from datetime import date
 from typing import List, Optional
@@ -24,95 +17,7 @@ from backend.models.state import (
     HotelSearchParams,
     RankingCriteria,
 )
-
-
-# ---------------------------------------------------------------------------
-# Dummy hotel data catalogue
-# ---------------------------------------------------------------------------
-
-_HOTEL_TEMPLATES: List[dict] = [
-    {
-        "name_prefix": "Grand",
-        "brand": "Hyatt",
-        "type": "luxury",
-        "base_price": 320,
-        "base_rating": 4.7,
-        "amenities": ["Pool", "Spa", "Gym", "Free WiFi", "Concierge", "Room Service", "Restaurant"],
-    },
-    {
-        "name_prefix": "The",
-        "brand": "Marriott",
-        "type": "business",
-        "base_price": 210,
-        "base_rating": 4.4,
-        "amenities": ["Gym", "Free WiFi", "Business Center", "Restaurant", "Bar"],
-    },
-    {
-        "name_prefix": "Royal",
-        "brand": "Hilton",
-        "type": "luxury",
-        "base_price": 290,
-        "base_rating": 4.6,
-        "amenities": ["Pool", "Spa", "Gym", "Free WiFi", "Airport Shuttle", "Restaurant"],
-    },
-    {
-        "name_prefix": "City",
-        "brand": "Comfort Inn",
-        "type": "budget",
-        "base_price": 95,
-        "base_rating": 3.8,
-        "amenities": ["Free WiFi", "Breakfast Included", "Parking"],
-    },
-    {
-        "name_prefix": "Boutique",
-        "brand": "Design Hotel",
-        "type": "boutique",
-        "base_price": 175,
-        "base_rating": 4.3,
-        "amenities": ["Free WiFi", "Bar", "Rooftop", "Concierge"],
-    },
-    {
-        "name_prefix": "Harbour",
-        "brand": "Sheraton",
-        "type": "resort",
-        "base_price": 260,
-        "base_rating": 4.5,
-        "amenities": ["Beach Access", "Pool", "Spa", "Free WiFi", "Water Sports", "Restaurant"],
-    },
-    {
-        "name_prefix": "Palace",
-        "brand": "Four Seasons",
-        "type": "ultra-luxury",
-        "base_price": 550,
-        "base_rating": 4.9,
-        "amenities": ["Pool", "Spa", "Butler Service", "Free WiFi", "Helipad", "Fine Dining"],
-    },
-    {
-        "name_prefix": "Urban",
-        "brand": "ibis",
-        "type": "budget",
-        "base_price": 75,
-        "base_rating": 3.5,
-        "amenities": ["Free WiFi", "24h Reception", "Breakfast Available"],
-    },
-]
-
-_ROOM_TYPES = [
-    "Standard Double",
-    "Deluxe King",
-    "Superior Twin",
-    "Junior Suite",
-    "Executive Room",
-    "Family Room",
-    "Ocean View Room",
-    "Penthouse Suite",
-]
-
-_STREET_NAMES = [
-    "Main Street", "Ocean Drive", "Park Avenue", "Central Boulevard",
-    "Harbour Road", "Garden Lane", "Royal Mile", "Beach Road",
-    "Heritage Walk", "Sunset Strip",
-]
+from realtime_hotel_search import search_hotels
 
 
 # ---------------------------------------------------------------------------
@@ -121,15 +26,13 @@ _STREET_NAMES = [
 
 class HotelAgent:
     """
-    Dummy Hotel Agent.
+    Hotel Agent backed by LiteAPI.
 
     All public methods return typed Pydantic objects.
-    Replace _fetch_raw_hotels() with a real API call (e.g. Booking.com,
-    Expedia) to go live.
     """
 
-    def __init__(self, seed: Optional[int] = None) -> None:
-        self._rng = random.Random(seed)
+    def __init__(self) -> None:
+        pass
 
     # ------------------------------------------------------------------
     # Public API
@@ -213,8 +116,6 @@ class HotelAgent:
     ) -> HotelPrebook:
         """
         Pre-book a hotel room and return a booking confirmation.
-
-        Replace with real API call to go live.
         """
         prebook_id  = f"HTL-{uuid.uuid4().hex[:8].upper()}"
         nights      = self._calc_nights(check_in, check_out)
@@ -235,49 +136,36 @@ class HotelAgent:
     # ------------------------------------------------------------------
 
     def _fetch_raw_hotels(self, params: HotelSearchParams) -> List[Hotel]:
-        """
-        Generate realistic dummy hotels for the given search parameters.
-
-        Replace this method with a real Booking.com / Expedia API call
-        without changing any other part of the agent.
-        """
         nights = self._calc_nights(params.check_in, params.check_out)
-        destination_title = params.destination.title()
-        num_options = self._rng.randint(6, 10)
+
+        raw_hotels = search_hotels(
+            city_name=params.destination,
+            country_code="IN",
+            checkin=params.check_in,
+            checkout=params.check_out,
+            adults=params.num_guests,
+        )
 
         hotels: List[Hotel] = []
-        templates_used = self._rng.sample(_HOTEL_TEMPLATES, min(num_options, len(_HOTEL_TEMPLATES)))
-
-        for tmpl in templates_used:
-            street    = self._rng.choice(_STREET_NAMES)
-            num       = self._rng.randint(1, 200)
-            address   = f"{num} {street}, {destination_title}"
-            distance  = round(self._rng.uniform(0.3, 8.5), 1)
-            ppn       = round(tmpl["base_price"] * self._rng.uniform(0.8, 1.25), 2)
-            rating    = round(min(5.0, tmpl["base_rating"] + self._rng.uniform(-0.3, 0.3)), 1)
-            room_type = self._rng.choice(_ROOM_TYPES)
-            # Shuffle amenities list slightly
-            amenities = list(tmpl["amenities"])
-            self._rng.shuffle(amenities)
-            amenities = amenities[:self._rng.randint(3, len(amenities))]
-            total     = round(ppn * nights, 2)
-            hotel_name = (
-                f"{tmpl['name_prefix']} {destination_title} {tmpl['brand']}"
-            )
+        for raw in raw_hotels:
+            rating = (raw["rating"] or 0) / 2.0
+            total_price = raw["price"] or 0.0
+            price_per_night = round(total_price / nights, 2) if nights else total_price
 
             hotels.append(
                 Hotel(
-                    hotel_id                = f"htl_{uuid.uuid4().hex[:6]}",
-                    name                    = hotel_name,
-                    rating                  = rating,
-                    address                 = address,
-                    distance_from_center_km = distance,
-                    price_per_night         = ppn,
-                    amenities               = amenities,
-                    room_type               = room_type,
+                    hotel_id                = raw["hotel_id"],
+                    name                    = raw["hotel_name"],
+                    rating                  = round(min(rating, 5.0), 1),
+                    address                 = raw["address"] or "",
+                    distance_from_center_km = 0.0,
+                    price_per_night         = price_per_night,
+                    amenities               = [raw["board_name"]] if raw["board_name"] else [],
+                    room_type               = raw["room_name"] or "",
                     check_in                = params.check_in,
                     check_out               = params.check_out,
-                    total_price             = total,
+                    total_price             = total_price,
+                    image_placeholder       = raw.get("main_photo") or "🏨",
                 )
             )
 
@@ -296,10 +184,6 @@ class HotelAgent:
 
         if params.min_rating is not None:
             result = [h for h in result if h.rating >= params.min_rating]
-
-        # Always return at least 3 options
-        if len(result) < 3:
-            result = sorted(hotels, key=lambda h: h.rating, reverse=True)[:5]
 
         return result
 

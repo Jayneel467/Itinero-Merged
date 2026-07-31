@@ -1,116 +1,131 @@
-"""
-FastAPI application entry point.
-
-Run with:
-    uvicorn backend.main:app --reload --port 8000
-"""
-
 from __future__ import annotations
 
 import os
-from pathlib import Path
+import sys
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from langgraph.types import Command
 
-from backend.api.routes import router
 from backend.config import settings
+from backend.graph.graph import get_graph
+from backend.models.state import AppState, WorkflowStep
 
-# ---------------------------------------------------------------------------
-# Set OpenAI key before any langchain import resolves it
-# ---------------------------------------------------------------------------
-if settings.openai_api_key:
-    os.environ.setdefault("OPENAI_API_KEY", settings.openai_api_key)
 
-# ---------------------------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------------------------
+def run_travel_planner() -> None:
+    """
+    Single entry point for the AI Travel Planner.
 
-app = FastAPI(
-    title="AI Travel Itinerary Planner",
-    description=(
-        "Intelligent trip planning powered by GPT-4o-mini + LangGraph. "
-        "Collects requirements, searches flights & hotels (dummy data), "
-        "and generates a professional day-by-day travel itinerary."
-    ),
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
+    Launches a terminal-based conversation where LangGraph manages the
+    complete travel planning process using interrupt()/resume() for every
+    user interaction.  No HTTP server, no REST endpoints, no frontend.
+    """
+    # Ensure API keys are set
+    if settings.openai_api_key:
+        os.environ.setdefault("OPENAI_API_KEY", settings.openai_api_key)
 
-# ---------------------------------------------------------------------------
-# CORS — allow the frontend (same origin in prod, any origin in dev)
-# ---------------------------------------------------------------------------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    graph = get_graph()
+    config: Dict[str, Any] = {"configurable": {"thread_id": "travel-planner-main"}}
 
-# ---------------------------------------------------------------------------
-# API routes — all prefixed with /api
-# ---------------------------------------------------------------------------
-app.include_router(router, prefix="/api")
+    print("=" * 72)
+    print("  {}  AI TRAVEL PLANNER".format(chr(9992)))
+    print("  Intelligent trip planning powered by GPT-4o-mini + LangGraph")
+    print("=" * 72)
+    print()
 
-# ---------------------------------------------------------------------------
-# Serve the frontend static files
-# ---------------------------------------------------------------------------
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+    initial_state = AppState()
+    first = True
+    user_input = ""
 
-# No-cache headers so browsers always fetch the latest JS/CSS during development
-_NO_CACHE_HEADERS = {
-    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-    "Pragma":        "no-cache",
-    "Expires":       "0",
-}
+    while True:
+        try:
+            if first:
+                result = graph.invoke(initial_state, config)
+                first = False
+            else:
+                result = graph.invoke(Command(resume=user_input), config)
+        except Exception as exc:
+            print(f"\n[ERROR] {exc}")
+            break
 
-if FRONTEND_DIR.exists():
-    # Serve static assets (CSS, JS) from the frontend directory
-    app.mount(
-        "/static",
-        StaticFiles(directory=str(FRONTEND_DIR), html=True),
-        name="static",
-    )
+        state_snapshot = graph.get_state(config)
 
-    @app.get("/", include_in_schema=False)
-    async def serve_index() -> FileResponse:
-        """Serve the SPA entry point with no-cache headers."""
-        return FileResponse(
-            str(FRONTEND_DIR / "index.html"),
-            headers=_NO_CACHE_HEADERS,
+        # Print assistant messages produced in this step
+        _print_state_output(result)
+
+        # --- Determine whether the graph is waiting or done ---
+        tasks = state_snapshot.tasks if hasattr(state_snapshot, "tasks") else ()
+        has_interrupts = any(
+            getattr(t, "interrupts", None) for t in (tasks or ())
+        )
+        has_next = bool(
+            getattr(state_snapshot, "next", None)
         )
 
-    @app.get("/{full_path:path}", include_in_schema=False)
-    async def serve_spa(full_path: str, request: Request) -> FileResponse:
-        """Fall-through route — serve index.html for client-side navigation."""
-        index = FRONTEND_DIR / "index.html"
-        if index.exists():
-            return FileResponse(str(index), headers=_NO_CACHE_HEADERS)
-        return JSONResponse({"error": "Frontend not found"}, status_code=404)
+        if not has_interrupts and not has_next:
+            break
+
+        # --- Display interrupt value(s) ---
+        for task in (tasks or ()):
+            for interrupt_val in (getattr(task, "interrupts", None) or ()):
+                val = _extract_interrupt_value(interrupt_val)
+                if val:
+                    print(f"\n{val}")
+
+        # --- Read user input ---
+        try:
+            user_input = input("\n> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n\nGoodbye!")
+            break
+
+        if user_input.lower() in ("exit", "quit", "bye"):
+            print("Goodbye! Safe travels! {} ".format(chr(9992)))
+            break
+
+    _print_completion(state_snapshot)
 
 
 # ---------------------------------------------------------------------------
-# Health check
+# Helpers
 # ---------------------------------------------------------------------------
 
-@app.get("/health", tags=["Health"])
-async def health_check() -> dict:
-    return {"status": "ok", "service": "AI Travel Itinerary Planner"}
+def _print_state_output(result: Any) -> None:
+    if result is None:
+        return
+    if isinstance(result, dict):
+        msg = result.get("current_assistant_message", "") or ""
+        if msg.strip():
+            print(f"\n{msg}")
+    elif hasattr(result, "current_assistant_message"):
+        msg = getattr(result, "current_assistant_message", "") or ""
+        if msg.strip():
+            print(f"\n{msg}")
 
 
-# ---------------------------------------------------------------------------
-# Dev server entry point
-# ---------------------------------------------------------------------------
+def _extract_interrupt_value(interrupt_val: Any) -> str:
+    if hasattr(interrupt_val, "value"):
+        return str(interrupt_val.value)
+    return str(interrupt_val)
+
+
+def _print_completion(snapshot: Any) -> None:
+    if not snapshot or not hasattr(snapshot, "values"):
+        return
+    values = snapshot.values
+    if isinstance(values, dict):
+        step = values.get("workflow_step", "")
+    else:
+        step = getattr(values, "workflow_step", "")
+    if "completed" in str(step).lower() or getattr(snapshot, "next", None) is None:
+        print()
+        print("=" * 72)
+        print("  {} TRIP PLANNING COMPLETE".format(chr(10004)))
+        print("=" * 72)
+
+
+# ===========================================================================
+# CLI entry point
+# ===========================================================================
+
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        "backend.main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.debug,
-    )
+    run_travel_planner()

@@ -352,9 +352,10 @@ class ItineraryAgent:
             day_data, req, days, breakdown, weather_list, hotel_label
         )
 
+        dest_title = dest.title()
         draft = DraftItinerary(
             trip_summary     = (
-                f"{days}-day {trip_type_str.title()} trip to {dest.title()} "
+                f"{days}-day {trip_type_str.title()} trip to {dest_title} "
                 f"for {req.num_travelers} traveller(s)"
             ),
             flight_info      = flight_ctx,
@@ -363,6 +364,10 @@ class ItineraryAgent:
             budget_breakdown = breakdown,
             weather          = weather_list,
             notes            = _default_notes(req),
+            web_data         = web_data,
+            draft_hotel      = draft_hotel.model_dump() if draft_hotel else None,
+            travel_tips      = [],
+            trip_title       = f"✈️ {dest_title} Travel Itinerary",
         )
         draft.markdown = _render_draft_markdown(draft, state, web_data, draft_hotel)
         return draft
@@ -445,10 +450,11 @@ class ItineraryAgent:
         web_tips  = _distil_tips(web_data.get("tips", []))
         all_tips  = web_tips + _default_travel_tips(dest)
 
+        dest_title = dest.title()
         final = FinalItinerary(
-            trip_title      = f"✈️ {dest.title()} — {days}-Day {trip_type_str.title()} Trip",
+            trip_title      = f"✈️ {dest_title} — {days}-Day {trip_type_str.title()} Trip",
             trip_summary    = (
-                f"{days}-day {trip_type_str.title()} trip from {req.departure_city} to {dest.title()} "
+                f"{days}-day {trip_type_str.title()} trip from {req.departure_city} to {dest_title} "
                 f"for {req.num_travelers} traveller(s) · "
                 f"{req.departure_date} → {req.return_date}"
             ),
@@ -460,6 +466,7 @@ class ItineraryAgent:
             weather         = weather_list,
             travel_tips     = all_tips,
             important_notes = _default_notes(req),
+            web_data        = web_data,
         )
         final.markdown = _render_final_markdown(final, state, web_data)
         return final

@@ -26,7 +26,10 @@ class WorkflowStep(str, Enum):
     FLIGHT_RANKING        = "flight_ranking"
     FLIGHT_SELECTION      = "flight_selection"
     FLIGHT_PREBOOK        = "flight_prebook"
+    FLIGHT_PREBOOKED       = "flight_prebooked"
     DRAFT_ITINERARY       = "draft_itinerary"
+    DRAFT_CONFIRM         = "draft_confirm"
+    EDIT_TRIP_DETAILS     = "edit_trip_details"
     HOTEL_SEARCH          = "hotel_search"
     HOTEL_RANKING         = "hotel_ranking"
     HOTEL_SELECTION       = "hotel_selection"
@@ -273,6 +276,10 @@ class DraftItinerary(BaseModel):
     weather:          List[WeatherInfo]          = Field(default_factory=list)
     notes:            List[str]                  = Field(default_factory=list)
     markdown:         str                        = ""   # pre-rendered markdown
+    web_data:         Optional[Dict[str, Any]]   = None  # Tavily research data for frontend
+    draft_hotel:      Optional[Dict[str, Any]]   = None  # suggested hotel snapshot for frontend
+    travel_tips:      List[str]                  = Field(default_factory=list)
+    trip_title:       str                        = ""
 
 
 class FinalItinerary(BaseModel):
@@ -288,6 +295,7 @@ class FinalItinerary(BaseModel):
     travel_tips:      List[str]                   = Field(default_factory=list)
     important_notes:  List[str]                   = Field(default_factory=list)
     markdown:         str                         = ""   # pre-rendered markdown
+    web_data:         Optional[Dict[str, Any]]    = None  # Tavily research data for frontend
 
 
 # ---------------------------------------------------------------------------

@@ -2,8 +2,7 @@
  * api.js — Thin REST client for the FastAPI backend.
  *
  * All functions return the parsed JSON body on success or throw an Error
- * with a human-readable message on failure.  The base URL auto-detects
- * the current host so no hardcoded ports are needed.
+ * with a human-readable message on failure.
  */
 
 const API_BASE = `${window.location.protocol}//${window.location.host}/api`;
