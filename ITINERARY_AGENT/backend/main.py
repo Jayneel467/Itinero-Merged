@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 from typing import Any, Dict, Optional
@@ -72,6 +73,16 @@ def run_travel_planner() -> None:
                     print(f"\n{val}")
 
         # --- Read user input ---
+        pending_interrupt = _get_pending_interrupt(tasks)
+        if (
+            pending_interrupt
+            and isinstance(pending_interrupt, dict)
+            and pending_interrupt.get("type") == "flight_passenger_details"
+        ):
+            print("\nEnter passenger details as JSON:")
+            print('  {"contact": {"firstName": "...", "lastName": "...", "email": "...", "phone": "..."}, "passengers": [...]}')
+            print("(or type 'cancel' to choose a different flight)")
+
         try:
             user_input = input("\n> ").strip()
         except (EOFError, KeyboardInterrupt):
@@ -81,6 +92,19 @@ def run_travel_planner() -> None:
         if user_input.lower() in ("exit", "quit", "bye"):
             print("Goodbye! Safe travels! {} ".format(chr(9992)))
             break
+
+        # Passenger details step expects structured JSON input
+        if (
+            pending_interrupt
+            and isinstance(pending_interrupt, dict)
+            and pending_interrupt.get("type") == "flight_passenger_details"
+            and user_input.lower() not in ("cancel", "no", "back")
+        ):
+            try:
+                user_input = json.loads(user_input)
+            except json.JSONDecodeError:
+                print("\n⚠️ Invalid JSON — please re-enter the passenger details.")
+                continue
 
     _print_completion(state_snapshot)
 
@@ -103,9 +127,20 @@ def _print_state_output(result: Any) -> None:
 
 
 def _extract_interrupt_value(interrupt_val: Any) -> str:
-    if hasattr(interrupt_val, "value"):
-        return str(interrupt_val.value)
-    return str(interrupt_val)
+    value = interrupt_val.value if hasattr(interrupt_val, "value") else interrupt_val
+    if isinstance(value, dict):
+        return value.get("message") or str(value)
+    return str(value)
+
+
+def _get_pending_interrupt(tasks: Any) -> Any:
+    """Return the first pending interrupt value (dict or string)."""
+    for task in (tasks or ()):
+        for interrupt_val in (getattr(task, "interrupts", None) or ()):
+            if hasattr(interrupt_val, "value"):
+                return interrupt_val.value
+            return interrupt_val
+    return None
 
 
 def _print_completion(snapshot: Any) -> None:

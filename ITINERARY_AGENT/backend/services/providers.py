@@ -1,24 +1,4 @@
-"""
-Travel Data Providers — Abstract interfaces + Dummy implementations.
 
-Architecture
-============
-FlightProvider (ABC)
-├── DummyFlightProvider   ← current (no API key needed)
-└── RealFlightProvider    ← future (Amadeus / Skyscanner / etc.)
-
-HotelProvider (ABC)
-├── DummyHotelProvider    ← current (no API key needed)
-└── RealHotelProvider     ← future (Booking.com / Expedia / etc.)
-
-WeatherProvider (ABC)
-├── DummyWeatherProvider  ← current (rule-based seasonal mock)
-└── RealWeatherProvider   ← future (OpenWeatherMap / WeatherAPI)
-
-The itinerary generator depends ONLY on the abstract interfaces.
-Swapping from dummy to real providers requires changing ONE line:
-    get_flight_provider() / get_hotel_provider() / get_weather_provider()
-"""
 
 from __future__ import annotations
 

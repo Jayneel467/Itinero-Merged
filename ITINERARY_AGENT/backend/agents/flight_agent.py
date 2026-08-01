@@ -2,23 +2,42 @@
 Flight Agent — LiteAPI Implementation.
 
 Searches flights via LiteAPI and returns typed Pydantic models.
-Supports ranking, filtering, and pre-booking workflows.
+Supports ranking, filtering, and pre-booking workflows (real LiteAPI API).
 """
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 from typing import List, Optional
 
+import requests
+
+from backend.config import settings
 from backend.models.state import (
     CabinClass,
+    ContactDetails,
     Flight,
     FlightPrebook,
     FlightSearchParams,
+    Passenger,
+    PassengerGender,
+    PassengerType,
     RankingCriteria,
 )
 from realtime_flight_search import extract_flight_results
+
+_LITEAPI_PREBOOK_URL = "https://api.liteapi.travel/v3.0/flights/prebooks"
+
+
+class FlightPrebookError(RuntimeError):
+    """Raised when the LiteAPI pre-booking call fails."""
+
+    def __init__(self, message: str, status_code: Optional[int] = None, detail: Optional[str] = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.detail = detail
 
 _CITY_AIRPORT: dict = {
     # ---------------- Major metros ----------------
@@ -267,7 +286,7 @@ class FlightAgent:
     """
 
     def __init__(self) -> None:
-        pass
+        self._api_key = settings.liteapi_api_key or ""
 
     # ------------------------------------------------------------------
     # Public API
@@ -348,24 +367,160 @@ class FlightAgent:
     def prebook_flight(
         self,
         flight: Flight,
-        num_passengers: int,
+        contact: ContactDetails,
+        passengers: List[Passenger],
+        use_payment_sdk: bool = False,
     ) -> FlightPrebook:
         """
-        Pre-book a flight and return a booking confirmation.
+        Pre-book a flight via the real LiteAPI `/flights/prebooks` endpoint.
+
+        *contact* and *passengers* must be validated Pydantic models
+        (e.g. from the Passenger Details form). Returns a typed
+        FlightPrebook that stores the complete LiteAPI response.
         """
-        prebook_id = f"FLT-{uuid.uuid4().hex[:8].upper()}"
-        total = round(flight.price_per_person * num_passengers, 2)
-        return FlightPrebook(
-            prebook_id=prebook_id,
-            flight=flight,
-            passengers=num_passengers,
-            total_charged=total,
-            status="confirmed",
-        )
+        if not self._api_key:
+            raise FlightPrebookError(
+                "LITEAPI_API_KEY is not configured. Add it to the .env file."
+            )
+        if not flight.offer_id:
+            raise FlightPrebookError(
+                "The selected flight has no offerId. Please re-search flights and try again."
+            )
+
+        payload = {
+            "offerId": flight.offer_id,
+            "usePaymentSdk": bool(use_payment_sdk),
+            "contact": {
+                "firstName":        contact.first_name,
+                "lastName":         contact.last_name,
+                "email":            contact.email,
+                "phoneNumber":      contact.phone,
+                "phoneCountryCode": contact.phone_country_code,
+            },
+            "passengers": [self._passenger_payload(p) for p in passengers],
+        }
+
+        headers = {
+            "X-API-Key": self._api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        try:
+            response = requests.post(
+                _LITEAPI_PREBOOK_URL,
+                headers=headers,
+                json=payload,
+                timeout=60,
+            )
+        except requests.RequestException as exc:
+            raise FlightPrebookError(
+                f"Network error while pre-booking flight: {exc}"
+            ) from exc
+
+        if response.status_code >= 400:
+            detail = _extract_api_error(response)
+            raise FlightPrebookError(
+                f"LiteAPI pre-booking failed: {detail}", 
+                status_code=response.status_code,
+                detail=detail,
+            )
+
+        data = response.json()
+        return self._parse_prebook(data, flight, contact, passengers)
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _passenger_payload(p: Passenger) -> dict:
+        """Convert a Passenger model into the LiteAPI payload shape."""
+        payload = {
+            "type":      p.type.value,
+            "firstName": p.first_name,
+            "lastName":  p.last_name,
+            "gender":    p.gender.value,
+            "birthday":  p.birthday,
+        }
+        if p.nationality:
+            payload["nationality"] = p.nationality
+        if p.document_type:
+            payload["documentType"] = p.document_type.lower()
+        if p.document_issue_country:
+            payload["documentIssueCountry"] = p.document_issue_country
+        if p.document_number:
+            payload["documentNumber"] = p.document_number
+        if p.document_expiry:
+            payload["documentExpiry"] = p.document_expiry
+        if p.document is not None:
+            payload["document"] = {
+                "number":         p.document.number,
+                "expiryDate":     p.document.expiry_date,
+                "issuingCountry": p.document.issuing_country,
+                "nationality":    p.document.nationality,
+                "type":           p.document.type,
+            }
+        return payload
+
+    @staticmethod
+    def _parse_prebook(
+        data: dict,
+        flight: Flight,
+        contact: ContactDetails,
+        passengers: List[Passenger],
+    ) -> FlightPrebook:
+        """Extract a typed FlightPrebook from the raw LiteAPI response."""
+        item = (data.get("data") or [{}])[0] if isinstance(data.get("data"), list) else data
+
+        booking   = item.get("booking") or {}
+        pricing   = booking.get("pricing") or {}
+        currency  = item.get("currency") or pricing.get("currency")
+        total     = (
+            item.get("price")
+            or pricing.get("totalAmount")
+            or pricing.get("total")
+            or flight.total_price
+        )
+        status    = item.get("status") or booking.get("status") or "confirmed"
+        pax_raw   = booking.get("passengers") or []
+
+        passenger_details: List[Passenger] = []
+        for i, raw in enumerate(pax_raw):
+            fallback = passengers[i] if i < len(passengers) else None
+            passenger_details.append(
+                Passenger(
+                    type=PassengerType(
+                        (raw.get("type") or (fallback.type.value if fallback else "ADULT")).upper()
+                    ),
+                    first_name=raw.get("firstName") or (fallback.first_name if fallback else ""),
+                    last_name=raw.get("lastName") or (fallback.last_name if fallback else ""),
+                    gender=PassengerGender(raw.get("gender") or (fallback.gender.value if fallback else "M")),
+                    birthday=raw.get("birthday") or (fallback.birthday if fallback else ""),
+                    nationality=raw.get("nationality"),
+                    document_type=raw.get("documentType"),
+                    document_issue_country=raw.get("documentIssueCountry"),
+                    document_number=raw.get("documentNumber"),
+                    document_expiry=raw.get("documentExpiry"),
+                )
+            )
+
+        return FlightPrebook(
+            prebook_id        = item.get("prebookId") or item.get("id")
+                                  or f"FLT-{uuid.uuid4().hex[:8].upper()}",
+            flight            = flight,
+            passengers        = len(passenger_details) or len(passengers),
+            total_charged     = round(float(total or flight.total_price), 2),
+            status            = str(status).lower(),
+            offer_id          = item.get("offerId") or flight.offer_id,
+            contact           = contact,
+            passenger_details = passenger_details or passengers,
+            booking_status    = str(status),
+            hold_expiry       = item.get("holdExpiry") or item.get("expiresAt"),
+            bookable          = item.get("bookable"),
+            currency          = currency,
+            raw_response      = data,
+        )
 
     def _fetch_raw_flights(self, params: FlightSearchParams) -> List[Flight]:
         raw = extract_flight_results(
@@ -392,6 +547,7 @@ class FlightAgent:
             flights.append(
                 Flight(
                     flight_id=f"fl_{uuid.uuid4().hex[:6]}",
+                    offer_id=entry.get("offer_id"),
                     airline=entry["airline"],
                     flight_number=entry["flight_number"],
                     departure_airport=entry["origin"],
@@ -425,3 +581,34 @@ class FlightAgent:
             result = [f for f in result if f.stops <= params.max_stops]
 
         return result
+
+
+# ---------------------------------------------------------------------------
+# Module helpers
+# ---------------------------------------------------------------------------
+
+def _extract_api_error(response: requests.Response) -> str:
+    """Best-effort extraction of a human-readable error from a LiteAPI response."""
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        err = body.get("error")
+        if isinstance(err, dict):
+            for key in ("description", "message", "error"):
+                if err.get(key):
+                    code = err.get("code")
+                    detail = str(err[key])
+                    return f"{code}: {detail}" if code else detail
+        message = (
+            body.get("message")
+            or body.get("error")
+            or body.get("errorMessage")
+            or body.get("detail")
+        )
+        if message:
+            return str(message)
+        if body.get("errors"):
+            return json.dumps(body["errors"])
+    return response.text or f"HTTP {response.status_code}"

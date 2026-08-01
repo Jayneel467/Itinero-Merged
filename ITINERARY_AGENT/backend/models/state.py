@@ -7,9 +7,32 @@ through every LangGraph node, plus all supporting data models.
 
 from __future__ import annotations
 
+import re
+from datetime import date
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic.alias_generators import to_camel
+
+
+def _is_placeholder_phone(phone: str) -> bool:
+    """
+    Detect obviously placeholder phone numbers (long ascending/descending
+    digit runs, e.g. 1234567890 / 9876543210) — LiteAPI rejects these
+    with a 500 "placeholder (sequential digits)" error.
+    """
+    digits = phone.strip()
+    if len(digits) < 8:
+        return False
+    asc = sum(
+        1 for i in range(len(digits) - 1)
+        if (int(digits[i + 1]) - int(digits[i])) % 10 == 1
+    )
+    desc = sum(
+        1 for i in range(len(digits) - 1)
+        if (int(digits[i]) - int(digits[i + 1])) % 10 == 1
+    )
+    return asc >= len(digits) - 2 or desc >= len(digits) - 2
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +48,7 @@ class WorkflowStep(str, Enum):
     FLIGHT_SEARCH         = "flight_search"
     FLIGHT_RANKING        = "flight_ranking"
     FLIGHT_SELECTION      = "flight_selection"
+    FLIGHT_PASSENGER_DETAILS = "flight_passenger_details"
     FLIGHT_PREBOOK        = "flight_prebook"
     FLIGHT_PREBOOKED       = "flight_prebooked"
     DRAFT_ITINERARY       = "draft_itinerary"
@@ -33,7 +57,10 @@ class WorkflowStep(str, Enum):
     HOTEL_SEARCH          = "hotel_search"
     HOTEL_RANKING         = "hotel_ranking"
     HOTEL_SELECTION       = "hotel_selection"
+    HOTEL_ROOM_SELECTION  = "hotel_room_selection"
+    HOTEL_SUMMARY         = "hotel_summary"
     HOTEL_PREBOOK         = "hotel_prebook"
+    HOTEL_PREBOOK_RETRY   = "hotel_prebook_retry"
     FINAL_ITINERARY       = "final_itinerary"
     COMPLETED             = "completed"
 
@@ -100,6 +127,7 @@ class TripRequirements(BaseModel):
 class Flight(BaseModel):
     """Represents a single flight option returned by the Flight Agent."""
     flight_id:          str
+    offer_id:           Optional[str] = None   # LiteAPI offerId — required for pre-booking
     airline:            str
     flight_number:      str
     departure_airport:  str
@@ -132,18 +160,203 @@ class FlightSearchParams(BaseModel):
     max_stops:      Optional[int]        = None
 
 
+# ---------------------------------------------------------------------------
+# Flight booking models (LiteAPI pre-booking)
+# ---------------------------------------------------------------------------
+
+class PassengerType(str, Enum):
+    """Passenger category accepted by the LiteAPI booking API."""
+    ADULT  = "ADULT"
+    CHILD  = "CHILD"
+    INFANT = "INFANT"
+
+
+class PassengerGender(str, Enum):
+    """Gender code accepted by the LiteAPI booking API."""
+    MALE   = "M"
+    FEMALE = "F"
+    OTHER  = "X"
+
+
+class TravelDocument(BaseModel):
+    """Passport / travel document of a passenger (LiteAPI `document`)."""
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    number:          str
+    expiry_date:     str            # ISO date, must be in the future
+    issuing_country: str            # ISO-2 country code, e.g. "IN"
+    nationality:     str            # ISO-2 country code, e.g. "IN"
+    type:            str = "PASSPORT"
+
+    @field_validator("number", "issuing_country", "nationality")
+    @classmethod
+    def _not_empty(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Document details are required")
+        return v.upper()
+
+    @field_validator("expiry_date")
+    @classmethod
+    def _valid_expiry(cls, v: str) -> str:
+        v = (v or "").strip()
+        try:
+            d = date.fromisoformat(v)
+        except ValueError as exc:
+            raise ValueError("Expiry date must be in YYYY-MM-DD format") from exc
+        if d <= date.today():
+            raise ValueError("Expiry date must be in the future")
+        return v
+
+
+class Passenger(BaseModel):
+    """A single traveller as required by the LiteAPI pre-booking API."""
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    type:        PassengerType = PassengerType.ADULT
+    first_name:  str
+    last_name:   str
+    gender:      PassengerGender
+    birthday:    str             # ISO date, must be in the past
+    nationality: Optional[str]   = None   # ISO-2 country code, e.g. "IN"
+    document_type: Optional[str] = None   # e.g. "passport" / "id"
+    document_issue_country: Optional[str] = None  # ISO-2 code, e.g. "IN"
+    document_number: Optional[str] = None
+    document_expiry: Optional[str] = None  # ISO date
+    document:    Optional[TravelDocument] = None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def _name_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Passenger name is required")
+        return v
+
+    @field_validator("nationality")
+    @classmethod
+    def _valid_nationality(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not str(v).strip():
+            return None
+        v = str(v).strip().upper()
+        if not re.fullmatch(r"[A-Z]{2}", v):
+            raise ValueError("Nationality must be a 2-letter ISO code (e.g. IN)")
+        return v
+
+    @field_validator("birthday")
+    @classmethod
+    def _valid_birthday(cls, v: str) -> str:
+        v = (v or "").strip()
+        try:
+            d = date.fromisoformat(v)
+        except ValueError as exc:
+            raise ValueError("Birthday must be in YYYY-MM-DD format") from exc
+        if d >= date.today():
+            raise ValueError("Birthday must be in the past")
+        return v
+
+
+class ContactDetails(BaseModel):
+    """Contact information of the person making the booking."""
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    first_name:         str
+    last_name:          str
+    email:              str
+    phone:              str               # local number, no country code (e.g. "9876543210")
+    phone_country_code: str = "91"        # numeric dialling code (e.g. "91" for India)
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def _name_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Contact name is required")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", v):
+            raise ValueError("Invalid email address")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def _valid_phone(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not re.fullmatch(r"[0-9]{7,15}", v):
+            raise ValueError("Invalid phone number (7-15 digits, no country code)")
+        if _is_placeholder_phone(v):
+            raise ValueError(
+                "Phone number appears to be a placeholder (sequential digits). "
+                "Please provide a valid phone number."
+            )
+        return v
+
+    @field_validator("phone_country_code")
+    @classmethod
+    def _valid_phone_country_code(cls, v: str) -> str:
+        v = (v or "").strip().lstrip("+")
+        if not re.fullmatch(r"[0-9]{1,4}", v):
+            raise ValueError("Invalid phone country code (numeric, e.g. 91)")
+        return v
+
+
+class PassengerFormData(BaseModel):
+    """Complete payload collected from the Passenger Details form."""
+    contact:    ContactDetails
+    passengers: List[Passenger] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _at_least_one_passenger(self) -> "PassengerFormData":
+        if not self.passengers:
+            raise ValueError("At least one passenger is required")
+        return self
+
+
 class FlightPrebook(BaseModel):
-    """Records a confirmed flight pre-booking."""
-    prebook_id:    str
-    flight:        Flight
-    passengers:    int
-    total_charged: float
-    status:        str = "confirmed"
+    """Records a confirmed flight pre-booking with the full LiteAPI response."""
+    prebook_id:      str
+    flight:          Flight
+    passengers:      int               # number of travellers
+    total_charged:   float
+    status:          str = "confirmed"
+
+    # ---- LiteAPI pre-booking details ----
+    offer_id:          Optional[str]              = None
+    contact:           Optional[ContactDetails]   = None
+    passenger_details: List[Passenger]            = Field(default_factory=list)
+    booking_status:    Optional[str]              = None   # e.g. "WAIT" / "HOLD" / "BOOKABLE"
+    hold_expiry:       Optional[str]              = None
+    bookable:          Optional[bool]             = None
+    currency:          Optional[str]              = None
+    raw_response:      Optional[Dict[str, Any]]   = None   # complete LiteAPI prebooks response
 
 
 # ---------------------------------------------------------------------------
 # Hotel Models
 # ---------------------------------------------------------------------------
+
+def _coerce_refundable(value: Any) -> Optional[bool]:
+    """
+    LiteAPI returns `refundableTag` as a string code ("REF", "NRFN", "RFNC")
+    rather than a boolean. Normalise it to a real bool (None when unknown).
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    tag = str(value).strip().upper()
+    if not tag:
+        return None
+    if tag in ("TRUE", "YES", "1", "REF", "RFNC"):
+        return True
+    return False
+
 
 class Hotel(BaseModel):
     """Represents a single hotel option returned by the Hotel Agent."""
@@ -160,6 +373,38 @@ class Hotel(BaseModel):
     total_price:             float
     ranking_score:           Optional[float] = None
     image_placeholder:       str             = "🏨"
+    # ---- LiteAPI room-offer details (optional — backward compatible) ----
+    offer_id:                Optional[str]   = None
+    board_name:              Optional[str]   = None
+    currency:                Optional[str]   = None
+    refundable:              Optional[bool]  = None
+    cancel_policy:           Optional[Any]   = None
+
+    _coerce_refundable = field_validator("refundable", mode="before")(
+        staticmethod(_coerce_refundable)
+    )
+
+
+class RoomOffer(BaseModel):
+    """A bookable room offer for a hotel returned by LiteAPI."""
+    offer_id:        str
+    room_type:       str
+    board_name:      str               = ""
+    price_per_night: float
+    total_price:     float
+    currency:        str               = "INR"
+    refundable:      Optional[bool]    = None
+    cancel_policy:   Optional[Any]     = None
+
+    _coerce_refundable = field_validator("refundable", mode="before")(
+        staticmethod(_coerce_refundable)
+    )
+
+
+class HotelWithOffers(BaseModel):
+    """A hotel plus every bookable room offer returned for a search."""
+    hotel:  Hotel
+    offers: List[RoomOffer] = Field(default_factory=list)
 
 
 class HotelSearchParams(BaseModel):
@@ -182,6 +427,35 @@ class HotelPrebook(BaseModel):
     total_charged: float
     status:        str           = "confirmed"
     day_number:    Optional[int] = None   # which day of the itinerary this covers
+
+
+class HotelNightSegment(BaseModel):
+    """One night of the trip — used for per-night hotel searches."""
+    night:     int
+    check_in:  str                # ISO date string
+    check_out: str
+
+
+class HotelNightSelection(BaseModel):
+    """
+    A single night's hotel + room selection, optionally with prebook result.
+
+    One entry per night — supports staying in a different hotel every night.
+    """
+    night:           int
+    check_in:        str
+    check_out:       str
+    hotel_id:        str
+    hotel_name:      str
+    room_type:       str
+    offer_id:        str
+    price_per_night: float
+    total_price:     float
+    currency:        str               = "INR"
+    hotel:           Optional[Hotel]   = None   # full snapshot for rendering
+    prebook_id:      Optional[str]     = None
+    prebook_status:  Optional[str]     = None   # confirmed / failed / skipped
+    prebook_error:   Optional[str]     = None
 
 
 # ---------------------------------------------------------------------------
@@ -361,12 +635,23 @@ class AppState(BaseModel):
     # ---- Flight data ----
     flight_search_results: List[Flight]          = Field(default_factory=list)
     selected_flight:       Optional[Flight]      = None
+    passenger_form:        Optional[PassengerFormData] = None  # submitted passenger details
     flight_prebook:        Optional[FlightPrebook] = None
 
     # ---- Hotel data ----
     hotel_search_results: List[Hotel]                  = Field(default_factory=list)
     selected_hotels:      Dict[str, Hotel]             = Field(default_factory=dict)  # keyed by day number
     hotel_prebooks:       Dict[str, HotelPrebook]      = Field(default_factory=dict)
+
+    # ---- Per-night hotel flow (one hotel per night) ----
+    hotel_night_segments:   List[HotelNightSegment]     = Field(default_factory=list)
+    hotel_night_selections: List[HotelNightSelection]   = Field(default_factory=list)
+    current_night:          int                         = 1
+    hotel_room_offers:      List[RoomOffer]             = Field(default_factory=list)
+    selected_night_hotel:   Optional[Hotel]             = None
+    hotel_search_with_offers: List[HotelWithOffers]     = Field(default_factory=list)
+    hotel_search_error:     Optional[str]               = None
+    hotel_prebook_pending:  Optional[Dict[str, Any]]    = None
 
     # ---- Itineraries ----
     draft_itinerary: Optional[DraftItinerary] = None
@@ -410,3 +695,49 @@ class AppState(BaseModel):
             return max(1, (d2 - d1).days)
         except ValueError:
             return 1
+
+
+# ---------------------------------------------------------------------------
+# Night segment helpers (pure date logic — no I/O)
+# ---------------------------------------------------------------------------
+
+def build_night_segments(
+    check_in: str,
+    check_out: str,
+) -> List[HotelNightSegment]:
+    """
+    Split a full stay into one-night segments.
+
+    Example: check_in=2026-08-10, check_out=2026-08-13 →
+        [(1, 10-08, 11-08), (2, 11-08, 12-08), (3, 12-08, 13-08)]
+
+    Supports any trip length (1, 2, 3, 5, 10 nights) without workflow changes.
+    Falls back to a single segment when dates are missing or invalid.
+    """
+    from datetime import date, timedelta
+
+    try:
+        d1 = date.fromisoformat(check_in)
+        d2 = date.fromisoformat(check_out)
+    except (ValueError, TypeError):
+        return [
+            HotelNightSegment(
+                night=1,
+                check_in=check_in or "",
+                check_out=check_out or "",
+            )
+        ]
+
+    total_nights = max(1, (d2 - d1).days)
+    segments: List[HotelNightSegment] = []
+    for i in range(total_nights):
+        night_in  = d1 + timedelta(days=i)
+        night_out = night_in + timedelta(days=1)
+        segments.append(
+            HotelNightSegment(
+                night=i + 1,
+                check_in=night_in.isoformat(),
+                check_out=night_out.isoformat(),
+            )
+        )
+    return segments

@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     openai_api_key: str = ""
     tavily_api_key: str = ""
+    liteapi_api_key: str = ""
     host: str = "0.0.0.0"
     port: int = 8000
     debug: bool = False

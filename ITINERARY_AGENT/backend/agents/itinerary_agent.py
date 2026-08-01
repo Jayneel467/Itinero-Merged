@@ -1104,7 +1104,7 @@ def _render_final_markdown(
             f"| 🎒 **Baggage** | {'Included' if f.baggage_included else 'Not included'} |",
             f"| 🔄 **Refundable** | {'Yes' if f.refundable else 'No'} |",
             f"| 📋 **Booking ID** | `{pb.prebook_id}` |",
-            f"| ✅ **Status** | {pb.status.title()} — Demo Flight |",
+            f"| ✅ **Status** | {pb.status.title()} — LiteAPI Booking |",
         ]
     else:
         lines.append("*No flight booked.*")

@@ -289,6 +289,27 @@ async function _handleUiAction(res) {
     if (AppState.flights.length) _showFlights(AppState.flights);
   }
 
+  if (action === 'flight_passenger_details' && res.ui_payload) {
+    PassengerForm.open(res.ui_payload, _submitPassengerDetails);
+  }
+
+  if (action === 'flight_prebooked' && res.ui_payload) {
+    AppState.flightPrebook = res.ui_payload.prebook || AppState.flightPrebook;
+    PrebookConfirmation.show(res.ui_payload, _continueToBooking);
+  }
+
+  if (action === 'flight_prebook_error') {
+    const reason = res.ui_payload?.message || 'Flight pre-booking failed. Please try again.';
+    showToast('Flight pre-booking failed. Please re-select the flight and try again.', 'error', 6000);
+    Chat.addMessage('assistant', `${reason}\n\nPlease re-select the flight to try again.`);
+    apiChat(AppState.sessionId, 'cancel')
+      .then(r => {
+        if (r?.assistant_message) Chat.addMessage('assistant', r.assistant_message);
+        if (r) return _handleUiAction(r);
+      })
+      .catch(() => {});
+  }
+
   if (action === 'show_draft_itinerary' && res.draft_itinerary) {
     _applyDraftToState(res.draft_itinerary);
     Itinerary.renderDraft(AppState.draftItinerary);
@@ -297,7 +318,7 @@ async function _handleUiAction(res) {
 
   if (action === 'show_hotels' || res.hotel_results?.length) {
     AppState.hotels = res.hotel_results || [];
-    if (AppState.hotels.length) await _showHotels(AppState.hotels);
+    if (AppState.hotels.length) await _showHotels(res);
   }
 
   if (action === 'show_final_itinerary' && res.final_itinerary) {
@@ -351,28 +372,88 @@ function _showFlights(flights) {
   showPanel('flights');
   Flight.render(flights, (selectedFlight) => {
     AppState.selectedFlight = selectedFlight;
-    Flight.openConfirmModal(selectedFlight, _confirmFlightPrebook);
+    Flight.openConfirmModal(selectedFlight, _onFlightConfirmed);
   });
 }
 
-async function _confirmFlightPrebook(flight) {
-  showLoading('Pre-booking your flight…');
+/**
+ * Flight chosen in the confirm modal → persist the selection in the graph.
+ * The graph interrupts at `flight_passenger_details` and the response opens
+ * the Passenger Details form (pre-booking is NOT called yet).
+ */
+async function _onFlightConfirmed(flight) {
+  showLoading('Saving your flight selection…');
   try {
-    const res = await apiPrebookFlight(
-      AppState.sessionId,
-      flight.flight_id,
-      AppState.tripRequirements.num_travelers || 1,
-    );
-    AppState.flightPrebook = res;
-    AppState.selectedFlight = flight;
+    const res = await apiSelectFlight(AppState.sessionId, flight.flight_id);
     hideLoading();
-    showToast(`Flight booked! ID: ${res.prebook_id}`, 'success');
-    Chat.addMessage('assistant', res.assistant_message || '✅ Flight pre-booked!');
-    await _fetchAndShowDraft();
+    AppState.selectedFlight = flight;
+    await _handleUiAction(res);
   } catch (err) {
     hideLoading();
     showToast(err.message, 'error');
-    Chat.addMessage('assistant', `❌ Flight booking failed: ${err.message}`);
+    Chat.addMessage('assistant', `❌ Could not select flight: ${err.message}`);
+  }
+}
+
+/**
+ * Submit the Passenger Details form → resume the workflow → real LiteAPI
+ * pre-booking happens server-side.
+ */
+async function _submitPassengerDetails(data) {
+  showLoading('Pre-booking your flight… ✈️');
+  try {
+    const res = await apiSubmitPassengerDetails(
+      AppState.sessionId,
+      data.contact,
+      data.passengers,
+    );
+    hideLoading();
+
+    // Backend validation errors → show them inline and keep the form open
+    if (res.ui_payload?.errors?.length) {
+      PassengerForm.showErrors(res.ui_payload.errors);
+      Chat.addMessage('assistant', '❌ Some passenger details are invalid. Please fix them and try again.');
+      return;
+    }
+
+    PassengerForm.close();
+    await _handleUiAction(res);
+  } catch (err) {
+    hideLoading();
+    showToast(err.message, 'error');
+    Chat.addMessage('assistant', `❌ Flight pre-booking failed: ${err.message}`);
+  }
+}
+
+/**
+ * "Continue to Booking" on the pre-book confirmation → resume the workflow
+ * with "yes" to generate the draft itinerary.
+ */
+async function _continueToBooking() {
+  Chat.setInputDisabled(true);
+  Chat.showTyping();
+  showLoading('Generating your draft itinerary…');
+  try {
+    const res = await apiChat(AppState.sessionId, 'yes');
+    Chat.removeTyping();
+    hideLoading();
+
+    if (res.assistant_message) {
+      Chat.addMessage('assistant', res.assistant_message);
+    }
+    AppState.workflowStep = res.workflow_step;
+    AppState.tripRequirements = res.trip_requirements || AppState.tripRequirements;
+    updateTripSummary(AppState.tripRequirements);
+
+    await _handleUiAction(res);
+  } catch (err) {
+    Chat.removeTyping();
+    hideLoading();
+    showToast(err.message, 'error');
+    Chat.addMessage('assistant', `❌ Could not continue: ${err.message}`);
+  } finally {
+    Chat.setInputDisabled(false);
+    Chat.focusInput();
   }
 }
 
@@ -590,50 +671,234 @@ function _closeVersionHistory() {
 }
 
 // ════════════════════════════════════════════════════════
-// Hotel flow
+// Hotel flow (per-night: hotel → room offers → summary → prebook)
 // ════════════════════════════════════════════════════════
 
-async function _showHotels(hotels) {
+async function _showHotels(res) {
   showPanel('hotels');
-  const days = _calcNumDays();
-  AppState.numDays = days;
+
+  const hotels    = res.hotels || res.hotel_results || [];
+  const totalN    = res.total_nights || _calcNumDays();
+  const currentN  = res.current_night || 1;
+  AppState.hotels = hotels;
+  AppState.numDays = totalN;
+
+  // Interrupt payload from the graph (error / no-results / no-rooms)
+  const payload = res.ui_payload;
+  if (payload && ['hotel_search_error', 'hotel_no_results', 'hotel_no_rooms'].includes(payload.type)) {
+    _showHotelIssueModal(payload);
+    return;
+  }
 
   Hotel.render(
     hotels,
-    days,
-    async (hotel, dayNumber) => {
+    totalN,
+    currentN,
+    res.night_selections || [],
+    async (hotel) => {
+      // User picked a hotel for the current night → fetch its room offers
       try {
-        await apiSelectHotel(AppState.sessionId, hotel.hotel_id, dayNumber);
+        const r = await apiSelectHotel(AppState.sessionId, hotel.hotel_id);
+        if (r.room_offers && r.room_offers.length) {
+          Hotel.showRoomOffers(r.room_offers, r.current_night || currentN, hotel, _handleRoomPick);
+        } else {
+          showToast('No bookable rooms for this hotel — try another.', 'warning');
+          Chat.addMessage('assistant', r.assistant_message || 'No rooms available for this hotel.');
+        }
       } catch (e) {
-        // Non-critical
+        showToast(e.message, 'error');
       }
-    },
-    (selections) => {
-      Hotel.openConfirmModal(selections, _confirmHotelPrebooks);
     },
   );
 }
 
+async function _handleRoomPick(offer, idx) {
+  showLoading('Saving your room choice…');
+  try {
+    const r = await apiSelectHotelRoom(AppState.sessionId, idx);
+    hideLoading();
+    _afterRoomSelect(r);
+  } catch (e) {
+    hideLoading();
+    showToast(e.message, 'error');
+  }
+}
+
+/**
+ * Handle the response after a room offer is picked:
+ *  - next night's hotel list (flow continues)
+ *  - combined summary (all nights done)
+ *  - issue payloads (search errors / no rooms)
+ */
+async function _afterRoomSelect(res) {
+  const payload = res.ui_payload;
+
+  if (payload && payload.type === 'hotel_summary') {
+    Hotel.showSummary(payload.selections || [], payload.grand_total || 0, _confirmHotelPrebooks);
+    Chat.addMessage('assistant', payload.message || 'Your hotel selections are ready for pre-booking.');
+    return;
+  }
+
+  if (payload && ['hotel_search_error', 'hotel_no_results', 'hotel_no_rooms'].includes(payload.type)) {
+    _showHotelIssueModal(payload);
+    return;
+  }
+
+  // Otherwise the next night's hotels are ready (or retry of the current one)
+  if (res.hotels && res.hotels.length) {
+    await _showHotels(res);
+  } else if (payload) {
+    _showHotelIssueModal(payload);
+  } else {
+    showToast('Something went wrong — try again.', 'error');
+  }
+}
+
+/** Modal for hotel search / room-availability issues with retry/skip/cancel actions. */
+function _showHotelIssueModal(payload) {
+  const modal = document.getElementById('modal-hotel-issue');
+  if (!modal) return;
+
+  const body = document.getElementById('modal-hotel-issue-body');
+  if (body) {
+    body.innerHTML = `
+      <p style="white-space:pre-line">${payload.message || 'Hotel search encountered an issue.'}</p>`;
+  }
+
+  const close = () => modal.classList.remove('open');
+  document.getElementById('btn-close-hotel-issue')?.addEventListener('click', close, { once: true });
+  document.getElementById('btn-hotel-issue-retry')?.addEventListener('click', async () => {
+    close();
+    showLoading('Retrying…');
+    try {
+      const res = await apiSearchHotels(AppState.sessionId, { decision: 'retry' });
+      hideLoading();
+      if (res.hotels && res.hotels.length) await _showHotels(res);
+      else _afterRoomSelect(res);
+    } catch (e) {
+      hideLoading();
+      showToast(e.message, 'error');
+    }
+  }, { once: true });
+
+  document.getElementById('btn-hotel-issue-skip')?.addEventListener('click', async () => {
+    close();
+    showLoading('Skipping this night…');
+    try {
+      const res = await apiSearchHotels(AppState.sessionId, { decision: 'skip' });
+      hideLoading();
+      if (res.hotels && res.hotels.length) await _showHotels(res);
+      else _afterRoomSelect(res);
+    } catch (e) {
+      hideLoading();
+      showToast(e.message, 'error');
+    }
+  }, { once: true });
+
+  document.getElementById('btn-hotel-issue-cancel')?.addEventListener('click', () => {
+    close();
+    showToast('Hotel booking cancelled.', 'info');
+  }, { once: true });
+
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); }, { once: true });
+  modal.classList.add('open');
+}
+
 async function _confirmHotelPrebooks(selections) {
-  const payload = Object.entries(selections).map(([day, h]) => ({
-    hotel_id: h.hotel_id,
-    day_number: parseInt(day),
+  const payload = (selections || []).map(s => ({
+    hotel_id: s.hotel_id,
+    day_number: parseInt(s.night),
   }));
 
-  showLoading('Pre-booking your hotels…');
+  showLoading('Pre-booking your hotels (one by one)…');
   try {
-    const res = await apiPrebookHotels(AppState.sessionId, payload);
+    const res = await apiPrebookHotels(AppState.sessionId, payload, 'yes');
     hideLoading();
-    showToast('All hotels booked!', 'success');
-    Chat.addMessage('assistant', res.assistant_message || '✅ Hotels pre-booked!');
-    AppState.selectedHotels = selections;
-    AppState.hotelPrebooks = res.prebooks || {};
-    await _fetchAndShowFinal();
-  } catch (err) {
+    _afterPrebook(res);
+  } catch (e) {
     hideLoading();
-    showToast(err.message, 'error');
-    Chat.addMessage('assistant', `❌ Hotel booking failed: ${err.message}`);
+    showToast(e.message, 'error');
+    Chat.addMessage('assistant', `❌ Hotel pre-booking failed: ${e.message}`);
   }
+}
+
+/** Handle the pre-book response: results, or a per-night failure decision. */
+async function _afterPrebook(res) {
+  const payload = res.ui_payload;
+
+  if (payload && payload.type === 'hotel_prebook_error') {
+    _showPrebookErrorModal(payload);
+    return;
+  }
+
+  AppState.hotelPrebooks = res.prebooks || {};
+  const results = res.prebook_results || res.night_selections || [];
+
+  const ok = results.filter(s => s.prebook_status === 'confirmed' || s.prebook_id);
+  const bad = results.filter(s => s.prebook_status === 'failed' && !s.prebook_id);
+
+  Chat.addMessage('assistant',
+    res.assistant_message ||
+    `✅ Hotels pre-booked: ${ok.length} of ${results.length || 1} confirmed.`);
+
+  showToast(ok.length ? 'Hotels pre-booked!' : 'No hotels were pre-booked.', ok.length ? 'success' : 'warning');
+  await _fetchAndShowFinal();
+}
+
+/** Modal when a night's pre-book fails — retry / skip / abort. */
+function _showPrebookErrorModal(payload) {
+  const modal = document.getElementById('modal-prebook-error');
+  if (!modal) return;
+
+  const body = document.getElementById('modal-prebook-error-body');
+  if (body) {
+    body.innerHTML = `
+      <p style="white-space:pre-line">${payload.message || 'A hotel pre-book failed.'}</p>`;
+  }
+
+  const close = () => modal.classList.remove('open');
+  document.getElementById('btn-close-prebook-error')?.addEventListener('click', close, { once: true });
+  document.getElementById('btn-prebook-error-retry')?.addEventListener('click', async () => {
+    close();
+    showLoading('Retrying pre-book…');
+    try {
+      const res = await apiPrebookHotels(AppState.sessionId, [], 'retry');
+      hideLoading();
+      _afterPrebook(res);
+    } catch (e) {
+      hideLoading();
+      showToast(e.message, 'error');
+    }
+  }, { once: true });
+
+  document.getElementById('btn-prebook-error-skip')?.addEventListener('click', async () => {
+    close();
+    showLoading('Skipping failed night…');
+    try {
+      const res = await apiPrebookHotels(AppState.sessionId, [], 'skip');
+      hideLoading();
+      _afterPrebook(res);
+    } catch (e) {
+      hideLoading();
+      showToast(e.message, 'error');
+    }
+  }, { once: true });
+
+  document.getElementById('btn-prebook-error-abort')?.addEventListener('click', async () => {
+    close();
+    showLoading('Stopping pre-booking…');
+    try {
+      const res = await apiPrebookHotels(AppState.sessionId, [], 'abort');
+      hideLoading();
+      _afterPrebook(res);
+    } catch (e) {
+      hideLoading();
+      showToast(e.message, 'error');
+    }
+  }, { once: true });
+
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); }, { once: true });
+  modal.classList.add('open');
 }
 
 async function _fetchAndShowFinal() {
@@ -720,8 +985,8 @@ function _bindButtons() {
       AppState.hotels = res.hotels;
       hideLoading();
       Chat.addMessage('assistant',
-        `Found **${res.count} hotels** in ${req.destination || 'your destination'}! 🏨`);
-      await _showHotels(res.hotels);
+        `Found **${res.hotel_count || res.count || 0} hotels** in ${req.destination || 'your destination'}! 🏨`);
+      await _showHotels(res);
     } catch (err) {
       hideLoading();
       showToast(err.message, 'error');
@@ -756,14 +1021,15 @@ function _bindButtons() {
   document.getElementById('btn-close-history-modal')?.addEventListener('click', _closeVersionHistory);
   document.getElementById('btn-close-history')?.addEventListener('click', _closeVersionHistory);
 
-  // Hotels: pre-book all
+  // Hotels: pre-book all (opens the combined summary modal)
   document.getElementById('btn-prebook-hotels')?.addEventListener('click', () => {
-    const selections = Hotel.getSelections();
-    if (!Object.keys(selections).length) {
+    const selections = Object.values(Hotel.getSelections());
+    if (!selections.length) {
       showToast('Please select a hotel for each night.', 'warning');
       return;
     }
-    Hotel.openConfirmModal(selections, _confirmHotelPrebooks);
+    const grand = selections.reduce((sum, s) => sum + (s.total_price || s.price_per_night || 0), 0);
+    Hotel.openConfirmModal(selections, grand, _confirmHotelPrebooks);
   });
 
   // Final: download
@@ -847,6 +1113,10 @@ async function _initSession() {
   ['flight-cards', 'hotel-cards', 'draft-content', 'final-content', 'compare-content'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '';
+  });
+  // Close any open booking modals
+  ['modal-passenger-details', 'modal-prebook-confirmation', 'modal-flight-confirm'].forEach(id => {
+    document.getElementById(id)?.classList.remove('open');
   });
   const summaryCard = document.getElementById('trip-summary-card');
   if (summaryCard) summaryCard.style.display = 'none';

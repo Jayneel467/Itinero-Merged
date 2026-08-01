@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from langgraph.types import Command
 
@@ -98,6 +98,12 @@ class FlightPrebookRequest(BaseModel):
     flight_id: str
     num_passengers: int = 1
 
+class FlightPassengerDetailsRequest(BaseModel):
+    """Passenger Details form payload submitted to the workflow."""
+    session_id: str
+    contact: Dict[str, Any]
+    passengers: List[Dict[str, Any]]
+
 class HotelSearchRequest(BaseModel):
     session_id: str
     destination: Optional[str] = None
@@ -105,6 +111,7 @@ class HotelSearchRequest(BaseModel):
     check_out: Optional[str] = None
     num_guests: Optional[int] = None
     max_price_per_night: Optional[float] = None
+    decision: Optional[str] = None
 
 class HotelSelectRequest(BaseModel):
     session_id: str
@@ -113,7 +120,12 @@ class HotelSelectRequest(BaseModel):
 
 class HotelPrebookBulkRequest(BaseModel):
     session_id: str
-    selections: List[Dict[str, Any]]
+    selections: List[Dict[str, Any]] = Field(default_factory=list)
+    decision: Optional[str] = None
+
+class HotelRoomSelectRequest(BaseModel):
+    session_id: str
+    offer_index: int
 
 class ItineraryDraftRequest(BaseModel):
     session_id: str
@@ -156,15 +168,24 @@ def _build_response(state_snapshot, session_id: str):
 
     msg = state.get("current_assistant_message", "") or ""
 
+    # Extract the pending interrupt — may be a plain string (chat prompt)
+    # or a structured dict (e.g. passenger-details form / prebook confirmation).
     tasks = getattr(state_snapshot, "tasks", None) or ()
     interrupt_val = None
+    payload = None
     for task in tasks:
         interrupts = getattr(task, "interrupts", None) or ()
         for iv in interrupts:
             val = getattr(iv, "value", None) or str(iv)
             if val:
-                interrupt_val = str(val)
+                if isinstance(val, dict):
+                    payload = val
+                    interrupt_val = val.get("message") or ""
+                else:
+                    interrupt_val = str(val)
                 break
+        if interrupt_val is not None or payload is not None:
+            break
 
     resp = {
         "session_id": session_id,
@@ -173,6 +194,10 @@ def _build_response(state_snapshot, session_id: str):
         "ui_action": state.get("ui_action"),
         "trip_requirements": state.get("trip_requirements"),
     }
+
+    # Structured interrupt payload (drives frontend modals / forms)
+    if payload:
+        resp["ui_payload"] = payload
 
     # Attach flight data (both names for frontend compatibility)
     flights = state.get("flight_search_results")
@@ -188,6 +213,23 @@ def _build_response(state_snapshot, session_id: str):
         resp["hotels"] = hotels
         resp["hotel_count"] = len(hotels)
         resp["count"] = resp.get("count", len(hotels))
+
+    # Attach per-night flow metadata
+    resp["current_night"] = state.get("current_night", 1)
+    resp["total_nights"] = len(state.get("hotel_night_segments") or []) or 1
+
+    # Attach room offers for the currently selected hotel
+    offers = state.get("hotel_room_offers")
+    if offers:
+        resp["room_offers"] = offers
+
+    # Attach night selections + prebook results (frontend summary)
+    selections = state.get("hotel_night_selections")
+    if selections:
+        resp["night_selections"] = selections
+    prebooks = state.get("hotel_prebooks")
+    if prebooks:
+        resp["prebooks"] = prebooks
 
     # Attach version data
     versions = state.get("itinerary_versions")
@@ -211,10 +253,12 @@ def _build_response(state_snapshot, session_id: str):
         else:
             resp["final_itinerary"] = final
 
-    # UI action hints
+    # UI action hints — structured interrupt payloads take precedence
     step = state.get("workflow_step", "")
     step_str = step.value if hasattr(step, "value") else str(step)
-    if step_str == "draft_itinerary" and resp.get("draft_itinerary"):
+    if payload and payload.get("type"):
+        resp["ui_action"] = payload["type"]
+    elif step_str == "draft_itinerary" and resp.get("draft_itinerary"):
         resp["ui_action"] = "show_draft_itinerary"
     elif step_str == "draft_confirm" and resp.get("draft_itinerary"):
         resp["ui_action"] = "show_draft_itinerary"
@@ -399,7 +443,7 @@ async def select_flight(req: FlightSelectRequest):
 
     idx = None
     for i, f in enumerate(flights):
-        if f.get("flight_id") == req.flight_id or getattr(f, "flight_id", None) == req.flight_id:
+        if getattr(f, "flight_id", None) == req.flight_id:
             idx = i
             break
 
@@ -413,54 +457,70 @@ async def select_flight(req: FlightSelectRequest):
     snap = _get_current_state(session)
     return _build_response(snap, req.session_id)
 
-@app.post("/api/flight/prebook")
-async def prebook_flight(req: FlightPrebookRequest):
+@app.post("/api/flight/passenger-details")
+async def submit_flight_passenger_details(req: FlightPassengerDetailsRequest):
+    """
+    Resume the workflow with the Passenger Details form payload.
+
+    The graph (currently paused at `flight_passenger_details`) validates the
+    data, then calls the real LiteAPI pre-booking API in `flight_prebook`.
+    """
     session = _require_session(req.session_id)
     snap = _get_current_state(session)
     step = _get_step(snap)
 
-    # The frontend calls prebook directly (skips the select endpoint).
-    # We need to resume with the flight index first, then confirm.
-    flights = _get_field(snap, "flight_search_results") or []
-    idx = None
-    for i, f in enumerate(flights):
-        fid = f.get("flight_id") if isinstance(f, dict) else getattr(f, "flight_id", None)
-        if fid == req.flight_id:
-            idx = i
-            break
+    if step != "flight_passenger_details":
+        raise HTTPException(
+            409,
+            "The workflow is not waiting for passenger details right now.",
+        )
 
-    # Step 1: if at flight_ranking, resume with index to select the flight
+    try:
+        _invoke_graph(
+            session,
+            resume_value={"contact": req.contact, "passengers": req.passengers},
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Flight pre-booking failed: {exc}")
+
+    snap = _get_current_state(session)
+    return _build_response(snap, req.session_id)
+
+@app.post("/api/flight/prebook")
+async def prebook_flight(req: FlightPrebookRequest):
+    """
+    Compatibility endpoint — pre-booking now happens AFTER the Passenger
+    Details form is collected (POST /api/flight/passenger-details).
+
+    This endpoint drives the graph up to the passenger-details step so
+    older clients still get a valid, in-flow response.
+    """
+    session = _require_session(req.session_id)
+    snap = _get_current_state(session)
+    step = _get_step(snap)
+
+    # If the graph is showing ranked flights, select the requested one first
     if step == "flight_ranking":
+        flights = _get_field(snap, "flight_search_results") or []
+        idx = None
+        for i, f in enumerate(flights):
+            fid = f.get("flight_id") if isinstance(f, dict) else getattr(f, "flight_id", None)
+            if fid == req.flight_id:
+                idx = i
+                break
         if idx is None:
             raise HTTPException(400, f"Flight {req.flight_id} not found")
         try:
-            result = _invoke_graph(session, resume_value=str(idx + 1))
+            _invoke_graph(session, resume_value=str(idx + 1))
         except Exception:
             pass
         snap = _get_current_state(session)
         step = _get_step(snap)
 
-    # Step 2: if at flight_prebook, resume with "yes"
-    if step == "flight_prebook" or step == "flight_selection":
-        # Graph may be at flight_selection or flight_prebook interrupt
-        try:
-            result = _invoke_graph(session, resume_value="yes")
-        except Exception:
-            pass
-        snap = _get_current_state(session)
-        step = _get_step(snap)
-
-    # Step 3: if still at flight_prebook (asked to confirm), resume with "yes"
-    if step == "flight_prebook":
-        try:
-            result = _invoke_graph(session, resume_value="yes")
-        except Exception:
-            pass
-        snap = _get_current_state(session)
-
+    # From here the graph pauses at passenger details — no direct pre-book.
     resp = _build_response(snap, req.session_id)
 
-    # Include prebook data at top level for frontend
+    # Keep prebook data at top level for older frontends
     prebook = _get_field(snap, "flight_prebook")
     if prebook:
         prebook_id = (
@@ -488,38 +548,61 @@ async def prebook_flight(req: FlightPrebookRequest):
 @app.post("/api/hotel/search")
 async def search_hotels(req: HotelSearchRequest):
     session = _require_session(req.session_id)
+
+    # Chain through "yes"-answering steps until we reach the hotel flow
+    # (flight pre-booked → draft → hotel search) or the graph stops.
+    yes_steps = ("user_confirmation", "collect_requirements", "flight_prebooked",
+                 "draft_itinerary")
+    for _ in range(6):
+        snap = _get_current_state(session)
+        step = _get_step(snap)
+        if "draft" in step or step in yes_steps:
+            try:
+                _invoke_graph(session, resume_value="yes")
+            except Exception:
+                break
+            continue
+        break
+
+    # If paused at hotel_search (error / no results / no rooms), resume with
+    # the frontend's decision (retry / relax / skip / cancel)
     snap = _get_current_state(session)
     step = _get_step(snap)
-
-    # If graph is at draft_itinerary interrupt (asking about hotels), resume with "yes"
-    if "draft" in step or step == "user_confirmation" or step == "collect_requirements":
+    if step == "hotel_search":
         try:
-            result = _invoke_graph(session, resume_value="yes")
+            _invoke_graph(session, resume_value=(req.decision or "retry").strip().lower())
         except Exception:
             pass
-        snap = _get_current_state(session)
-
-    step = _get_step(snap)
-
-    # If at hotel_ranking, the graph is waiting for day 1 selection
-    # Return the hotel list so frontend can display
-    resp = _build_response(snap, req.session_id)
-
-    # If not yet at hotel selection, try one more resume
-    if not resp.get("hotel_results"):
+    elif step == "hotel_ranking":
+        # Paused after "no rooms" — any non-numeric resume re-prompts the
+        # ranked hotel list for the current night.
         try:
-            result = _invoke_graph(session, resume_value="yes")
+            _invoke_graph(session, resume_value="show")
         except Exception:
             pass
-        snap = _get_current_state(session)
-        resp = _build_response(snap, req.session_id)
 
-    return resp
+    snap = _get_current_state(session)
+    return _build_response(snap, req.session_id)
 
 @app.post("/api/hotel/select")
 async def select_hotel(req: HotelSelectRequest):
+    """
+    Select a hotel for the CURRENT night.
+
+    Resumes the graph with the hotel's position in the current night's
+    ranked list. The graph then pauses at the room-offer selection step,
+    which is returned in the response (`ui_payload` / `room_offers`).
+    """
     session = _require_session(req.session_id)
     snap = _get_current_state(session)
+    step = _get_step(snap)
+
+    if step not in ("hotel_ranking", "hotel_selection"):
+        raise HTTPException(
+            409,
+            "The workflow is not waiting for a hotel selection right now.",
+        )
+
     hotels = _get_field(snap, "hotel_search_results") or []
 
     idx = None
@@ -534,50 +617,75 @@ async def select_hotel(req: HotelSelectRequest):
 
     try:
         result = _invoke_graph(session, resume_value=str(idx + 1))
-    except Exception:
-        pass
+    except Exception as exc:
+        raise HTTPException(500, f"Hotel selection failed: {exc}")
+
     snap = _get_current_state(session)
-    resp = _build_response(snap, req.session_id)
+    return _build_response(snap, req.session_id)
 
-    # If all days selected, the graph moves to hotel_prebook
-    # Return the prebook prompt
-    return resp
+@app.post("/api/hotel/room/select")
+async def select_hotel_room(req: "HotelRoomSelectRequest"):
+    """
+    Select a room offer for the current night's hotel.
 
-@app.post("/api/hotel/prebook")
-async def prebook_hotels(req: HotelPrebookBulkRequest):
+    Resumes the graph with the offer's position (1-based). The graph then
+    either starts the NEXT night (response contains the next night's hotel
+    list) or shows the combined summary (`ui_payload` / `ui_action`).
+    """
     session = _require_session(req.session_id)
     snap = _get_current_state(session)
     step = _get_step(snap)
 
-    # If still at hotel_ranking, auto-resume through each remaining night selection
-    if step == "hotel_ranking":
-        for sel in req.selections:
-            snap = _get_current_state(session)
-            step = _get_step(snap)
-            if step != "hotel_ranking":
-                break
-            hotels = _get_field(snap, "hotel_search_results") or []
-            idx = None
-            for i, h in enumerate(hotels):
-                hid = h.get("hotel_id") if isinstance(h, dict) else getattr(h, "hotel_id", None)
-                if hid == sel["hotel_id"]:
-                    idx = i
-                    break
-            if idx is not None:
-                try:
-                    result = _invoke_graph(session, resume_value=str(idx + 1))
-                except Exception:
-                    pass
+    if step != "hotel_room_selection":
+        raise HTTPException(
+            409,
+            "The workflow is not waiting for a room selection right now.",
+        )
 
-    # At hotel_prebook — resume with "yes" to confirm
     try:
-        result = _invoke_graph(session, resume_value="yes")
-    except Exception:
-        pass
+        result = _invoke_graph(session, resume_value=str(req.offer_index))
+    except Exception as exc:
+        raise HTTPException(500, f"Room selection failed: {exc}")
+
     snap = _get_current_state(session)
+    return _build_response(snap, req.session_id)
+
+@app.post("/api/hotel/prebook")
+async def prebook_hotels(req: HotelPrebookBulkRequest):
+    """
+    Confirms the combined summary and runs the sequential pre-book flow.
+
+    - At `hotel_summary`: resume with "yes" to confirm (or "no" to restart).
+    - At `hotel_prebook` / `hotel_prebook_retry`: resume with the user's
+      decision ("retry" / "skip" / "abort").
+    """
+    session = _require_session(req.session_id)
+    snap = _get_current_state(session)
+    step = _get_step(snap)
+
+    decision = (req.decision or "").strip().lower() if req.decision else ""
+
+    if step == "hotel_summary":
+        resume = "yes" if decision in ("yes", "y", "confirm", "proceed") else "yes"
+        try:
+            result = _invoke_graph(session, resume_value=resume)
+        except Exception:
+            pass
+        snap = _get_current_state(session)
+        step = _get_step(snap)
+
+    # Pre-book may have paused on a per-night error — apply the decision
+    if step in ("hotel_prebook", "hotel_prebook_retry"):
+        resume = decision or "retry"
+        try:
+            result = _invoke_graph(session, resume_value=resume)
+        except Exception:
+            pass
+        snap = _get_current_state(session)
+
     resp = _build_response(snap, req.session_id)
 
-    # Include prebook data
+    # Include prebook data (both names for frontend compatibility)
     prebooks = _get_field(snap, "hotel_prebooks") or {}
     if prebooks:
         resp["prebooks"] = {}
@@ -586,6 +694,14 @@ async def prebook_hotels(req: HotelPrebookBulkRequest):
                 resp["prebooks"][day] = pb
             else:
                 resp["prebooks"][day] = pb.model_dump() if hasattr(pb, "model_dump") else str(pb)
+
+    selections = _get_field(snap, "hotel_night_selections") or []
+    if selections:
+        resp["prebook_results"] = [
+            s.model_dump() if hasattr(s, "model_dump") else s
+            for s in selections
+        ]
+
     return resp
 
 # ===========================================================================

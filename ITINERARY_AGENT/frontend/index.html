@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>✈️ AI Travel Itinerary Planner</title>
-  <link rel="stylesheet" href="/static/css/style.css?v=20260726c" />
+  <link rel="stylesheet" href="/static/css/style.css?v=20260801b" />
   <!-- Marked.js for markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -300,7 +300,80 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" id="btn-cancel-flight">Cancel</button>
-        <button class="btn btn-primary" id="btn-confirm-prebook-flight">✅ Pre-book Flight</button>
+        <button class="btn btn-primary" id="btn-confirm-prebook-flight">➡️ Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passenger Details modal -->
+  <div class="modal-overlay" id="modal-passenger-details" role="dialog" aria-modal="true"
+    aria-labelledby="modal-passenger-title">
+    <div class="modal modal-wide modal-passenger">
+      <div class="modal-header">
+        <h3 id="modal-passenger-title">🧑‍✈️ Passenger Details</h3>
+        <button class="modal-close" id="btn-close-passenger-modal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="passenger-flight-summary" id="passenger-flight-summary"></div>
+        <div class="passenger-form-errors" id="passenger-form-errors" style="display:none;"></div>
+
+        <div class="passenger-section">
+          <h4>📞 Contact Details</h4>
+          <div class="passenger-form-row">
+            <div class="passenger-form-group">
+              <label for="pax-contact-first">First Name *</label>
+              <input type="text" id="pax-contact-first" class="passenger-input" placeholder="e.g. Manish" />
+            </div>
+            <div class="passenger-form-group">
+              <label for="pax-contact-last">Last Name *</label>
+              <input type="text" id="pax-contact-last" class="passenger-input" placeholder="e.g. Raikwar" />
+            </div>
+          </div>
+          <div class="passenger-form-row">
+            <div class="passenger-form-group">
+              <label for="pax-contact-email">Email *</label>
+              <input type="email" id="pax-contact-email" class="passenger-input" placeholder="e.g. manish@example.com" />
+            </div>
+            <div class="passenger-form-group">
+              <label for="pax-contact-country-code">Country Code *</label>
+              <input type="text" id="pax-contact-country-code" class="passenger-input" placeholder="e.g. 91" maxlength="4" value="91" />
+            </div>
+            <div class="passenger-form-group">
+              <label for="pax-contact-phone">Phone Number *</label>
+              <input type="tel" id="pax-contact-phone" class="passenger-input" placeholder="e.g. 9876543210" />
+            </div>
+          </div>
+        </div>
+
+        <div class="passenger-section">
+          <div class="passenger-section-header">
+            <h4>🧑 Traveler Details</h4>
+            <button class="btn btn-outline btn-sm" id="btn-add-passenger" type="button">＋ Add Passenger</button>
+          </div>
+          <div id="passenger-rows"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-cancel-passenger">Cancel</button>
+        <button class="btn btn-primary" id="btn-submit-passengers">✅ Pre-book Flight</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prebook confirmation modal -->
+  <div class="modal-overlay" id="modal-prebook-confirmation" role="dialog" aria-modal="true"
+    aria-labelledby="modal-prebook-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-prebook-title">✅ Flight Pre-booked!</h3>
+        <button class="modal-close" id="btn-close-prebook-modal" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-prebook-body">
+        <!-- Confirmation details filled in dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-close-prebook">Close</button>
+        <button class="btn btn-primary" id="btn-continue-booking">➡️ Continue to Booking</button>
       </div>
     </div>
   </div>
@@ -319,6 +392,44 @@
       <div class="modal-footer">
         <button class="btn btn-outline" id="btn-cancel-hotel">Cancel</button>
         <button class="btn btn-primary" id="btn-confirm-prebook-hotels">✅ Pre-book All Hotels</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hotel search / availability issue modal -->
+  <div class="modal-overlay" id="modal-hotel-issue" role="dialog" aria-modal="true"
+    aria-labelledby="modal-hotel-issue-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-hotel-issue-title">🏨 Hotel Search Issue</h3>
+        <button class="modal-close" id="btn-close-hotel-issue" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-hotel-issue-body">
+        <!-- Issue message -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-hotel-issue-cancel">Cancel</button>
+        <button class="btn btn-outline" id="btn-hotel-issue-skip">Skip Night</button>
+        <button class="btn btn-primary" id="btn-hotel-issue-retry">🔄 Retry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hotel pre-book error modal -->
+  <div class="modal-overlay" id="modal-prebook-error" role="dialog" aria-modal="true"
+    aria-labelledby="modal-prebook-error-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-prebook-error-title">❌ Pre-booking Failed</h3>
+        <button class="modal-close" id="btn-close-prebook-error" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-prebook-error-body">
+        <!-- Error message -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-prebook-error-abort">Stop</button>
+        <button class="btn btn-outline" id="btn-prebook-error-skip">Skip This Hotel</button>
+        <button class="btn btn-primary" id="btn-prebook-error-retry">🔄 Retry</button>
       </div>
     </div>
   </div>
@@ -411,12 +522,13 @@
 
   <!-- ═══════════════════════════════════════════════════════ SCRIPTS -->
   <!-- ?v=20260726b forces the browser to bypass any stale cached version -->
-  <script src="/static/js/api.js?v=20260726b"></script>
-  <script src="/static/js/chat.js?v=20260726b"></script>
-  <script src="/static/js/flight.js?v=20260726b"></script>
-  <script src="/static/js/hotel.js?v=20260726b"></script>
-  <script src="/static/js/itinerary.js?v=20260726b"></script>
-  <script src="/static/js/app.js?v=20260726b"></script>
+  <script src="/static/js/api.js?v=20260801b"></script>
+  <script src="/static/js/chat.js?v=20260801b"></script>
+  <script src="/static/js/flight.js?v=20260801b"></script>
+  <script src="/static/js/passenger.js?v=20260801b"></script>
+  <script src="/static/js/hotel.js?v=20260801b"></script>
+  <script src="/static/js/itinerary.js?v=20260801b"></script>
+  <script src="/static/js/app.js?v=20260801b"></script>
 
 </body>
 

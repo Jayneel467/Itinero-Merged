@@ -2,22 +2,25 @@
 Hotel Agent — LiteAPI Implementation.
 
 Searches hotels via LiteAPI and returns typed Pydantic models.
-Supports ranking, filtering, and pre-booking workflows.
+Supports ranking, filtering, per-night searching with room offers,
+and pre-booking workflows.
 """
 
 from __future__ import annotations
 
 import uuid
 from datetime import date
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from backend.models.state import (
     Hotel,
     HotelPrebook,
     HotelSearchParams,
+    HotelWithOffers,
     RankingCriteria,
+    RoomOffer,
 )
-from realtime_hotel_search import search_hotels
+from realtime_hotel_search import search_hotels, search_hotels_with_offers
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +45,65 @@ class HotelAgent:
         """Return available hotels matching *params*, unranked."""
         raw = self._fetch_raw_hotels(params)
         return self._apply_filters(raw, params)
+
+    def search_hotels_with_offers(self, params: HotelSearchParams) -> List[HotelWithOffers]:
+        """
+        Return hotels matching *params* together with every bookable room
+        offer (offerId, room type, price) for the given stay dates.
+        """
+        nights = self._calc_nights(params.check_in, params.check_out)
+        raw = search_hotels_with_offers(
+            city_name=params.destination,
+            country_code="IN",
+            checkin=params.check_in,
+            checkout=params.check_out,
+            adults=params.num_guests,
+        )
+
+        results: List[HotelWithOffers] = []
+        for entry in raw:
+            offers: List[RoomOffer] = []
+            for off in entry.get("offers", []):
+                price = float(off.get("price") or 0.0)
+                offers.append(RoomOffer(
+                    offer_id        = str(off.get("offer_id") or ""),
+                    room_type       = off.get("room_name") or "",
+                    board_name      = off.get("board_name") or "",
+                    price_per_night = round(price / nights, 2) if nights else price,
+                    total_price     = round(price, 2),
+                    currency        = off.get("currency") or "INR",
+                    refundable      = off.get("refundable"),
+                    cancel_policy   = off.get("cancel_policy"),
+                ))
+
+            best = offers[0] if offers else None
+            hotel = Hotel(
+                hotel_id                = str(entry.get("hotel_id") or ""),
+                name                    = entry.get("hotel_name") or "Hotel",
+                rating                  = round(min(float(entry.get("rating") or 0) / 2.0, 5.0), 1),
+                address                 = entry.get("address") or "",
+                distance_from_center_km = 0.0,
+                price_per_night         = best.price_per_night if best else 0.0,
+                amenities               = [best.board_name] if best and best.board_name else [],
+                room_type               = best.room_type if best else "",
+                check_in                = params.check_in,
+                check_out               = params.check_out,
+                total_price             = best.total_price if best else 0.0,
+                image_placeholder       = entry.get("main_photo") or "🏨",
+                offer_id                = best.offer_id if best else None,
+                board_name              = best.board_name if best else None,
+                currency                = best.currency if best else None,
+                refundable              = best.refundable if best else None,
+                cancel_policy           = best.cancel_policy if best else None,
+            )
+            results.append(HotelWithOffers(hotel=hotel, offers=offers))
+
+        if params.max_price_per_night is not None:
+            results = [r for r in results if r.hotel.price_per_night <= params.max_price_per_night]
+        if params.min_rating is not None:
+            results = [r for r in results if r.hotel.rating >= params.min_rating]
+
+        return results
 
     def search_and_rank(
         self,

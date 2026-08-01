@@ -13,6 +13,7 @@ from backend.graph.nodes import (
     node_flight_search,
     node_flight_ranking,
     node_flight_selection,
+    node_flight_passenger_details,
     node_flight_prebook,
     node_flight_prebooked,
     node_draft_itinerary,
@@ -21,7 +22,10 @@ from backend.graph.nodes import (
     node_hotel_search,
     node_hotel_ranking,
     node_hotel_selection,
+    node_hotel_room_selection,
+    node_hotel_summary,
     node_hotel_prebook,
+    node_hotel_prebook_retry,
     node_final_itinerary,
     step_to_node,
     WORKER_NODES,
@@ -54,6 +58,7 @@ def build_graph() -> StateGraph:
     graph.add_node("flight_search",         node_flight_search)
     graph.add_node("flight_ranking",        node_flight_ranking)
     graph.add_node("flight_selection",      node_flight_selection)
+    graph.add_node("flight_passenger_details", node_flight_passenger_details)
     graph.add_node("flight_prebook",        node_flight_prebook)
     graph.add_node("flight_prebooked",      node_flight_prebooked)
     graph.add_node("draft_itinerary",       node_draft_itinerary)
@@ -62,7 +67,10 @@ def build_graph() -> StateGraph:
     graph.add_node("hotel_search",          node_hotel_search)
     graph.add_node("hotel_ranking",         node_hotel_ranking)
     graph.add_node("hotel_selection",       node_hotel_selection)
+    graph.add_node("hotel_room_selection",  node_hotel_room_selection)
+    graph.add_node("hotel_summary",         node_hotel_summary)
     graph.add_node("hotel_prebook",         node_hotel_prebook)
+    graph.add_node("hotel_prebook_retry",   node_hotel_prebook_retry)
     graph.add_node("final_itinerary",       node_final_itinerary)
 
     graph.set_entry_point("supervisor")

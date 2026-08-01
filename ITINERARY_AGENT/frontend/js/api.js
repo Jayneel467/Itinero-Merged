@@ -103,9 +103,22 @@ async function apiPrebookFlight(sessionId, flightId, numPassengers = 1) {
   });
 }
 
+/**
+ * Submit the Passenger Details form and trigger the real LiteAPI pre-booking.
+ * @param {string} sessionId
+ * @param {object} contact   - { firstName, lastName, email, phone }
+ * @param {Array}  passengers - [{ type, firstName, lastName, gender, birthday, document }]
+ */
+async function apiSubmitPassengerDetails(sessionId, contact, passengers) {
+  return apiFetch('/flight/passenger-details', {
+    method: 'POST',
+    body: { session_id: sessionId, contact, passengers },
+  });
+}
+
 // ─── Hotels ──────────────────────────────────────────────────────────────────
 
-/** Search hotels. */
+/** Search hotels (starts the per-night hotel flow; may carry a retry/skip/cancel decision). */
 async function apiSearchHotels(sessionId, params = {}) {
   return apiFetch('/hotel/search', {
     method: 'POST',
@@ -113,23 +126,32 @@ async function apiSearchHotels(sessionId, params = {}) {
   });
 }
 
-/** Select a hotel for a specific trip day. */
-async function apiSelectHotel(sessionId, hotelId, dayNumber) {
+/** Select a hotel for the current night. */
+async function apiSelectHotel(sessionId, hotelId) {
   return apiFetch('/hotel/select', {
     method: 'POST',
-    body: { session_id: sessionId, hotel_id: hotelId, day_number: dayNumber },
+    body: { session_id: sessionId, hotel_id: hotelId },
+  });
+}
+
+/** Select a room offer (1-based) for the current night's hotel. */
+async function apiSelectHotelRoom(sessionId, offerIndex) {
+  return apiFetch('/hotel/room/select', {
+    method: 'POST',
+    body: { session_id: sessionId, offer_index: offerIndex },
   });
 }
 
 /**
- * Bulk pre-book hotels.
+ * Confirm the summary / drive the sequential pre-book flow.
  * @param {string} sessionId
  * @param {Array<{hotel_id: string, day_number: number}>} selections
+ * @param {string} [decision] - "yes" (confirm summary) or "retry"/"skip"/"abort" (prebook failure)
  */
-async function apiPrebookHotels(sessionId, selections) {
+async function apiPrebookHotels(sessionId, selections = [], decision = null) {
   return apiFetch('/hotel/prebook', {
     method: 'POST',
-    body: { session_id: sessionId, selections },
+    body: { session_id: sessionId, selections, decision },
   });
 }
 

@@ -90,7 +90,7 @@ def extract_flight_results(
 
     data = response.json()
 
-    flights = [][:5]
+    flights = []
 
     journeys = data.get("data", [])
 

@@ -1,17 +1,26 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Optional
 
 from langgraph.types import interrupt
+from pydantic import ValidationError
 
 from backend.models.state import (
     AppState,
     FlightSearchParams,
+    Hotel,
+    HotelNightSelection,
+    HotelPrebook,
     HotelSearchParams,
+    HotelWithOffers,
     ItineraryVersion,
+    PassengerFormData,
     RankingCriteria,
+    RoomOffer,
     TripType,
     WorkflowStep,
+    build_night_segments,
 )
 from backend.agents.flight_agent import FlightAgent
 from backend.agents.hotel_agent import HotelAgent
@@ -22,6 +31,7 @@ from backend.services.itinerary_versioning import (
     compare_itineraries,
     build_comparison,
 )
+from backend.services.liteapi_hotel import prebook_hotel_room
 
 
 # ---------------------------------------------------------------------------
@@ -218,70 +228,205 @@ def node_flight_ranking(state: AppState) -> AppState:
 # ===========================================================================
 
 def node_flight_selection(state: AppState) -> AppState:
-    selected = state.selected_flight
-    if selected is None:
+    if state.selected_flight is None:
         return state.model_copy(update={
             "workflow_step": WorkflowStep.FLIGHT_RANKING,
         })
+    # Selected — ask the frontend to collect passenger details (HITL pause).
     return state.model_copy(update={
-        "workflow_step": WorkflowStep.FLIGHT_PREBOOK,
+        "workflow_step": WorkflowStep.FLIGHT_PASSENGER_DETAILS,
     })
 
 
 # ===========================================================================
-# 8. FLIGHT PREBOOK
+# 7b. FLIGHT PASSENGER DETAILS — collect LiteAPI booking form data
+# ===========================================================================
+
+def node_flight_passenger_details(state: AppState) -> AppState:
+    """
+    Pause the workflow and ask the frontend to open the Passenger Details
+    form. Resumes with the validated form payload; the real LiteAPI
+    pre-booking call happens in the NEXT node (flight_prebook).
+    """
+    flight = state.selected_flight
+    if flight is None:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.FLIGHT_RANKING,
+        })
+
+    num_passengers = state.trip_requirements.num_travelers or 1
+
+    base_payload: Dict[str, Any] = {
+        "type": "flight_passenger_details",
+        "message": (
+            f"✈️ **{flight.airline} {flight.flight_number}** selected!\n\n"
+            f"{flight.departure_airport} → {flight.arrival_airport} · "
+            f"{flight.duration_display}\n"
+            f"Total price: **₹{flight.total_price:,.0f}**\n\n"
+            "Please fill in the **Passenger Details form** to continue "
+            "with pre-booking."
+        ),
+        "flight": flight.model_dump(),
+        "num_passengers": num_passengers,
+    }
+
+    user_input = interrupt(base_payload)
+
+    # User cancelled via chat / terminal
+    if isinstance(user_input, str):
+        cmd = user_input.strip().lower()
+        if cmd in ("cancel", "no", "back", "skip"):
+            state = state.add_assistant_message(
+                "Flight selection cancelled. You can choose a different flight."
+            )
+            return state.model_copy(update={
+                "selected_flight": None,
+                "passenger_form":  None,
+                "workflow_step":   WorkflowStep.FLIGHT_RANKING,
+            })
+        state = state.add_assistant_message(
+            "Please use the **Passenger Details form** to continue."
+        )
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.FLIGHT_PASSENGER_DETAILS,
+        })
+
+    # Validate the submitted form (loop re-pauses on invalid data)
+    while isinstance(user_input, dict):
+        try:
+            form = PassengerFormData(**user_input)
+        except ValidationError as exc:
+            errors = _format_validation_errors(exc)
+            payload_with_errors = {
+                **base_payload,
+                "errors": errors,
+                "message": (
+                    "❌ **Some passenger details are invalid.** "
+                    "Please fix the highlighted fields and submit again."
+                ),
+            }
+            user_input = interrupt(payload_with_errors)
+            if isinstance(user_input, str) and user_input.strip().lower() in (
+                "cancel", "no", "back",
+            ):
+                state = state.add_assistant_message(
+                    "Flight selection cancelled. You can choose a different flight."
+                )
+                return state.model_copy(update={
+                    "selected_flight": None,
+                    "passenger_form":  None,
+                    "workflow_step":   WorkflowStep.FLIGHT_RANKING,
+                })
+            continue
+
+        state = state.model_copy(update={
+            "passenger_form": form,
+            "workflow_step":  WorkflowStep.FLIGHT_PREBOOK,
+        })
+        return state
+
+    # Unknown input shape
+    state = state.add_assistant_message(
+        "Please use the **Passenger Details form** to continue."
+    )
+    return state.model_copy(update={
+        "workflow_step": WorkflowStep.FLIGHT_PASSENGER_DETAILS,
+    })
+
+
+# ===========================================================================
+# 8. FLIGHT PREBOOK — real LiteAPI pre-booking
 # ===========================================================================
 
 def node_flight_prebook(state: AppState) -> AppState:
-    choice = interrupt(
-        f"Shall I **pre-book** the selected flight "
-        f"({state.selected_flight.airline} {state.selected_flight.flight_number})? *(yes / no)*"
-    )
-    msg = choice.lower().strip()
-
-    if msg in ("no", "n", "cancel", "skip"):
-        state = state.add_assistant_message(
-            "Flight booking cancelled. Would you like to choose a different flight? *(yes / no)*"
-        )
-        retry = interrupt("")
-        if retry.lower().strip() in ("yes", "y"):
-            return state.model_copy(update={
-                "selected_flight": None,
-                "workflow_step":   WorkflowStep.FLIGHT_RANKING,
-            })
+    form = state.passenger_form
+    if form is None:
+        # No passenger data — go back and ask for it.
         return state.model_copy(update={
-            "workflow_step": WorkflowStep.COLLECT_REQUIREMENTS,
+            "workflow_step": WorkflowStep.FLIGHT_PASSENGER_DETAILS,
         })
 
-    prebook = _flight_agent.prebook_flight(
-        flight         = state.selected_flight,
-        num_passengers = state.trip_requirements.num_travelers or 1,
-    )
+    try:
+        prebook = _flight_agent.prebook_flight(
+            flight    = state.selected_flight,
+            contact   = form.contact,
+            passengers = form.passengers,
+        )
+    except Exception as exc:
+        state = state.add_assistant_message(
+            f"❌ **Flight pre-booking failed.**\n\n`{exc}`"
+        )
+        choice = interrupt({
+            "type": "flight_prebook_error",
+            "message": (
+                f"❌ **Flight pre-booking failed.**\n\n"
+                f"`{exc}`\n\n"
+                "Would you like to **retry** or choose a **different flight**?"
+            ),
+            "retryable": True,
+        })
+        cmd = choice.strip().lower() if isinstance(choice, str) else ""
+        if cmd in ("retry", "try again", "yes", "y"):
+            return state.model_copy(update={
+                "workflow_step": WorkflowStep.FLIGHT_PREBOOK,
+            })
+        state = state.add_assistant_message(
+            "Pre-booking cancelled. Choose a different flight if you'd like."
+        )
+        return state.model_copy(update={
+            "selected_flight": None,
+            "passenger_form":  None,
+            "workflow_step":   WorkflowStep.FLIGHT_RANKING,
+        })
+
     state = state.model_copy(update={
         "flight_prebook": prebook,
         "workflow_step":  WorkflowStep.FLIGHT_PREBOOKED,
     })
     state = state.add_assistant_message(
         f"✅ **Flight Pre-booked!**\n\n"
-        f"Booking ID: `{prebook.prebook_id}`\n"
+        f"Prebook ID: `{prebook.prebook_id}`\n"
+        f"Status: **{prebook.booking_status or prebook.status}**\n"
         f"Flight: {prebook.flight.airline} {prebook.flight.flight_number}\n"
-        f"Total Charged: **₹{prebook.total_charged:,.0f}**"
+        f"Total: **₹{prebook.total_charged:,.0f}**"
     )
     return state
 
 
 # ===========================================================================
-# 9. FLIGHT PREBOOKED — wait for draft trigger
+# 9. FLIGHT PREBOOKED — confirmation page, wait for draft trigger
 # ===========================================================================
 
 def node_flight_prebooked(state: AppState) -> AppState:
-    choice = interrupt(
-        f"✅ Flight **{state.flight_prebook.flight.airline} {state.flight_prebook.flight.flight_number}** "
-        f"pre-booked! ID: `{state.flight_prebook.prebook_id}`\n\n"
-        "Ready to generate your draft itinerary?"
-    )
-    cmd = choice.lower().strip()
-    if cmd in ("yes", "y", "sure", "ok", "generate", "go"):
+    pb = state.flight_prebook
+    if pb is None:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.FLIGHT_PREBOOK,
+        })
+    flight = pb.flight
+    passenger_names = ", ".join(
+        f"{p.first_name} {p.last_name}" for p in (pb.passenger_details or [])
+    ) or f"{pb.passengers} passenger(s)"
+
+    payload = {
+        "type": "flight_prebooked",
+        "message": (
+            f"✅ **Flight Pre-booked!**\n\n"
+            f"Prebook ID: `{pb.prebook_id}`\n"
+            f"Status: **{pb.booking_status or pb.status}**\n"
+            f"Flight: {flight.airline} {flight.flight_number}\n"
+            f"Passengers: {passenger_names}\n"
+            f"Total: **₹{pb.total_charged:,.0f}**\n\n"
+            "Ready to generate your draft itinerary?"
+        ),
+        "prebook": pb.model_dump(),
+        "flight": flight.model_dump(),
+        "passenger_names": passenger_names,
+    }
+
+    choice = interrupt(payload)
+    cmd = choice.strip().lower() if isinstance(choice, str) else ""
+    if cmd in ("yes", "y", "sure", "ok", "generate", "go", "continue"):
         state = state.add_assistant_message(
             "Generating your **Draft Itinerary** now... 📋"
         )
@@ -485,143 +630,672 @@ def node_draft_confirm(state: AppState) -> AppState:
 
 
 # ===========================================================================
-# 11. HOTEL SEARCH
+# 11. HOTEL SEARCH — one search per night (nightly check-in/check-out)
 # ===========================================================================
 
 def node_hotel_search(state: AppState) -> AppState:
-    req  = state.trip_requirements
-    days = state.num_trip_days()
+    req = state.trip_requirements
 
-    params = HotelSearchParams(
-        destination         = req.destination   or "",
-        check_in            = req.departure_date or "",
-        check_out           = req.return_date    or "",
-        num_guests          = req.num_travelers  or 1,
-        max_price_per_night = (req.budget / max(days, 1) * 0.40) if req.budget else None,
+    # ── Split the stay into nightly segments (rebuilt when dates change) ──
+    segments = state.hotel_night_segments
+    expected_start = req.departure_date or ""
+    expected_end   = req.return_date or ""
+    if (
+        not segments
+        or segments[0].check_in != expected_start
+        or segments[-1].check_out != expected_end
+    ):
+        segments = build_night_segments(expected_start, expected_end)
+        state = state.model_copy(update={"hotel_night_segments": segments})
+
+    total_nights = len(segments)
+    night        = min(max(state.current_night, 1), total_nights)
+    segment      = segments[night - 1]
+
+    max_price_per_night = (
+        round(req.budget / max(total_nights, 1) * 0.40, 0)
+        if req.budget else None
     )
-    results = _hotel_agent.search_hotels(params)
-    return state.model_copy(update={
-        "hotel_search_results": results,
-        "workflow_step":        WorkflowStep.HOTEL_RANKING,
+
+    # Interrupt-driven retry / relax / skip loop (state is only committed
+    # when this node returns — safe to loop with interrupts here).
+    while True:
+        params = HotelSearchParams(
+            destination         = req.destination or "",
+            check_in            = segment.check_in,
+            check_out           = segment.check_out,
+            num_guests          = req.num_travelers or 1,
+            max_price_per_night = max_price_per_night,
+        )
+        try:
+            results = _hotel_agent.search_hotels_with_offers(params)
+        except Exception as exc:
+            choice = interrupt({
+                "type": "hotel_search_error",
+                "night": night,
+                "total_nights": total_nights,
+                "message": (
+                    f"❌ **Hotel search failed for Night {night}** "
+                    f"({segment.check_in} → {segment.check_out}).\n\n"
+                    f"Reason: `{exc}`\n\n"
+                    "Reply **retry** to try again, **relax** to increase the "
+                    "budget, **skip** to skip this night, or **cancel**."
+                ),
+            })
+            cmd = _parse_choice(choice)
+            if cmd == "retry":
+                continue
+            if cmd == "relax":
+                max_price_per_night = round((max_price_per_night or 5000) * 1.5, 0)
+                continue
+            if cmd == "skip":
+                return _skip_night(state, night, total_nights,
+                                   reason="Hotel search failed.")
+            state = state.add_assistant_message(
+                "Hotel search cancelled. No hotels were selected."
+            )
+            return _finish_night_loop(state, total_nights)
+
+        if not results:
+            choice = interrupt({
+                "type": "hotel_no_results",
+                "night": night,
+                "total_nights": total_nights,
+                "message": (
+                    f"😕 **No hotels found for Night {night}** "
+                    f"({segment.check_in} → {segment.check_out}).\n\n"
+                    "Reply **retry** to try again, **relax** to increase the "
+                    "budget, **skip** to skip this night, or **cancel**."
+                ),
+            })
+            cmd = _parse_choice(choice)
+            if cmd == "retry":
+                continue
+            if cmd == "relax":
+                max_price_per_night = round((max_price_per_night or 5000) * 1.5, 0)
+                continue
+            if cmd == "skip":
+                return _skip_night(state, night, total_nights,
+                                   reason="No hotels available.")
+            state = state.add_assistant_message(
+                "Hotel search cancelled. No hotels were selected."
+            )
+            return _finish_night_loop(state, total_nights)
+
+        break
+
+    hotels   = [r.hotel for r in results]
+    with_off = results
+    state    = state.model_copy(update={
+        "hotel_search_results":      hotels,
+        "hotel_search_with_offers":  with_off,
+        "hotel_room_offers":         [],
+        "selected_night_hotel":      None,
+        "hotel_search_error":        None,
+        "workflow_step":             WorkflowStep.HOTEL_RANKING,
     })
+    return state
 
 
 # ===========================================================================
-# 12. HOTEL RANKING + SELECTION (day-by-day)
+# 12. HOTEL RANKING + SELECTION (current night only)
 # ===========================================================================
 
 def node_hotel_ranking(state: AppState) -> AppState:
-    ranked = _hotel_agent.rank_hotels(
-        state.hotel_search_results, RankingCriteria.BEST_VALUE
-    )
-    days = state.num_trip_days()
-    dest = state.trip_requirements.destination or "destination"
+    hotels = state.hotel_search_results
+    night  = state.current_night
+    total  = len(state.hotel_night_segments) or 1
 
-    hotels_display_lines: List[str] = []
+    if not hotels:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_SEARCH,
+        })
+
+    ranked = _hotel_agent.rank_hotels(hotels, RankingCriteria.BEST_VALUE)
+    dest   = state.trip_requirements.destination or "destination"
+
+    lines: List[str] = []
     for i, h in enumerate(ranked):
         stars = "⭐" * int(round(h.rating))
         amenities = ", ".join(h.amenities[:4])
-        hotels_display_lines.append(
+        lines.append(
             f"  {i+1}. **{h.name}** {stars} ({h.rating}/5)\n"
             f"     💰 ₹{h.price_per_night:,.0f}/night | 📍 {h.address}\n"
             f"     🛏️ {h.room_type} | 🏊 {amenities}"
         )
-    hotels_display = "\n".join(hotels_display_lines)
+    display = (
+        f"\n---\n**Night {night} of {total}** "
+        f"({_fmt_date(state.hotel_night_segments[night-1].check_in) if state.hotel_night_segments else ''} "
+        f"→ {_fmt_date(state.hotel_night_segments[night-1].check_out) if state.hotel_night_segments else ''})\n\n"
+        f"Available hotels in {dest.title()}:\n\n"
+        + "\n".join(lines)
+        + f"\n\nSelect a hotel for Night {night} (enter number 1–{len(ranked)}):"
+    )
 
-    selected: Dict[str, Any] = {}
-    for day in range(1, days + 1):
-        prompt = (
-            f"\n---\n**Night {day} of {days}**\n\n"
-            f"Available hotels in {dest.title()}:\n\n"
-            f"{hotels_display}\n\n"
-            f"Select a hotel for Night {day} (enter number 1–{len(ranked)}):"
+    choice = interrupt(display)
+    try:
+        idx = int(choice.strip()) - 1
+        selected = ranked[idx]
+    except (ValueError, IndexError):
+        state = state.add_assistant_message(
+            f"Invalid selection. Please enter a number between 1 and {len(ranked)}."
         )
-        choice = interrupt(prompt)
-        try:
-            idx = int(choice.strip()) - 1
-            selected[str(day)] = ranked[idx]
-            state = state.add_assistant_message(
-                f"✅ Night {day}: **{ranked[idx].name}** selected "
-                f"(⭐ {ranked[idx].rating} | ₹{ranked[idx].price_per_night:,.0f}/night)."
-            )
-        except (ValueError, IndexError):
-            state = state.add_assistant_message(
-                f"Invalid selection for Night {day}. Please try again."
-            )
-            return state.model_copy(update={
-                "hotel_search_results": ranked,
-                "selected_hotels":      selected,
-                "workflow_step":        WorkflowStep.HOTEL_RANKING,
-            })
+        return state.model_copy(update={
+            "hotel_search_results": ranked,
+            "workflow_step":        WorkflowStep.HOTEL_RANKING,
+        })
+
+    # ── Look up the room offers for the selected hotel ──
+    offers = _offers_for_hotel(state.hotel_search_with_offers, selected.hotel_id)
+    if not offers:
+        state = state.add_assistant_message(
+            f"**{selected.name}** has no bookable rooms for these dates."
+        )
+        choice = interrupt({
+            "type": "hotel_no_rooms",
+            "night": night,
+            "hotel_name": selected.name,
+            "message": (
+                f"❌ **{selected.name}** has no available rooms for "
+                f"Night {night}. Please choose a different hotel."
+            ),
+        })
+        return state.model_copy(update={
+            "hotel_search_results": ranked,
+            "workflow_step":        WorkflowStep.HOTEL_RANKING,
+        })
 
     state = state.add_assistant_message(
-        "✅ **All nights selected!**"
+        f"✅ Night {night}: **{selected.name}** selected "
+        f"(⭐ {selected.rating} | ₹{selected.price_per_night:,.0f}/night). "
+        f"Now pick a room type."
     )
     return state.model_copy(update={
         "hotel_search_results": ranked,
-        "selected_hotels":      selected,
-        "workflow_step":        WorkflowStep.HOTEL_PREBOOK,
+        "hotel_room_offers":    offers,
+        "selected_night_hotel": selected,
+        "workflow_step":        WorkflowStep.HOTEL_SELECTION,
     })
 
 
 # ===========================================================================
-# 13. HOTEL SELECTION (pass-through — already handled in ranking)
+# 13. HOTEL SELECTION (pass-through — selection already recorded)
 # ===========================================================================
 
 def node_hotel_selection(state: AppState) -> AppState:
-    if not state.selected_hotels:
+    if not state.hotel_room_offers:
         return state.model_copy(update={
             "workflow_step": WorkflowStep.HOTEL_RANKING,
         })
     return state.model_copy(update={
-        "workflow_step": WorkflowStep.HOTEL_PREBOOK,
+        "workflow_step": WorkflowStep.HOTEL_ROOM_SELECTION,
     })
 
 
 # ===========================================================================
-# 14. HOTEL PREBOOK
+# 13b. ROOM SELECTION — pick a room offer for the current night's hotel
+# ===========================================================================
+
+def node_hotel_room_selection(state: AppState) -> AppState:
+    night   = state.current_night
+    total   = len(state.hotel_night_segments) or 1
+    offers  = state.hotel_room_offers
+    selected_hotel = state.selected_night_hotel
+
+    if not offers:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_RANKING,
+        })
+
+    hotel_label = selected_hotel.name if selected_hotel else "your hotel"
+
+    while True:
+        lines: List[str] = []
+        for i, o in enumerate(offers):
+            lines.append(
+                f"  {i+1}. **{o.room_type}** — {o.board_name or 'Room Only'}\n"
+                f"     💰 ₹{o.price_per_night:,.0f}/night "
+                f"(₹{o.total_price:,.0f} total) | "
+                f"{'🔄 Refundable' if o.refundable else 'Non-refundable'}"
+            )
+        message = (
+            f"🛏️ **Room options at {hotel_label}** — Night {night} of {total} "
+            f"({state.hotel_night_segments[night-1].check_in} → "
+            f"{state.hotel_night_segments[night-1].check_out})\n\n"
+            + "\n".join(lines)
+            + f"\n\nSelect a room (enter number 1–{len(offers)}):"
+        )
+
+        choice = interrupt({
+            "type":   "hotel_room_offers",
+            "message": message,
+            "night":  night,
+            "hotel":  selected_hotel.model_dump() if selected_hotel else None,
+            "offers": [o.model_dump() for o in offers],
+        })
+
+        idx = _parse_offer_index(choice)
+        if idx is not None and 0 <= idx < len(offers):
+            offer = offers[idx]
+            break
+
+        state = state.add_assistant_message(
+            f"Invalid room selection. Please enter a number between 1 and {len(offers)}."
+        )
+
+    selection = HotelNightSelection(
+        night           = night,
+        check_in        = state.hotel_night_segments[night-1].check_in,
+        check_out       = state.hotel_night_segments[night-1].check_out,
+        hotel_id        = selected_hotel.hotel_id if selected_hotel else "",
+        hotel_name      = selected_hotel.name if selected_hotel else hotel_label,
+        room_type       = offer.room_type,
+        offer_id        = offer.offer_id,
+        price_per_night = offer.price_per_night,
+        total_price     = offer.total_price,
+        currency        = offer.currency,
+        hotel           = selected_hotel,
+    )
+
+    existing = state.hotel_night_selections
+    selections = [s for s in existing if s.night != night] + [selection]
+    selections.sort(key=lambda s: s.night)
+
+    state = state.add_assistant_message(
+        f"✅ Night {night}: **{selection.hotel_name}** — **{offer.room_type}** "
+        f"at **₹{offer.total_price:,.0f}**."
+    )
+
+    if night < total:
+        return state.model_copy(update={
+            "hotel_night_selections": selections,
+            "hotel_room_offers":      [],
+            "selected_night_hotel":   None,
+            "current_night":          night + 1,
+            "workflow_step":          WorkflowStep.HOTEL_SEARCH,
+        })
+
+    return state.model_copy(update={
+        "hotel_night_selections": selections,
+        "hotel_room_offers":      [],
+        "selected_night_hotel":   None,
+        "workflow_step":          WorkflowStep.HOTEL_SUMMARY,
+    })
+
+
+# ===========================================================================
+# 13c. HOTEL SUMMARY — combined night-by-night summary + confirmation
+# ===========================================================================
+
+def node_hotel_summary(state: AppState) -> AppState:
+    selections = _ordered_selections(state)
+    total      = sum(s.total_price for s in selections)
+
+    lines: List[str] = ["**Your hotel selections:**", ""]
+    for s in selections:
+        if s.offer_id:
+            lines.append(
+                f"  🛏️ **Night {s.night}** — {s.hotel_name} | "
+                f"{s.room_type} | ₹{s.total_price:,.0f}"
+            )
+        else:
+            lines.append(
+                f"  ⚠️ **Night {s.night}** — no hotel selected "
+                f"({s.prebook_error or 'skipped'})"
+            )
+    lines += ["", f"  💰 **Grand Total: ₹{total:,.0f}**", "",
+              "Proceed with pre-booking? *(yes / no)*"]
+
+    message = "\n".join(lines)
+    payload = {
+        "type":       "hotel_summary",
+        "message":    message,
+        "selections": [s.model_dump() for s in selections],
+        "grand_total": total,
+        "total_nights": len(selections),
+    }
+
+    choice = interrupt(payload)
+    cmd = _parse_choice(choice)
+
+    if cmd in ("yes", "y", "confirm", "proceed", "prebook"):
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_PREBOOK,
+        })
+
+    state = state.add_assistant_message(
+        "Pre-booking cancelled. Restarting hotel selection from Night 1 — "
+        "you can pick different hotels."
+    )
+    return state.model_copy(update={
+        "hotel_night_selections": [],
+        "hotel_room_offers":      [],
+        "current_night":          1,
+        "workflow_step":          WorkflowStep.HOTEL_SEARCH,
+    })
+
+
+# ===========================================================================
+# 14. HOTEL PREBOOK — sequential real pre-book for every selected hotel
 # ===========================================================================
 
 def node_hotel_prebook(state: AppState) -> AppState:
-    choice = interrupt("Shall I **pre-book all selected hotels**? *(yes / no)*")
-    msg = choice.lower().strip()
+    selections = _ordered_selections(state)
 
-    if msg in ("no", "n", "cancel", "skip"):
-        state = state.add_assistant_message(
-            "Hotel booking cancelled. You can choose different hotels if you'd like."
-        )
+    # ── Resume path: apply the retry/skip/abort decision made earlier ──
+    pending = state.hotel_prebook_pending
+    if pending:
+        decision = str(pending.get("decision") or "").strip().lower()
+        state = state.model_copy(update={"hotel_prebook_pending": None})
+        selections = _apply_prebook_decision(selections, pending, decision)
+        if decision in ("abort", "cancel", "stop"):
+            state = state.model_copy(update={"hotel_night_selections": selections})
+            return _complete_hotel_prebooks(state, selections)
+
+    # ── Sequential pre-book loop (real LiteAPI) ──
+    updated: List[HotelNightSelection] = []
+    processed: set = set()
+    failed:  Optional[HotelNightSelection] = None
+    failure_reason = ""
+
+    for sel in selections:
+        if sel.prebook_id or sel.prebook_status in ("confirmed", "skipped", "failed"):
+            updated.append(sel)
+            processed.add(sel.night)
+            continue
+
+        try:
+            prebook_id = prebook_hotel_room(sel.offer_id)
+            sel = sel.model_copy(update={
+                "prebook_id":     prebook_id,
+                "prebook_status": "confirmed",
+                "prebook_error":  None,
+            })
+        except Exception as exc:
+            sel = sel.model_copy(update={
+                "prebook_status": "failed",
+                "prebook_error":  str(exc),
+            })
+            failed = sel
+            failure_reason = str(exc)
+            updated.append(sel)
+            processed.add(sel.night)
+            break
+
+        updated.append(sel)
+        processed.add(sel.night)
+
+    # Preserve any nights the loop did not reach (kept for the retry resume)
+    for sel in selections:
+        if sel.night not in processed:
+            updated.append(sel)
+
+    state = state.model_copy(update={"hotel_night_selections": updated})
+
+    if failed is not None:
+        # Commit the successful pre-books now, then hand over to the retry
+        # node, which owns the interrupt (interrupting here would roll back
+        # everything committed by this node).
         return state.model_copy(update={
-            "workflow_step": WorkflowStep.HOTEL_RANKING,
+            "hotel_night_selections": updated,
+            "hotel_prebook_pending":  {
+                "night":      failed.night,
+                "hotel_name": failed.hotel_name,
+                "reason":     failure_reason,
+                "decision":   None,   # set by node_hotel_prebook_retry
+            },
+            "workflow_step": WorkflowStep.HOTEL_PREBOOK_RETRY,
         })
 
-    req      = state.trip_requirements
-    prebooks = {}
-    conf_lines: List[str] = []
+    return _complete_hotel_prebooks(state, updated)
 
-    for day_str, hotel in sorted(state.selected_hotels.items(), key=lambda x: int(x[0])):
-        day_num = int(day_str)
-        pb = _hotel_agent.prebook_hotel(
-            hotel      = hotel,
-            check_in   = req.departure_date or "",
-            check_out  = req.return_date    or "",
-            num_guests = req.num_travelers  or 1,
-            day_number = day_num,
-        )
-        prebooks[day_str] = pb
-        conf_lines.append(
-            f"- Night {day_num}: **{hotel.name}** | "
-            f"ID: `{pb.prebook_id}` | ₹{pb.total_charged:,.0f}"
-        )
+
+# ===========================================================================
+# 14b. HOTEL PREBOOK RETRY — confirm retry/skip/abort for a failed night
+# ===========================================================================
+
+def node_hotel_prebook_retry(state: AppState) -> AppState:
+    pending = state.hotel_prebook_pending
+    if not pending:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_PREBOOK,
+        })
+
+    payload = {
+        "type": "hotel_prebook_error",
+        "night": pending.get("night"),
+        "hotel_name": pending.get("hotel_name"),
+        "reason": pending.get("reason"),
+        "message": (
+            f"❌ **Pre-booking failed for Night {pending.get('night')}** — "
+            f"**{pending.get('hotel_name')}**.\n\n"
+            f"Reason: `{pending.get('reason')}`\n\n"
+            "Reply **retry** to try again, **skip** to continue with the "
+            "next night, or **abort** to stop pre-booking."
+        ),
+    }
+
+    choice = interrupt(payload)
+    cmd = _parse_choice(choice)
+
+    if cmd in ("retry", "try again", "yes", "y"):
+        pending["decision"] = "retry"
+    elif cmd in ("skip", "continue", "next", "s"):
+        pending["decision"] = "skip"
+    else:
+        pending["decision"] = "abort"
+
+    return state.model_copy(update={
+        "hotel_prebook_pending": pending,
+        "workflow_step":         WorkflowStep.HOTEL_PREBOOK,
+    })
+
+
+# ===========================================================================
+# Hotel pre-book helpers
+# ===========================================================================
+
+def _apply_prebook_decision(
+    selections: List[HotelNightSelection],
+    pending: Dict[str, Any],
+    decision: str,
+) -> List[HotelNightSelection]:
+    """Apply retry/skip/abort to the night that previously failed."""
+    pending_night = int(pending.get("night") or 0)
+    updated: List[HotelNightSelection] = []
+
+    for sel in selections:
+        if sel.night == pending_night and sel.prebook_status == "failed":
+            if decision in ("retry", "try again", "yes"):
+                updated.append(sel.model_copy(update={
+                    "prebook_status": None,
+                    "prebook_error":  None,
+                }))
+            elif decision in ("skip", "continue", "next"):
+                updated.append(sel.model_copy(update={
+                    "prebook_status": "skipped",
+                }))
+            else:
+                updated.append(sel.model_copy(update={
+                    "prebook_status": "aborted",
+                }))
+        elif decision in ("abort", "cancel", "stop") and not sel.prebook_id:
+            updated.append(sel.model_copy(update={
+                "prebook_status": "aborted",
+            }))
+        else:
+            updated.append(sel)
+
+    return updated
+
+
+def _complete_hotel_prebooks(
+    state: AppState,
+    selections: List[HotelNightSelection],
+) -> AppState:
+    """Build the legacy hotel_prebooks map and announce the results."""
+    prebooks: Dict[str, HotelPrebook] = {}
+    conf_lines: List[str] = []
+    failed_lines: List[str] = []
+
+    for sel in selections:
+        if sel.prebook_id and sel.prebook_status == "confirmed":
+            prebooks[str(sel.night)] = HotelPrebook(
+                prebook_id    = sel.prebook_id,
+                hotel         = sel.hotel or _selection_fallback_hotel(sel),
+                check_in      = sel.check_in,
+                check_out     = sel.check_out,
+                guests        = state.trip_requirements.num_travelers or 1,
+                total_charged = sel.total_price,
+                status        = "confirmed",
+                day_number    = sel.night,
+            )
+            conf_lines.append(
+                f"- ✅ Night {sel.night}: **{sel.hotel_name}** | "
+                f"ID: `{sel.prebook_id}` | ₹{sel.total_price:,.0f}"
+            )
+        elif sel.prebook_status in ("failed", "skipped", "aborted"):
+            failed_lines.append(
+                f"- ⚠️ Night {sel.night}: **{sel.hotel_name}** — "
+                f"{sel.prebook_status} ({sel.prebook_error or 'no offer selected'})"
+            )
+
+    msg_lines = []
+    if conf_lines:
+        msg_lines.append("✅ **Hotel Pre-booking Results:**\n" + "\n".join(conf_lines))
+    if failed_lines:
+        msg_lines.append("⚠️ **Not pre-booked:**\n" + "\n".join(failed_lines))
+    if not msg_lines:
+        msg_lines.append("No hotels were pre-booked.")
+    msg_lines.append("\nGenerating your **Final Itinerary** now... 🎉")
 
     state = state.model_copy(update={"hotel_prebooks": prebooks})
-    state = state.add_assistant_message(
-        "✅ **All Hotels Pre-booked!**\n\n"
-        + "\n".join(conf_lines)
-        + "\n\nGenerating your **Final Itinerary** now... 🎉"
-    )
+    state = state.add_assistant_message("\n\n".join(msg_lines))
     return state.model_copy(update={
         "workflow_step": WorkflowStep.FINAL_ITINERARY,
     })
+
+
+def _selection_fallback_hotel(sel: HotelNightSelection) -> Hotel:
+    """Minimal Hotel snapshot when the full model was not persisted."""
+    return Hotel(
+        hotel_id                = sel.hotel_id,
+        name                    = sel.hotel_name,
+        rating                  = 0.0,
+        address                 = "",
+        distance_from_center_km = 0.0,
+        price_per_night         = sel.price_per_night,
+        amenities               = [],
+        room_type               = sel.room_type,
+        check_in                = sel.check_in,
+        check_out               = sel.check_out,
+        total_price             = sel.total_price,
+        offer_id                = sel.offer_id,
+    )
+
+
+def _skip_night(
+    state: AppState,
+    night: int,
+    total_nights: int,
+    reason: str,
+) -> AppState:
+    """Record a night as skipped (no hotel) and advance the loop."""
+    skipped = HotelNightSelection(
+        night           = night,
+        check_in        = state.hotel_night_segments[night-1].check_in
+                          if state.hotel_night_segments else "",
+        check_out       = state.hotel_night_segments[night-1].check_out
+                          if state.hotel_night_segments else "",
+        hotel_id        = "",
+        hotel_name      = "No hotel selected",
+        room_type       = "",
+        offer_id        = "",
+        price_per_night = 0.0,
+        total_price     = 0.0,
+        prebook_status  = "skipped",
+        prebook_error   = reason,
+    )
+    existing = state.hotel_night_selections
+    selections = [s for s in existing if s.night != night] + [skipped]
+    selections.sort(key=lambda s: s.night)
+
+    state = state.add_assistant_message(
+        f"⚠️ Night {night} skipped — {reason}"
+    )
+
+    if night < total_nights:
+        return state.model_copy(update={
+            "hotel_night_selections": selections,
+            "hotel_room_offers":      [],
+            "selected_night_hotel":   None,
+            "current_night":          night + 1,
+            "workflow_step":          WorkflowStep.HOTEL_SEARCH,
+        })
+    return state.model_copy(update={
+        "hotel_night_selections": selections,
+        "hotel_room_offers":      [],
+        "selected_night_hotel":   None,
+        "workflow_step":          WorkflowStep.HOTEL_SUMMARY,
+    })
+
+
+def _finish_night_loop(state: AppState, total_nights: int) -> AppState:
+    """Cancel path — go to the summary with whatever nights were completed."""
+    if state.current_night < total_nights:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_SUMMARY,
+        })
+    return state.model_copy(update={
+        "workflow_step": WorkflowStep.HOTEL_SUMMARY,
+    })
+
+
+def _ordered_selections(state: AppState) -> List[HotelNightSelection]:
+    return sorted(state.hotel_night_selections, key=lambda s: s.night)
+
+
+def _offers_for_hotel(
+    results: List[HotelWithOffers],
+    hotel_id: str,
+) -> List[RoomOffer]:
+    for result in results:
+        if result.hotel.hotel_id == hotel_id:
+            return result.offers
+    return []
+
+
+def _parse_offer_index(choice: Any) -> Optional[int]:
+    """Accept plain "2", "option 2", or a dict {"offer_index": 2}."""
+    if isinstance(choice, dict):
+        for key in ("offer_index", "index", "offer", "room_index"):
+            val = choice.get(key)
+            if val is not None:
+                try:
+                    return int(val) - 1
+                except (ValueError, TypeError):
+                    return None
+        return None
+    text = str(choice or "").strip().lower()
+    text = re.sub(r"^(option|room|offer|no|number)\s*", "", text)
+    try:
+        return int(text) - 1
+    except ValueError:
+        return None
+
+
+def _parse_choice(choice: Any) -> str:
+    if isinstance(choice, dict):
+        choice = choice.get("choice") or choice.get("response") or ""
+    return str(choice or "").strip().lower()
+
+
+def _fmt_date(iso_date: str) -> str:
+    try:
+        from datetime import date as _date
+        return _date.fromisoformat(iso_date).strftime("%d %b")
+    except (ValueError, TypeError):
+        return iso_date or ""
 
 
 # ===========================================================================
@@ -655,6 +1329,7 @@ WORKER_NODES: Dict[WorkflowStep, str] = {
     WorkflowStep.FLIGHT_SEARCH:         "flight_search",
     WorkflowStep.FLIGHT_RANKING:        "flight_ranking",
     WorkflowStep.FLIGHT_SELECTION:      "flight_selection",
+    WorkflowStep.FLIGHT_PASSENGER_DETAILS: "flight_passenger_details",
     WorkflowStep.FLIGHT_PREBOOK:        "flight_prebook",
     WorkflowStep.FLIGHT_PREBOOKED:      "flight_prebooked",
     WorkflowStep.DRAFT_ITINERARY:       "draft_itinerary",
@@ -663,7 +1338,10 @@ WORKER_NODES: Dict[WorkflowStep, str] = {
     WorkflowStep.HOTEL_SEARCH:          "hotel_search",
     WorkflowStep.HOTEL_RANKING:         "hotel_ranking",
     WorkflowStep.HOTEL_SELECTION:       "hotel_selection",
+    WorkflowStep.HOTEL_ROOM_SELECTION:  "hotel_room_selection",
+    WorkflowStep.HOTEL_SUMMARY:         "hotel_summary",
     WorkflowStep.HOTEL_PREBOOK:         "hotel_prebook",
+    WorkflowStep.HOTEL_PREBOOK_RETRY:   "hotel_prebook_retry",
     WorkflowStep.FINAL_ITINERARY:       "final_itinerary",
 }
 
@@ -683,3 +1361,13 @@ def _clean_enum(val: Any, default: str = "") -> str:
     if "." in s:
         s = s.split(".")[-1]
     return s.lower()
+
+
+def _format_validation_errors(exc: ValidationError) -> List[str]:
+    """Convert a Pydantic ValidationError into a list of readable messages."""
+    errors: List[str] = []
+    for err in exc.errors():
+        loc = ".".join(str(x) for x in err["loc"])
+        field = loc or "form"
+        errors.append(f"{field}: {err['msg']}")
+    return errors
