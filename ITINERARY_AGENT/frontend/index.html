@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>✈️ AI Travel Itinerary Planner</title>
-  <link rel="stylesheet" href="/static/css/style.css?v=20260801b" />
+  <link rel="stylesheet" href="/static/css/style.css?v=20260803h" />
   <!-- Marked.js for markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -43,10 +43,6 @@
           <span class="step-icon">📋</span>
           <span class="step-label">Requirements</span>
         </li>
-        <li class="step" data-step="flights">
-          <span class="step-icon">✈️</span>
-          <span class="step-label">Flights</span>
-        </li>
         <li class="step" data-step="draft">
           <span class="step-icon">📄</span>
           <span class="step-label">Draft Itinerary</span>
@@ -54,6 +50,10 @@
         <li class="step" data-step="compare">
           <span class="step-icon">🔀</span>
           <span class="step-label">Compare Versions</span>
+        </li>
+        <li class="step" data-step="flights">
+          <span class="step-icon">✈️</span>
+          <span class="step-label">Flights</span>
         </li>
         <li class="step" data-step="hotels">
           <span class="step-icon">🏨</span>
@@ -215,7 +215,7 @@
           <div class="panel-header-actions">
             <button class="btn btn-outline btn-sm" id="btn-version-history">🕐 History</button>
             <button class="btn btn-outline btn-sm" id="btn-edit-draft">✏️ Edit</button>
-            <button class="btn btn-primary btn-sm" id="btn-continue-hotels">🏨 Book Hotels</button>
+            <button class="btn btn-primary btn-sm" id="btn-continue-flights">✈️ Continue to Flights</button>
           </div>
         </div>
         <div class="itinerary-content" id="draft-content">
@@ -373,7 +373,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" id="btn-close-prebook">Close</button>
-        <button class="btn btn-primary" id="btn-continue-booking">➡️ Continue to Booking</button>
+        <button class="btn btn-primary" id="btn-continue-booking">➡️ Continue to Hotels</button>
       </div>
     </div>
   </div>
@@ -411,6 +411,25 @@
         <button class="btn btn-outline" id="btn-hotel-issue-cancel">Cancel</button>
         <button class="btn btn-outline" id="btn-hotel-issue-skip">Skip Night</button>
         <button class="btn btn-primary" id="btn-hotel-issue-retry">🔄 Retry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hotel reuse decision modal (next day's activities are far from the selected hotel) -->
+  <div class="modal-overlay" id="modal-hotel-reuse" role="dialog" aria-modal="true"
+    aria-labelledby="modal-hotel-reuse-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-hotel-reuse-title">🏨 Hotel for the next night</h3>
+        <button class="modal-close" id="btn-close-hotel-reuse" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-hotel-reuse-body">
+        <!-- Reuse decision message -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-hotel-reuse-skip">Skip Night</button>
+        <button class="btn btn-outline" id="btn-hotel-reuse-keep">✅ Keep Same Hotel</button>
+        <button class="btn btn-primary" id="btn-hotel-reuse-search">🔍 Search New Hotel</button>
       </div>
     </div>
   </div>
@@ -522,13 +541,13 @@
 
   <!-- ═══════════════════════════════════════════════════════ SCRIPTS -->
   <!-- ?v=20260726b forces the browser to bypass any stale cached version -->
-  <script src="/static/js/api.js?v=20260801b"></script>
-  <script src="/static/js/chat.js?v=20260801b"></script>
-  <script src="/static/js/flight.js?v=20260801b"></script>
-  <script src="/static/js/passenger.js?v=20260801b"></script>
-  <script src="/static/js/hotel.js?v=20260801b"></script>
-  <script src="/static/js/itinerary.js?v=20260801b"></script>
-  <script src="/static/js/app.js?v=20260801b"></script>
+  <script src="/static/js/api.js?v=20260803h"></script>
+  <script src="/static/js/chat.js?v=20260803h"></script>
+  <script src="/static/js/flight.js?v=20260803h"></script>
+  <script src="/static/js/passenger.js?v=20260803h"></script>
+  <script src="/static/js/hotel.js?v=20260803h"></script>
+  <script src="/static/js/itinerary.js?v=20260803h"></script>
+  <script src="/static/js/app.js?v=20260803h"></script>
 
 </body>
 

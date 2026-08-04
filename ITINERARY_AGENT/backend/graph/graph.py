@@ -23,6 +23,7 @@ from backend.graph.nodes import (
     node_hotel_ranking,
     node_hotel_selection,
     node_hotel_room_selection,
+    node_hotel_reuse_check,
     node_hotel_summary,
     node_hotel_prebook,
     node_hotel_prebook_retry,
@@ -68,6 +69,7 @@ def build_graph() -> StateGraph:
     graph.add_node("hotel_ranking",         node_hotel_ranking)
     graph.add_node("hotel_selection",       node_hotel_selection)
     graph.add_node("hotel_room_selection",  node_hotel_room_selection)
+    graph.add_node("hotel_reuse_check",     node_hotel_reuse_check)
     graph.add_node("hotel_summary",         node_hotel_summary)
     graph.add_node("hotel_prebook",         node_hotel_prebook)
     graph.add_node("hotel_prebook_retry",   node_hotel_prebook_retry)

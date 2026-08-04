@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from langgraph.types import interrupt
 from pydantic import ValidationError
 
+from backend.config import settings
 from backend.models.state import (
     AppState,
     FlightSearchParams,
@@ -23,7 +24,6 @@ from backend.models.state import (
     build_night_segments,
 )
 from backend.agents.flight_agent import FlightAgent
-from backend.agents.hotel_agent import HotelAgent
 from backend.agents.itinerary_agent import ItineraryAgent
 from backend.services.itinerary_versioning import (
     save_itinerary_version,
@@ -31,7 +31,18 @@ from backend.services.itinerary_versioning import (
     compare_itineraries,
     build_comparison,
 )
-from backend.services.liteapi_hotel import prebook_hotel_room
+from backend.services.hotel_service import (
+    HotelAgent,
+    enrich_hotel_with_details,
+    enrich_room_offers_with_details,
+    fetch_hotel_details,
+    prebook_hotel_room,
+    search_hotel_offers_for_hotel,
+)
+from backend.services.distance_service import (
+    build_reuse_payload,
+    max_activity_distance_km,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -127,15 +138,17 @@ def node_user_confirmation(state: AppState) -> AppState:
     msg = user_input.lower().strip()
 
     if msg in ("yes", "y", "sure", "ok", "okay", "proceed", "go ahead", "search"):
-        state = state.add_assistant_message("Great! Searching for flights now... ✈️")
+        state = state.add_assistant_message(
+            "Great! Generating your draft itinerary now... 📋"
+        )
         return state.model_copy(update={
             "user_confirmed": True,
-            "workflow_step":  WorkflowStep.FLIGHT_SEARCH,
+            "workflow_step":  WorkflowStep.DRAFT_ITINERARY,
         })
 
     if msg in ("no", "n", "cancel", "stop", "not yet"):
         state = state.add_assistant_message(
-            "No problem! Let me know whenever you'd like to search for flights."
+            "No problem! Let me know whenever you'd like to generate your itinerary."
         )
         return state.model_copy(update={
             "user_confirmed":      False,
@@ -143,7 +156,7 @@ def node_user_confirmation(state: AppState) -> AppState:
         })
 
     state = state.add_assistant_message(
-        "Please answer **yes** to search for flights or **no** to make changes."
+        "Please answer **yes** to generate your itinerary or **no** to make changes."
     )
     return state.model_copy(update={
         "workflow_step": WorkflowStep.USER_CONFIRMATION,
@@ -394,7 +407,7 @@ def node_flight_prebook(state: AppState) -> AppState:
 
 
 # ===========================================================================
-# 9. FLIGHT PREBOOKED — confirmation page, wait for draft trigger
+# 9. FLIGHT PREBOOKED — confirmation page, wait for hotel-search trigger
 # ===========================================================================
 
 def node_flight_prebooked(state: AppState) -> AppState:
@@ -417,7 +430,7 @@ def node_flight_prebooked(state: AppState) -> AppState:
             f"Flight: {flight.airline} {flight.flight_number}\n"
             f"Passengers: {passenger_names}\n"
             f"Total: **₹{pb.total_charged:,.0f}**\n\n"
-            "Ready to generate your draft itinerary?"
+            "Ready to search for hotels?"
         ),
         "prebook": pb.model_dump(),
         "flight": flight.model_dump(),
@@ -426,15 +439,15 @@ def node_flight_prebooked(state: AppState) -> AppState:
 
     choice = interrupt(payload)
     cmd = choice.strip().lower() if isinstance(choice, str) else ""
-    if cmd in ("yes", "y", "sure", "ok", "generate", "go", "continue"):
+    if cmd in ("yes", "y", "sure", "ok", "hotels", "go", "continue"):
         state = state.add_assistant_message(
-            "Generating your **Draft Itinerary** now... 📋"
+            "Great! Searching for hotels now... 🏨"
         )
         return state.model_copy(update={
-            "workflow_step": WorkflowStep.DRAFT_ITINERARY,
+            "workflow_step": WorkflowStep.HOTEL_SEARCH,
         })
     state = state.add_assistant_message(
-        "Draft generation postponed. Let me know when you're ready!"
+        "Hotel search postponed. Let me know when you're ready!"
     )
     return state.model_copy(update={
         "workflow_step": WorkflowStep.FLIGHT_PREBOOKED,
@@ -593,7 +606,7 @@ def node_draft_itinerary(state: AppState) -> AppState:
 
 
 # ===========================================================================
-# 10b. DRAFT CONFIRM — ask about hotels after draft is committed
+# 10b. DRAFT CONFIRM — ask about flights after draft is committed
 # ===========================================================================
 
 def node_draft_confirm(state: AppState) -> AppState:
@@ -603,16 +616,16 @@ def node_draft_confirm(state: AppState) -> AppState:
     msg = (
         "📋 **Your Draft Itinerary is ready!**\n\n"
         + markdown
-        + "\n\n---\nWould you like to **search for hotels** to complete your booking? *(yes / no / edit)*"
+        + "\n\n---\nWould you like to **search for flights** to complete your booking? *(yes / no / edit)*"
     )
 
     choice = interrupt(msg)
     cmd = choice.lower().strip()
 
-    if cmd in ("yes", "y", "sure", "ok", "hotels", "search"):
-        state = state.add_assistant_message("Great! Searching for hotels now... 🏨")
+    if cmd in ("yes", "y", "sure", "ok", "flights", "search"):
+        state = state.add_assistant_message("Great! Searching for flights now... ✈️")
         return state.model_copy(update={
-            "workflow_step": WorkflowStep.HOTEL_SEARCH,
+            "workflow_step": WorkflowStep.FLIGHT_SEARCH,
         })
 
     if cmd in ("edit", "change", "modify", "regenerate"):
@@ -622,7 +635,7 @@ def node_draft_confirm(state: AppState) -> AppState:
         })
 
     state = state.add_assistant_message(
-        "Okay! Generating your **Final Itinerary** without hotel bookings."
+        "Okay! Generating your **Final Itinerary** without any bookings."
     )
     return state.model_copy(update={
         "workflow_step": WorkflowStep.FINAL_ITINERARY,
@@ -656,6 +669,13 @@ def node_hotel_search(state: AppState) -> AppState:
         round(req.budget / max(total_nights, 1) * 0.40, 0)
         if req.budget else None
     )
+
+    # Drop results from any earlier night so a failed/empty search can never
+    # leave stale hotel cards behind (the API only shows the current list).
+    state = state.model_copy(update={
+        "hotel_search_results":     [],
+        "hotel_search_with_offers": [],
+    })
 
     # Interrupt-driven retry / relax / skip loop (state is only committed
     # when this node returns — safe to loop with interrupts here).
@@ -805,6 +825,19 @@ def node_hotel_ranking(state: AppState) -> AppState:
             "workflow_step":        WorkflowStep.HOTEL_RANKING,
         })
 
+    # ── Attach images / details for the selected hotel & its rooms ──
+    # (search-time enrichment is best-effort; retry here for the chosen
+    # hotel so the room cards always have photos + "Details More" data)
+    if (not selected.hotel_images
+            or not any(o.room_images for o in offers)):
+        try:
+            detail = fetch_hotel_details(selected.hotel_id)
+        except Exception:
+            detail = {}
+        if detail:
+            selected = enrich_hotel_with_details(selected, detail)
+            offers   = enrich_room_offers_with_details(offers, detail)
+
     state = state.add_assistant_message(
         f"✅ Night {night}: **{selected.name}** selected "
         f"(⭐ {selected.rating} | ₹{selected.price_per_night:,.0f}/night). "
@@ -912,7 +945,7 @@ def node_hotel_room_selection(state: AppState) -> AppState:
             "hotel_room_offers":      [],
             "selected_night_hotel":   None,
             "current_night":          night + 1,
-            "workflow_step":          WorkflowStep.HOTEL_SEARCH,
+            "workflow_step":          WorkflowStep.HOTEL_REUSE_CHECK,
         })
 
     return state.model_copy(update={
@@ -924,7 +957,224 @@ def node_hotel_room_selection(state: AppState) -> AppState:
 
 
 # ===========================================================================
-# 13c. HOTEL SUMMARY — combined night-by-night summary + confirmation
+# 13c. HOTEL REUSE CHECK — reuse the previous night's hotel when the next
+#      day's activities are nearby; otherwise ask the user for a decision.
+# ===========================================================================
+
+_REUSE_KEEP_WORDS   = ("keep", "reuse", "same", "stay", "yes", "y")
+_REUSE_SKIP_WORDS   = ("skip", "s", "continue", "next", "cancel")
+
+
+def node_hotel_reuse_check(state: AppState) -> AppState:
+    """
+    Compare the selected hotel for the PREVIOUS night with the CURRENT
+    night's activities (Day N activities ↔ Day N-1 hotel).
+
+    - Within the configured distance threshold → auto-reuse the same hotel
+      (no new hotel options shown) and advance to the next night.
+    - Far away / ungeocodable → ask the user whether to search a new hotel,
+      keep the same hotel, or skip the night.
+    - No comparable hotel or itinerary → fall back to a plain search.
+
+    The same logic runs for every night, so it scales to any trip length.
+    """
+    total   = len(state.hotel_night_segments)
+    night   = min(max(state.current_night, 1), total)
+    segment = state.hotel_night_segments[night - 1]
+
+    previous = _previous_night_selection(state)
+    previous_hotel = _hotel_for_selection(previous)
+
+    # No baseline hotel (e.g. previous night was skipped) → normal search.
+    if previous_hotel is None:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_SEARCH,
+        })
+
+    # No itinerary to compare against → plain search.
+    day = _day_activities(state, night)
+    if day is None:
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_SEARCH,
+        })
+
+    distance = max_activity_distance_km(
+        previous_hotel,
+        day,
+        state.trip_requirements.destination or "",
+    )
+    threshold = settings.hotel_reuse_max_distance_km
+
+    if distance is not None and distance <= threshold:
+        return _reuse_hotel_for_night(
+            state, previous_hotel, night, total, segment, distance,
+        )
+
+    # Far away or unknown → ask the user how to proceed.
+    distance_desc = (
+        f"📍 Next day's activities are about **{distance:.1f} km** away "
+        f"({'beyond the ' if distance is not None else ''}"
+        f"{threshold:.0f} km threshold)."
+        if distance is not None else
+        f"📍 Next day's activities couldn't be pinned down precisely."
+    )
+
+    while True:
+        message = (
+            f"{distance_desc}\n\n"
+            f"**{previous_hotel.name}** works well for Night {night - 1}, but "
+            f"Night {night}'s activities may be far from it. Would you like to:\n\n"
+            f"  🔍 **search** — show new hotel options for Night {night}\n"
+            f"  ✅ **keep** — reuse **{previous_hotel.name}** for Night {night}\n"
+            f"  ⏭️  **skip** — skip booking a hotel for Night {night}"
+        )
+        choice = interrupt(build_reuse_payload(
+            night=night,
+            hotel_name=previous_hotel.name,
+            distance_km=distance,
+            message=message,
+        ))
+        cmd = _parse_choice(choice)
+
+        if cmd in _REUSE_KEEP_WORDS:
+            break  # keep same hotel → reuse path below
+        if cmd in _REUSE_SKIP_WORDS:
+            return _skip_night(state, night, total,
+                               reason="You chose to skip this night.")
+        # "search", "new", "show", "hotels", or anything unrecognised → search.
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_SEARCH,
+        })
+
+    return _reuse_hotel_for_night(
+        state, previous_hotel, night, total, segment, distance,
+    )
+
+
+def _reuse_hotel_for_night(
+    state: AppState,
+    hotel: Hotel,
+    night: int,
+    total: int,
+    segment: Any,
+    distance: Optional[float],
+) -> AppState:
+    """
+    Reuse *hotel* for the given night: fetch fresh room offers for the new
+    dates, auto-pick the cheapest, record the selection and advance.
+    """
+    adults          = state.trip_requirements.num_travelers or 1
+    offers          = search_hotel_offers_for_hotel(
+        hotel.hotel_id, segment.check_in, segment.check_out, adults,
+    )
+
+    if not offers:
+        # No bookable rooms for the reused hotel on the new dates — the
+        # user has to fall back to searching or skipping.
+        while True:
+            message = (
+                f"⚠️ **{hotel.name}** has no bookable rooms for Night {night} "
+                f"({segment.check_in} → {segment.check_out}).\n\n"
+                f"Reply **search** to pick a new hotel, or **skip** to "
+                f"skip this night."
+            )
+            choice = interrupt(build_reuse_payload(
+                night=night,
+                hotel_name=hotel.name,
+                distance_km=distance,
+                message=message,
+            ))
+            cmd = _parse_choice(choice)
+            if cmd in _REUSE_SKIP_WORDS:
+                return _skip_night(state, night, total,
+                                   reason="No room available for reuse.")
+            # default → search a new hotel
+            break
+        return state.model_copy(update={
+            "workflow_step": WorkflowStep.HOTEL_SEARCH,
+        })
+
+    best = min(offers, key=lambda o: o.total_price)
+    selection = HotelNightSelection(
+        night           = night,
+        check_in        = segment.check_in,
+        check_out       = segment.check_out,
+        hotel_id        = hotel.hotel_id,
+        hotel_name      = hotel.name,
+        room_type       = best.room_type,
+        offer_id        = best.offer_id,
+        price_per_night = best.price_per_night,
+        total_price     = best.total_price,
+        currency        = best.currency,
+        hotel           = hotel,
+    )
+
+    selections = _upsert_selection(state.hotel_night_selections, selection)
+    state = state.model_copy(update={"hotel_night_selections": selections})
+    state = state.add_assistant_message(
+        f"✅ Night {night}: staying at the **same hotel** — {hotel.name} "
+        f"({best.room_type} @ ₹{best.total_price:,.0f}) — it's close to "
+        f"your activities."
+    )
+
+    if night < total:
+        return state.model_copy(update={
+            "hotel_room_offers":    [],
+            "selected_night_hotel": None,
+            "current_night":        night + 1,
+            "workflow_step":        WorkflowStep.HOTEL_REUSE_CHECK,
+        })
+    return state.model_copy(update={
+        "hotel_room_offers":    [],
+        "selected_night_hotel": None,
+        "workflow_step":        WorkflowStep.HOTEL_SUMMARY,
+    })
+
+
+def _previous_night_selection(state: AppState) -> Optional[HotelNightSelection]:
+    """Return the selection for the night before the current one."""
+    previous_night = state.current_night - 1
+    for sel in state.hotel_night_selections:
+        if sel.night == previous_night:
+            return sel
+    return None
+
+
+def _hotel_for_selection(
+    selection: Optional[HotelNightSelection],
+) -> Optional[Hotel]:
+    """Full Hotel snapshot for a selection, or a fallback when not stored."""
+    if selection is None:
+        return None
+    if selection.hotel is not None:
+        return selection.hotel
+    if selection.hotel_id and selection.hotel_name:
+        return _selection_fallback_hotel(selection)
+    return None
+
+
+def _day_activities(state: AppState, night: int) -> Any:
+    """DayActivity (or None) for the given night's day number."""
+    draft = state.draft_itinerary
+    if draft is None or not draft.days:
+        return None
+    idx = night - 1
+    if idx < 0 or idx >= len(draft.days):
+        return None
+    return draft.days[idx]
+
+
+def _upsert_selection(
+    selections: List[HotelNightSelection],
+    selection: HotelNightSelection,
+) -> List[HotelNightSelection]:
+    out = [s for s in selections if s.night != selection.night] + [selection]
+    out.sort(key=lambda s: s.night)
+    return out
+
+
+# ===========================================================================
+# 13d. HOTEL SUMMARY — combined night-by-night summary + confirmation
 # ===========================================================================
 
 def node_hotel_summary(state: AppState) -> AppState:
@@ -1339,6 +1589,7 @@ WORKER_NODES: Dict[WorkflowStep, str] = {
     WorkflowStep.HOTEL_RANKING:         "hotel_ranking",
     WorkflowStep.HOTEL_SELECTION:       "hotel_selection",
     WorkflowStep.HOTEL_ROOM_SELECTION:  "hotel_room_selection",
+    WorkflowStep.HOTEL_REUSE_CHECK:     "hotel_reuse_check",
     WorkflowStep.HOTEL_SUMMARY:         "hotel_summary",
     WorkflowStep.HOTEL_PREBOOK:         "hotel_prebook",
     WorkflowStep.HOTEL_PREBOOK_RETRY:   "hotel_prebook_retry",

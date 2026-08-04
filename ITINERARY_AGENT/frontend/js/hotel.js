@@ -139,6 +139,8 @@ const Hotel = (() => {
     container.querySelectorAll('.hotel-card').forEach(card => {
       card.addEventListener('click', () => _handleSelect(card.dataset.hotelId));
     });
+
+    _bindMoreToggles(container);
   }
 
   function _hotelCardHTML(h, idx) {
@@ -148,11 +150,12 @@ const Hotel = (() => {
                        .map(a => `<span class="amenity-chip">${_esc(a)}</span>`).join('');
     const isSelected = _selections[_currentDay]?.hotel_id === h.hotel_id;
     const badge    = idx === 0 ? `<div class="flight-card-badge value">🏆 Top Pick</div>` : '';
+    const more     = _hotelMoreHTML(h, `hotel-more-${idx}`);
 
     return `
       <div class="hotel-card${isSelected ? ' selected' : ''}" data-hotel-id="${h.hotel_id}">
         ${badge}
-        <div class="hotel-thumb">🏨</div>
+        ${_thumbHTML(_hotelHero(h))}
         <div class="hotel-name">${_esc(h.name)}</div>
         <div class="hotel-rating">
           <span class="stars">${stars}</span>
@@ -161,6 +164,8 @@ const Hotel = (() => {
         <div class="hotel-address">📍 ${_esc(h.address)}</div>
         <div class="hotel-distance">${dist}</div>
         <div class="hotel-amenities">${amenList}</div>
+        <button type="button" class="btn-more-toggle" data-more="hotel-more-${idx}"${more ? '' : ' style="display:none"'}>ℹ️ Details More</button>
+        ${more}
         <div class="hotel-price">
           <div>
             <div class="hotel-price-amount">&#8377;${_fmt(h.price_per_night)}</div>
@@ -190,15 +195,19 @@ const Hotel = (() => {
     }
 
     const h = _offerHotel;
+    const hero = _hotelHero(h);
+    const more = h ? _hotelMoreHTML(h, 'hotel-more-block') : '';
     container.innerHTML = `
       <div class="room-offers-header">
-        <div class="hotel-thumb">🏨</div>
+        ${_thumbHTML(hero, 'thumb-sm')}
         <div>
           <div class="hotel-name">${_esc(h ? h.name : 'Hotel')}</div>
           <div class="hotel-rating">${h ? '⭐'.repeat(Math.round(h.rating)) : ''} ${h && h.rating ? h.rating + ' / 5' : ''}</div>
           <div class="hotel-address">📍 ${_esc(h ? h.address : '')}</div>
+          ${more ? `<button type="button" class="btn-more-toggle" data-more="hotel-more-block">ℹ️ Details More</button>` : ''}
         </div>
       </div>
+      ${more ? more.replace('class="card-more"', 'class="card-more hotel-more-row"') : ''}
       <div class="room-offers-grid">
         ${_offers.map((o, i) => _offerCardHTML(o, i + 1)).join('')}
       </div>`;
@@ -212,17 +221,25 @@ const Hotel = (() => {
     container.querySelectorAll('.room-card').forEach(card => {
       card.addEventListener('click', () => _handleRoomSelect(parseInt(card.dataset.idx)));
     });
+    _bindMoreToggles(container);
   }
 
   function _offerCardHTML(o, idx) {
     const refund = o.refundable ? '🔄 Refundable' : '🔒 Non-refundable';
+    const img    = (o.room_images || []).find(_isUrl) || '';
+    const more   = _roomMoreHTML(o, `room-more-${idx}`);
     return `
       <div class="hotel-card room-card" data-idx="${idx}">
         <div class="room-badge">🛏️ Room ${idx}</div>
+        <div class="room-thumb">${img
+          ? `<img src="${img}" alt="${_esc(o.room_type)}" loading="lazy" onerror="this.remove();var t=this.parentElement;t.classList.add('img-fallback');t.textContent='🛏️'">`
+          : '🛏️'}</div>
         <div class="hotel-name">${_esc(o.room_type)}</div>
         <div class="hotel-address">${_esc(o.board_name || 'Room Only')}</div>
         <div class="hotel-distance">${refund}</div>
         ${o.cancel_policy ? `<div class="hotel-distance">${_esc(o.cancel_policy)}</div>` : ''}
+        <button type="button" class="btn-more-toggle" data-more="room-more-${idx}"${more ? '' : ' style="display:none"'}>ℹ️ Details More</button>
+        ${more}
         <div class="hotel-price">
           <div>
             <div class="hotel-price-amount">&#8377;${_fmt(o.price_per_night)}</div>
@@ -361,6 +378,108 @@ const Hotel = (() => {
     const d = document.createElement('div');
     d.textContent = str || '';
     return d.innerHTML;
+  }
+
+  function _isUrl(v) {
+    return typeof v === 'string' && /^https?:\/\/\S+$/.test(v);
+  }
+
+  /** Strip HTML tags then escape — safe plain-text rendering of LiteAPI fields. */
+  function _cleanHtml(v) {
+    const d = document.createElement('div');
+    d.innerHTML = v || '';
+    return _esc(d.textContent);
+  }
+
+  /** First available hotel image URL (or '' → emoji fallback). */
+  function _hotelHero(h) {
+    if (!h) return '';
+    if (Array.isArray(h.hotel_images) && _isUrl(h.hotel_images[0])) return h.hotel_images[0];
+    if (_isUrl(h.image_placeholder)) return h.image_placeholder;
+    return '';
+  }
+
+  /** Thumbnail block — renders an <img> when a URL is present, else the emoji. */
+  function _thumbHTML(url, cls) {
+    if (!url) return `<div class="hotel-thumb${cls ? ' ' + cls : ''}">🏨</div>`;
+    return `
+      <div class="hotel-thumb${cls ? ' ' + cls : ''} img">
+        <img src="${url}" alt="" loading="lazy"
+          onerror="this.remove();var t=this.parentElement;t.classList.add('img-fallback');t.textContent='🏨'">
+      </div>`;
+  }
+
+  /** Expandable "Details More" section for a hotel ('' when nothing to show). */
+  function _hotelMoreHTML(h, id) {
+    if (!h) return '';
+    const desc     = _cleanHtml(h.hotel_description);
+    const facs     = (h.hotel_facilities || []).filter(Boolean);
+    const info     = _cleanHtml(h.important_information);
+    const times    = h.checkin_checkout_times || {};
+    const gallery  = (h.hotel_images || []).filter(_isUrl);
+    const hasTimes = !!(times.checkin_start || times.checkin_end || times.checkout);
+
+    if (!desc && !facs.length && !info && !gallery.length && !hasTimes) return '';
+
+    const parts = [];
+    if (desc) {
+      parts.push(`<div class="more-section"><div class="more-label">Description</div><div class="more-text">${desc}</div></div>`);
+    }
+    if (hasTimes) {
+      const t = [
+        (times.checkin_start ? `Check-in ${times.checkin_start}` + (times.checkin_end ? ` – ${times.checkin_end}` : '') : ''),
+        (times.checkout ? `Check-out ${times.checkout}` : ''),
+      ].filter(Boolean).join(' · ');
+      parts.push(`<div class="more-section"><div class="more-label">Timings</div><div class="more-text">${_esc(t)}</div></div>`);
+    }
+    if (facs.length) {
+      parts.push(`<div class="more-section"><div class="more-label">Hotel Facilities</div><div class="more-chips">${facs.slice(0, 12).map(f => `<span class="more-chip">${_esc(f)}</span>`).join('')}</div></div>`);
+    }
+    if (info) {
+      parts.push(`<div class="more-section"><div class="more-label">Important Information</div><div class="more-text">${info}</div></div>`);
+    }
+    if (gallery.length > 1) {
+      parts.push(`<div class="more-section"><div class="more-label">Gallery</div><div class="more-gallery">${gallery.slice(0, 8).map(u => `<img src="${u}" alt="" loading="lazy">`).join('')}</div></div>`);
+    }
+    return `<div class="card-more" id="${id}">${parts.join('')}</div>`;
+  }
+
+  /** Expandable "Details More" section for a room offer ('' when nothing). */
+  function _roomMoreHTML(o, id) {
+    if (!o) return '';
+    const parts = [];
+    if (o.room_description) {
+      parts.push(`<div class="more-section"><div class="more-label">Description</div><div class="more-text">${_cleanHtml(o.room_description)}</div></div>`);
+    }
+
+    const meta = [];
+    if (o.room_size) meta.push(`<span class="more-chip">📐 ${_esc(o.room_size)}</span>`);
+    if (o.max_occupancy) meta.push(`<span class="more-chip">👥 Up to ${o.max_occupancy}</span>`);
+    (o.bed_types || []).forEach(b => meta.push(`<span class="more-chip">🛏️ ${_esc(b)}</span>`));
+    (o.room_views || []).forEach(v => meta.push(`<span class="more-chip">👁️ ${_esc(v)}</span>`));
+    if (meta.length) {
+      parts.push(`<div class="more-section"><div class="more-label">Room Info</div><div class="more-chips">${meta.join('')}</div></div>`);
+    }
+
+    const am = (o.room_amenities || []).slice(0, 12).map(a => `<span class="more-chip">${_esc(a)}</span>`).join('');
+    if (am) {
+      parts.push(`<div class="more-section"><div class="more-label">Amenities</div><div class="more-chips">${am}</div></div>`);
+    }
+    return parts.length ? `<div class="card-more" id="${id}">${parts.join('')}</div>` : '';
+  }
+
+  /** Wire up every "Details More" toggle inside a container. */
+  function _bindMoreToggles(container) {
+    container.querySelectorAll('.btn-more-toggle').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const target = document.getElementById(btn.dataset.more);
+        if (!target) return;
+        const expanded = target.classList.toggle('open');
+        btn.classList.toggle('active', expanded);
+        btn.textContent = expanded ? '↑ Hide Details' : 'ℹ️ Details More';
+      });
+    });
   }
 
   /** Expose current selections for app.js to read. */

@@ -59,6 +59,7 @@ class WorkflowStep(str, Enum):
     HOTEL_SELECTION       = "hotel_selection"
     HOTEL_ROOM_SELECTION  = "hotel_room_selection"
     HOTEL_SUMMARY         = "hotel_summary"
+    HOTEL_REUSE_CHECK     = "hotel_reuse_check"
     HOTEL_PREBOOK         = "hotel_prebook"
     HOTEL_PREBOOK_RETRY   = "hotel_prebook_retry"
     FINAL_ITINERARY       = "final_itinerary"
@@ -379,6 +380,12 @@ class Hotel(BaseModel):
     currency:                Optional[str]   = None
     refundable:              Optional[bool]  = None
     cancel_policy:           Optional[Any]   = None
+    # ---- Images & details for the "Details More" section (optional) ----
+    hotel_images:            List[str]                = Field(default_factory=list)
+    hotel_description:       str                      = ""
+    hotel_facilities:        List[str]                = Field(default_factory=list)
+    important_information:   str                      = ""
+    checkin_checkout_times:  Optional[Dict[str, Any]] = None
 
     _coerce_refundable = field_validator("refundable", mode="before")(
         staticmethod(_coerce_refundable)
@@ -395,6 +402,15 @@ class RoomOffer(BaseModel):
     currency:        str               = "INR"
     refundable:      Optional[bool]    = None
     cancel_policy:   Optional[Any]     = None
+    # ---- Room images & details for the "Details More" section (optional) ----
+    room_id:          Optional[int]   = None
+    room_images:      List[str]       = Field(default_factory=list)
+    room_description: str             = ""
+    room_size:        str             = ""
+    bed_types:        List[str]       = Field(default_factory=list)
+    room_amenities:   List[str]       = Field(default_factory=list)
+    room_views:       List[str]       = Field(default_factory=list)
+    max_occupancy:    int             = 0
 
     _coerce_refundable = field_validator("refundable", mode="before")(
         staticmethod(_coerce_refundable)

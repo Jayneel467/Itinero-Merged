@@ -5,7 +5,7 @@ Responsibilities:
   - Parse trip requirements from free-text via GPT-4o-mini.
   - Detect missing required fields.
   - Search destination info via Tavily (enriches LLM prompts — never shown raw).
-  - Generate Draft Itinerary (rich markdown) after flight booking.
+  - Generate Draft Itinerary (rich markdown) before flight selection.
   - Generate Final Itinerary (rich markdown) after hotel booking.
   - Delegate flight/hotel/weather data to provider interfaces (never calls APIs directly).
 
@@ -18,7 +18,7 @@ import json
 import logging
 import os
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -38,12 +38,9 @@ from backend.models.state import (
     TripRequirements,
     TripType,
     WeatherInfo,
-    WorkflowStep,
 )
 from backend.services.providers import (
-    DummyHotelProvider,
     WeatherEntry,
-    get_hotel_provider,
     get_weather_provider,
 )
 
@@ -162,7 +159,6 @@ class ItineraryAgent:
         self._llm          = _get_llm()
         self._search       = DestinationSearchAgent()
         self._weather      = get_weather_provider()
-        self._hotel_prov   = get_hotel_provider()
 
     # ------------------------------------------------------------------
     # 1. Requirement extraction
@@ -267,7 +263,7 @@ class ItineraryAgent:
             "Here's your trip summary:\n\n"
             "| Field | Value |\n|-------|-------|\n"
             + rows
-            + "\nShall I **search for flights** now? *(yes / no)*"
+            + "\nShall I **generate your draft itinerary** now? *(yes / no)*"
         )
 
     def generate_hotel_prompt(self) -> str:
@@ -281,10 +277,20 @@ class ItineraryAgent:
     # ------------------------------------------------------------------
 
     def generate_draft_itinerary(self, state: AppState) -> DraftItinerary:
-        req    = state.trip_requirements
-        flight = state.selected_flight
-        days   = state.num_trip_days()
-        dest   = req.destination or "destination"
+        """
+        Draft Itinerary — travel plan and activities ONLY.
+
+        Flights and hotels are selected AFTER the draft in the workflow, so
+        the draft deliberately contains NO flight or hotel details:
+          - no airline / flight number / airports / timings
+          - no hotel names / room types / check-in / check-out
+          - no flight or hotel budget allocations
+        The day plans use generic arrival wording ("Arrive in <destination>.")
+        and do not assume the traveller is arriving by air.
+        """
+        req  = state.trip_requirements
+        days = state.num_trip_days()
+        dest = req.destination or "destination"
 
         trip_type_str = _clean_enum(req.trip_type, "leisure")
 
@@ -302,52 +308,17 @@ class ItineraryAgent:
         web_data = self._search.search_destination(dest, trip_type_str, days)
         web_ctx  = _format_web_context_for_llm(web_data, dest)
 
-        # --- Flight context string ---
-        flight_ctx    = ""
-        flight_arr_dt = None
-        if flight:
-            from datetime import datetime as _dt
-            try:
-                dep_fmt      = _dt.fromisoformat(flight.departure_time).strftime("%d %b %Y, %I:%M %p")
-                arr_fmt      = _dt.fromisoformat(flight.arrival_time).strftime("%d %b %Y, %I:%M %p")
-                flight_arr_dt = _dt.fromisoformat(flight.arrival_time)
-            except ValueError:
-                dep_fmt, arr_fmt = flight.departure_time, flight.arrival_time
-            flight_ctx = (
-                f"Flight: {flight.airline} {flight.flight_number} | "
-                f"{flight.departure_airport} → {flight.arrival_airport} | "
-                f"Departs: {dep_fmt} | Arrives: {arr_fmt} | "
-                f"Duration: {flight.duration_display} | "
-                f"₹{flight.total_price:,.0f} total"
-            )
-
-        # --- Budget estimate (keep flight cost out of remaining pool when known) ---
-        budget        = req.budget or 30000.0
-        known_flight  = flight.total_price if flight else 0.0
-        breakdown     = _estimate_budget(budget, days, flight_cost=known_flight)
-
-        # --- Get a realistic dummy hotel for draft display ---
-        from backend.models.state import HotelSearchParams
-        hotel_params = HotelSearchParams(
-            destination         = dest,
-            check_in            = req.departure_date or date.today().isoformat(),
-            check_out           = req.return_date    or (date.today() + timedelta(days=days)).isoformat(),
-            num_guests          = req.num_travelers  or 1,
-            max_price_per_night = round(breakdown.hotel / max(days, 1) * 1.5),
-        )
-        draft_hotels  = self._hotel_prov.search(hotel_params)
-        draft_hotel   = draft_hotels[0] if draft_hotels else None
-
-        # --- LLM day-plan generation ---
-        day_data = self._generate_day_plans(
-            req, days, trip_type_str, web_ctx, flight_ctx, weather_list, flight_arr_dt
+        # --- Budget estimate (NO flight/hotel allocation — selected later) ---
+        budget    = req.budget or 30000.0
+        breakdown = _estimate_budget(
+            budget, days, include_flight=False, include_hotel=False
         )
 
-        # Build DayActivity list — inject draft hotel name instead of "Hotel TBD"
-        hotel_label = (
-            f"{draft_hotel.name} — {draft_hotel.room_type} | 📍 {draft_hotel.address}"
-            if draft_hotel else f"Hotel to be selected in {dest.title()}"
-        )
+        # --- LLM day-plan generation (no flight / hotel context) ---
+        day_data = self._generate_day_plans(req, days, trip_type_str, web_ctx, weather_list)
+
+        # Generic accommodation note — never a real hotel name in the draft
+        hotel_label = f"Hotel to be selected in {dest.title()} (after this draft)"
         day_activities = _build_day_activities(
             day_data, req, days, breakdown, weather_list, hotel_label
         )
@@ -358,18 +329,18 @@ class ItineraryAgent:
                 f"{days}-day {trip_type_str.title()} trip to {dest_title} "
                 f"for {req.num_travelers} traveller(s)"
             ),
-            flight_info      = flight_ctx,
+            flight_info      = "",   # flights are selected AFTER the draft
             days             = day_activities,
             estimated_budget = breakdown.total,
             budget_breakdown = breakdown,
             weather          = weather_list,
             notes            = _default_notes(req),
             web_data         = web_data,
-            draft_hotel      = draft_hotel.model_dump() if draft_hotel else None,
+            draft_hotel      = None,  # hotels are selected AFTER the draft
             travel_tips      = [],
             trip_title       = f"✈️ {dest_title} Travel Itinerary",
         )
-        draft.markdown = _render_draft_markdown(draft, state, web_data, draft_hotel)
+        draft.markdown = _render_draft_markdown(draft, state, web_data)
         return draft
 
     # ------------------------------------------------------------------
@@ -481,9 +452,7 @@ class ItineraryAgent:
         days: int,
         trip_type_str: str,
         web_ctx: str,
-        flight_ctx: str,
         weather_list: List[WeatherInfo],
-        flight_arr_dt: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """Ask GPT-4o-mini to produce structured day-by-day plans. Returns raw list."""
 
@@ -491,27 +460,6 @@ class ItineraryAgent:
             f"Day {i+1} ({w.date_str}): {w.temperature_c}°C, {w.condition} — {w.advice}"
             for i, w in enumerate(weather_list)
         )
-
-        # Build arrival-time constraint hint for the LLM
-        arrival_hint = ""
-        if flight_arr_dt:
-            arr_hour = flight_arr_dt.hour
-            if arr_hour < 12:
-                arrival_hint = (
-                    f"Flight arrives at {flight_arr_dt.strftime('%I:%M %p')}. "
-                    "Day 1 morning = airport arrival + taxi to hotel + check-in. "
-                    "First sightseeing activity on Day 1 must start AFTER 11:00 AM."
-                )
-            elif arr_hour < 16:
-                arrival_hint = (
-                    f"Flight arrives at {flight_arr_dt.strftime('%I:%M %p')}. "
-                    "Day 1: check in and rest. Sightseeing starts only in the evening or Day 2."
-                )
-            else:
-                arrival_hint = (
-                    f"Flight arrives late at {flight_arr_dt.strftime('%I:%M %p')}. "
-                    "Day 1 is ARRIVAL ONLY — no sightseeing. Evening dinner near hotel only."
-                )
 
         # ── Budget-proportional counts ──────────────────────────────────────
         per_person_per_day = req.budget / max(req.num_travelers, 1) / max(days, 1)
@@ -548,26 +496,26 @@ class ItineraryAgent:
             timeline_entries = "7–9"
             activity_note = "Budget-friendly activities with maximum value."
 
+        dest_label = (req.destination or "the destination").title()
+
         system_prompt = (
             "You are a world-class travel planner. Generate a detailed, realistic day-by-day itinerary.\n"
             "Return ONLY a valid JSON array — no markdown fences, no extra text.\n\n"
-            + (f"ARRIVAL CONSTRAINT: {arrival_hint}\n\n" if arrival_hint else "")
-            +
             "Each element must follow this exact structure:\n"
             "{\n"
             '  "day_number": 1,\n'
             '  "date": "YYYY-MM-DD",\n'
-            '  "morning": "Arrival narrative + check-in note",\n'
+            '  "morning": "Generic arrival / morning narrative (no flights, airports or airlines)",\n'
             '  "breakfast": "Specific restaurant name + dish recommendation",\n'
             '  "mid_morning": "Activity description",\n'
             '  "sightseeing": "Named landmark or attraction with brief description",\n'
-            '  "travel_time": "e.g. 20 min by taxi from hotel",\n'
+            '  "travel_time": "e.g. 20 min by taxi from your accommodation",\n'
             '  "lunch": "Named restaurant + local dish",\n'
             '  "afternoon_activities": "Named attraction or activity",\n'
             '  "evening_activities": "Named show, beach, market or sunset spot",\n'
             '  "dinner": "Named restaurant + signature dish",\n'
             '  "night": "Night market / bar / early rest note",\n'
-            '  "hotel_stay": "Hotel TBD",\n'
+            '  "hotel_stay": "Accommodation to be selected after this draft — no hotel names",\n'
             '  "timeline": [\n'
             '    {"time": "07:30 AM", "activity": "Wake up. Freshen up."},\n'
             '    {"time": "08:00 AM", "activity": "Breakfast at [name]"},\n'
@@ -576,19 +524,22 @@ class ItineraryAgent:
             '    {"time": "02:30 PM", "activity": "[Afternoon activity]"},\n'
             '    {"time": "05:00 PM", "activity": "[Evening spot]"},\n'
             '    {"time": "07:30 PM", "activity": "Dinner at [restaurant]"},\n'
-            '    {"time": "09:30 PM", "activity": "Return to hotel"}\n'
+            '    {"time": "09:30 PM", "activity": "Return to your accommodation"}\n'
             '  ],\n'
             '  "restaurants": [\n'
             '    {"name": "...", "cuisine": "...", "approx_cost": "₹500-₹800/person", "why": "..."}\n'
             '  ],\n'
             '  "travel_details": [\n'
-            '    {"from_place": "Hotel", "to_place": "Beach", "distance": "3 km", "est_time": "10 min", "transport": "Auto-rickshaw"}\n'
+            '    {"from_place": "Accommodation", "to_place": "Beach", "distance": "3 km", "est_time": "10 min", "transport": "Auto-rickshaw"}\n'
             '  ],\n'
             '  "daily_cost": {"food": 1200, "transport": 400, "tickets": 300, "shopping": 500}\n'
             "}\n\n"
             "STRICT RULES:\n"
             f"- Generate exactly {days} day objects.\n"
-            "- TRAVEL LOGIC: Never schedule sightseeing before the flight has landed and travellers have reached the hotel.\n"
+            f"- DAY 1 ARRIVAL: Transportation has NOT been selected yet. Do NOT mention flights, "
+            f"airlines, airports, flight numbers, or arrival times. Use generic wording such as "
+            f"'Arrive in {dest_label}.' or 'Start your day after reaching the destination.' "
+            "Do not schedule sightseeing before the traveller has reached the destination.\n"
             "- Use NAMED, SPECIFIC attractions, restaurants, and activities — no generic placeholders.\n"
             "- No duplicate activities across days. No duplicate meals within a day.\n"
             "- Group nearby attractions on the same day to minimise criss-crossing.\n"
@@ -608,10 +559,6 @@ class ItineraryAgent:
             f"Departure: {req.departure_date}  |  Return: {req.return_date}\n"
             f"Travellers: {req.num_travelers}  |  Budget: ₹{req.budget:,.0f}\n"
         )
-        if flight_ctx:
-            user_prompt += f"Flight info: {flight_ctx}\n"
-        if arrival_hint:
-            user_prompt += f"Arrival note: {arrival_hint}\n"
         if req.special_requests:
             user_prompt += f"Special requests: {req.special_requests}\n"
         user_prompt += f"\nWeather forecast:\n{weather_ctx}\n\n{web_ctx}\n\nGenerate the itinerary array now."
@@ -710,10 +657,17 @@ def _estimate_budget(
     days: int,
     flight_cost: float = 0.0,
     hotel_cost: float = 0.0,
+    include_flight: bool = True,
+    include_hotel: bool = True,
 ) -> BudgetBreakdown:
     """
     Produce a realistic itemised budget breakdown from the total budget.
-    If flight and hotel costs are known (final itinerary), use them directly.
+
+    - Final itinerary: pass the confirmed flight/hotel costs — they are used
+      directly and the remaining pool is split across on-ground categories.
+    - Draft itinerary: pass include_flight/include_hotel=False so flights and
+      hotels are NOT allocated (they are selected after the draft); the full
+      budget is then split across the daily categories only.
     """
     remaining = max(0.0, total_budget - flight_cost - hotel_cost)
     daily     = remaining / max(days, 1)
@@ -724,11 +678,12 @@ def _estimate_budget(
     shopping        = round(daily * 0.10 * days, 0)
     buffer          = round(daily * 0.15 * days, 0)
 
-    # If flight/hotel not yet confirmed, estimate from budget allocation
-    if flight_cost == 0:
+    # If flight/hotel not yet confirmed, estimate from budget allocation —
+    # unless the caller explicitly excludes them (draft itinerary).
+    if flight_cost == 0 and include_flight:
         flight_cost = round(total_budget * 0.30, 0)
-    if hotel_cost == 0:
-        hotel_cost  = round(total_budget * 0.25 * days / max(days, 1), 0)
+    if hotel_cost == 0 and include_hotel:
+        hotel_cost  = round(total_budget * 0.25, 0)
 
     return BudgetBreakdown(
         flights    = flight_cost,
@@ -750,6 +705,8 @@ def _build_day_activities(
     hotel_label: str = "",
 ) -> List[DayActivity]:
     """Convert LLM JSON day objects into typed DayActivity instances."""
+    if not hotel_label:
+        hotel_label = f"Hotel to be selected in {(req.destination or 'destination').title()}"
     try:
         start = date.fromisoformat(req.departure_date or date.today().isoformat())
     except ValueError:
@@ -804,7 +761,7 @@ def _build_day_activities(
             day_number           = i + 1,
             date                 = d.get("date", day_date),
             morning              = d.get("morning", "Morning exploration"),
-            breakfast            = d.get("breakfast", "Breakfast at hotel"),
+            breakfast            = d.get("breakfast", "Breakfast at a local café"),
             mid_morning          = d.get("mid_morning", ""),
             sightseeing          = d.get("sightseeing", f"Explore {req.destination}"),
             travel_time          = d.get("travel_time", "30 min by taxi"),
@@ -812,9 +769,10 @@ def _build_day_activities(
             afternoon_activities = d.get("afternoon_activities", "Afternoon sightseeing"),
             evening_activities   = d.get("evening_activities", "Evening leisure"),
             dinner               = d.get("dinner", "Dinner at a local restaurant"),
-            night                = d.get("night", "Return to hotel"),
-            # Use real hotel label; ignore whatever the LLM put in hotel_stay
-            hotel_stay           = hotel_label or d.get("hotel_stay", f"Hotel in {req.destination}"),
+            night                = d.get("night", "Return to accommodation"),
+            # Generic accommodation note in the draft — real hotel names are
+            # only injected into the FINAL itinerary after selection.
+            hotel_stay           = hotel_label or d.get("hotel_stay", hotel_label),
             timeline             = d.get("timeline", []),
             daily_cost           = daily_cost,
             travel_details       = travel_details,
@@ -863,32 +821,32 @@ def _fallback_day_data(req: TripRequirements, days: int) -> List[Dict[str, Any]]
         result.append({
             "day_number": i + 1,
             "date": d.isoformat(),
-            "morning": "Arrive and settle in" if i == 0 else "Morning at leisure",
-            "breakfast": f"Breakfast at hotel café",
-            "mid_morning": f"Explore the neighbourhood around your hotel",
+            "morning": f"Arrive in {dest.title()} and settle in." if i == 0 else "Morning at leisure",
+            "breakfast": f"Breakfast at a local café",
+            "mid_morning": f"Explore the neighbourhood around your accommodation",
             "sightseeing": f"Visit the main attractions of {dest}",
             "travel_time": "20–30 min by taxi",
             "lunch": f"Lunch at a well-reviewed local restaurant",
             "afternoon_activities": f"Afternoon sightseeing in {dest}",
             "evening_activities": f"Sunset stroll at a popular viewpoint",
             "dinner": f"Dinner at a local specialty restaurant",
-            "night": "Return to hotel. Rest.",
-            "hotel_stay": "Hotel TBD",
+            "night": "Return to your accommodation. Rest.",
+            "hotel_stay": f"Hotel to be selected in {dest.title()} (after this draft)",
             "timeline": [
                 {"time": "07:30 AM", "activity": "Wake up. Get ready."},
-                {"time": "08:00 AM", "activity": "Breakfast at hotel"},
+                {"time": "08:00 AM", "activity": "Breakfast at a local café"},
                 {"time": "09:30 AM", "activity": f"Explore {dest}"},
                 {"time": "01:00 PM", "activity": "Lunch at local restaurant"},
                 {"time": "02:30 PM", "activity": "Afternoon sightseeing"},
                 {"time": "05:30 PM", "activity": "Evening leisure / sunset spot"},
                 {"time": "07:30 PM", "activity": "Dinner"},
-                {"time": "09:30 PM", "activity": "Return to hotel"},
+                {"time": "09:30 PM", "activity": "Return to accommodation"},
             ],
             "restaurants": [
                 {"name": "Local Favourite", "cuisine": "Regional", "approx_cost": "₹400–₹700/person", "why": "Popular with locals and tourists"},
             ],
             "travel_details": [
-                {"from_place": "Hotel", "to_place": "City Centre", "distance": "5 km", "est_time": "15 min", "transport": "Taxi / Ola"},
+                {"from_place": "Accommodation", "to_place": "City Centre", "distance": "5 km", "est_time": "15 min", "transport": "Taxi / Ola"},
             ],
             "daily_cost": {"food": 1200, "transport": 500, "tickets": 400, "shopping": 600},
         })
@@ -903,7 +861,6 @@ def _render_draft_markdown(
     draft: DraftItinerary,
     state: AppState,
     web_data: Optional[Dict[str, Any]] = None,
-    draft_hotel: Optional[Any] = None,
 ) -> str:
     req  = state.trip_requirements
     dest = req.destination or "destination"
@@ -924,77 +881,41 @@ def _render_draft_markdown(
         "",
         f"> {draft.trip_summary}",
         "",
+        "> ✈️ **Flights** and 🏨 **hotels** are selected after this draft —",
+        "> this itinerary covers your day-by-day travel plan and activities.",
+        "",
         "---",
     ]
 
-    # ── FLIGHT INFORMATION ────────────────────────────────────────────────
-    lines += ["", "## ✈️ Flight Information", ""]
-    if draft.flight_info and state.selected_flight:
-        f = state.selected_flight
-        from datetime import datetime as _dt
-        try:
-            dep_fmt = _dt.fromisoformat(f.departure_time).strftime("%d %b %Y, %I:%M %p")
-            arr_fmt = _dt.fromisoformat(f.arrival_time).strftime("%d %b %Y, %I:%M %p")
-        except ValueError:
-            dep_fmt, arr_fmt = f.departure_time, f.arrival_time
-
-        stops_str = "Non-stop" if f.stops == 0 else f"{f.stops} stop(s)"
-        lines += [
-            "| Detail | Info |",
-            "|--------|------|",
-            f"| ✈️ **Airline** | {f.airline} |",
-            f"| 🔢 **Flight Number** | {f.flight_number} |",
-            f"| 🛫 **Departure** | {f.departure_airport} — {dep_fmt} |",
-            f"| 🛬 **Arrival** | {f.arrival_airport} — {arr_fmt} |",
-            f"| ⏱️ **Duration** | {f.duration_display} |",
-            f"| 🛑 **Stops** | {stops_str} |",
-            f"| 💺 **Cabin** | {_clean_enum(f.cabin, 'Economy').title()} |",
-            f"| 💵 **Total Fare** | ₹{f.total_price:,.0f} |",
-            f"| 🎒 **Baggage** | {'Included' if f.baggage_included else 'Not included'} |",
-            f"| 🔄 **Refundable** | {'Yes' if f.refundable else 'No'} |",
-            f"| 📋 **Status** | Demo Flight — For Planning Only |",
-        ]
-    else:
-        lines.append("*Flight details will appear here after selection.*")
-    lines += ["", "---"]
-
-    # ── HOTEL PLACEHOLDER ────────────────────────────────────────────────
-    lines += ["", "## 🏨 Hotel Information", ""]
-    if draft_hotel:
-        stars_str = "⭐" * int(round(draft_hotel.rating))
-        amenities_str = " · ".join(draft_hotel.amenities[:4])
-        lines += [
-            "| Detail | Info |",
-            "|--------|------|",
-            f"| 🏨 **Hotel Name** | {draft_hotel.name} |",
-            f"| ⭐ **Rating** | {stars_str} ({draft_hotel.rating}/5) |",
-            f"| 📍 **Location** | {draft_hotel.address} |",
-            f"| 🛏️ **Room Type** | {draft_hotel.room_type} |",
-            f"| 💵 **Price** | ₹{draft_hotel.price_per_night:,.0f}/night |",
-            f"| 🏊 **Amenities** | {amenities_str} |",
-            f"| ✅ **Status** | Suggested Hotel — Confirm during booking |",
-        ]
-    else:
-        lines.append("> Hotel will be selected after this draft is confirmed.")
-    lines += ["", "---"]
-
-    # ── BUDGET BREAKDOWN ─────────────────────────────────────────────────
+    # ── BUDGET BREAKDOWN (on-ground costs only — flights & hotels are
+    #    selected later, so no flight/hotel allocation appears here) ─────
     if draft.budget_breakdown:
         b = draft.budget_breakdown
-        lines += [
-            "", "## 💰 Budget Breakdown", "",
-            "| Category | Estimated Cost |",
-            "|----------|---------------|",
-            f"| ✈️ Flights | ₹{b.flights:,.0f} |",
-            f"| 🏨 Hotel | ₹{b.hotel:,.0f} |",
-            f"| 🍽️ Food & Dining | ₹{b.food:,.0f} |",
-            f"| 🚗 Local Transport | ₹{b.transport:,.0f} |",
-            f"| 🎡 Activities & Tickets | ₹{b.activities:,.0f} |",
-            f"| 🛍️ Shopping | ₹{b.shopping:,.0f} |",
-            f"| 🛡️ Buffer / Misc | ₹{b.buffer:,.0f} |",
-            f"| **💳 Total Estimated** | **₹{b.total:,.0f}** |",
-            "", "---",
+        lines += ["", "## 💰 Budget Breakdown", ""]
+        budget_rows = [
+            ("✈️ Flights", b.flights),
+            ("🏨 Hotel", b.hotel),
+            ("🍽️ Food & Dining", b.food),
+            ("🚗 Local Transport", b.transport),
+            ("🎡 Activities & Tickets", b.activities),
+            ("🛍️ Shopping", b.shopping),
+            ("🛡️ Buffer / Misc", b.buffer),
         ]
+        shown = [(label, val) for label, val in budget_rows if val > 0]
+        if shown:
+            lines += [
+                "| Category | Estimated Cost |",
+                "|----------|---------------|",
+            ]
+            for label, val in shown:
+                lines.append(f"| {label} | ₹{val:,.0f} |")
+            lines.append(f"| **💳 Total Estimated** | **₹{b.total:,.0f}** |")
+        if b.flights <= 0 and b.hotel <= 0:
+            lines.append(
+                "> ✈️ Flight & 🏨 hotel costs are added after you select them — "
+                "this breakdown covers your on-ground expenses only."
+            )
+        lines += ["", "---"]
 
     # ── WEATHER ──────────────────────────────────────────────────────────
     if draft.weather:
@@ -1147,6 +1068,25 @@ def _render_final_markdown(
     else:
         lines.append("Hotel has not been selected yet.")
     lines += ["", "---"]
+
+    # ── AIRPORT → HOTEL TRANSFER (only when flight & hotel are confirmed) ─
+    if state.selected_flight and state.flight_prebook and state.hotel_prebooks:
+        f        = state.selected_flight
+        first_pb = next(iter(state.hotel_prebooks.values()))
+        h        = first_pb.hotel
+        lines += [
+            "", "## 🚕 Airport → Hotel Transfer", "",
+            "| Detail | Info |",
+            "|--------|------|",
+            f"| 🛬 **Arrival Airport** | {f.arrival_airport} |",
+            f"| 🏨 **Hotel** | {h.name} — {h.address} |",
+            "| 🚕 **Recommended Transport** | Pre-paid taxi counter, Ola / Uber ride-hailing |",
+            "| ⏱️ **Est. Travel Time** | 30–60 min depending on traffic and distance |",
+            "| 💵 **Est. Fare** | ₹400–₹1,200 depending on distance and vehicle |",
+            "| ✅ **Pro Tip** | Pre-book your pickup or use the official pre-paid taxi counter |",
+            "",
+            "---",
+        ]
 
     # ── BUDGET BREAKDOWN ─────────────────────────────────────────────────
     if final.budget_breakdown:

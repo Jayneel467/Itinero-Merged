@@ -206,9 +206,14 @@ def _build_response(state_snapshot, session_id: str):
         resp["flights"] = flights
         resp["count"] = len(flights)
 
-    # Attach hotel data (both names for frontend compatibility)
+    # Attach hotel data (both names for frontend compatibility) — ONLY when
+    # the workflow is actually waiting for a hotel/room selection. Attaching
+    # stale results from an earlier night at any other step makes the frontend
+    # render clickable cards that /api/hotel/select would reject with 409.
+    step_str = state.get("workflow_step", "")
+    step_str = step_str.value if hasattr(step_str, "value") else str(step_str)
     hotels = state.get("hotel_search_results")
-    if hotels:
+    if hotels and step_str in ("hotel_ranking", "hotel_selection"):
         resp["hotel_results"] = hotels
         resp["hotels"] = hotels
         resp["hotel_count"] = len(hotels)
@@ -254,8 +259,6 @@ def _build_response(state_snapshot, session_id: str):
             resp["final_itinerary"] = final
 
     # UI action hints — structured interrupt payloads take precedence
-    step = state.get("workflow_step", "")
-    step_str = step.value if hasattr(step, "value") else str(step)
     if payload and payload.get("type"):
         resp["ui_action"] = payload["type"]
     elif step_str == "draft_itinerary" and resp.get("draft_itinerary"):
@@ -265,12 +268,12 @@ def _build_response(state_snapshot, session_id: str):
     elif step_str == "final_itinerary" or step_str == "completed":
         if resp.get("final_itinerary"):
             resp["ui_action"] = "show_final_itinerary"
+    elif resp.get("hotel_results") and "hotel" in step_str:
+        if not resp.get("ui_action"):
+            resp["ui_action"] = "show_hotels"
     elif resp.get("flight_results"):
         if not resp.get("ui_action"):
             resp["ui_action"] = "show_flights"
-    elif resp.get("hotel_results"):
-        if not resp.get("ui_action"):
-            resp["ui_action"] = "show_hotels"
 
     return resp
 
@@ -404,35 +407,33 @@ def _build_requirements_body(req: SubmitRequirementsRequest) -> str:
 
 @app.post("/api/flight/search")
 async def search_flights(req: FlightSearchRequest):
+    """
+    Drive the graph to the flight flow.
+
+    New workflow order: requirements → draft itinerary → flight search.
+    The graph pauses at `user_confirmation` (draft first) and `draft_confirm`
+    before the flight flow — answering "yes" chains through those steps to
+    the ranked flight list, which is returned for the frontend to render.
+    """
     session = _require_session(req.session_id)
+
+    # Chain through "yes"-answering steps until we reach the flight flow
+    # (user confirmation → draft → flight search) or the graph stops.
+    yes_steps = ("user_confirmation", "draft_itinerary", "draft_confirm",
+                 "flight_prebooked")
+    for _ in range(6):
+        snap = _get_current_state(session)
+        step = _get_step(snap)
+        if step in yes_steps:
+            try:
+                _invoke_graph(session, resume_value="yes")
+            except Exception:
+                break
+            continue
+        break
+
     snap = _get_current_state(session)
-    step = _get_step(snap)
-
-    # If graph is waiting for user_confirmation, auto-confirm with "yes"
-    if step == "user_confirmation":
-        try:
-            result = _invoke_graph(session, resume_value="yes")
-        except Exception:
-            pass
-        snap = _get_current_state(session)
-
-    # The graph should now be at flight_ranking (or beyond)
-    step = _get_step(snap)
-
-    if step == "flight_ranking" or step == "flight_search":
-        try:
-            result = _invoke_graph(session, resume_value="yes")
-        except Exception:
-            pass
-        snap = _get_current_state(session)
-
     resp = _build_response(snap, req.session_id)
-
-    # If flights found, also run a second resume so the frontend
-    # sees the ranked list ready for selection
-    if resp.get("flight_results"):
-        pass  # already has flights from state
-
     return resp
 
 @app.post("/api/flight/select")
@@ -550,7 +551,7 @@ async def search_hotels(req: HotelSearchRequest):
     session = _require_session(req.session_id)
 
     # Chain through "yes"-answering steps until we reach the hotel flow
-    # (flight pre-booked → draft → hotel search) or the graph stops.
+    # (flight pre-booked → hotel search) or the graph stops.
     yes_steps = ("user_confirmation", "collect_requirements", "flight_prebooked",
                  "draft_itinerary")
     for _ in range(6):
@@ -568,7 +569,27 @@ async def search_hotels(req: HotelSearchRequest):
     # the frontend's decision (retry / relax / skip / cancel)
     snap = _get_current_state(session)
     step = _get_step(snap)
-    if step == "hotel_search":
+    if step in ("hotel_reuse_check",):
+        # Map the user's choice from the reuse-decision modal:
+        #   search → show a new hotel for the night (default)
+        #   keep   → reuse the same hotel
+        #   skip   → skip the night
+        decision = (req.decision or "search").strip().lower()
+        resume = {
+            "keep": "keep",
+            "reuse": "keep",
+            "same": "keep",
+            "stay": "keep",
+            "yes": "keep",
+            "skip": "skip",
+            "continue": "skip",
+            "cancel": "skip",
+        }.get(decision, "search")  # anything else → search
+        try:
+            _invoke_graph(session, resume_value=resume)
+        except Exception:
+            pass
+    elif step == "hotel_search":
         try:
             _invoke_graph(session, resume_value=(req.decision or "retry").strip().lower())
         except Exception:
@@ -718,9 +739,10 @@ async def get_draft_itinerary(req: ItineraryDraftRequest):
             return {"draft": draft}
         return {"draft": draft.model_dump()}
     # If no draft yet, resume the graph to generate it.
-    # Graph is typically paused at FLIGHT_PREBOOKED (after pre-booking);
-    # resuming with "yes" flows through node_flight_prebooked -> node_draft_itinerary
-    # (which commits the draft) -> node_draft_confirm (which pauses).
+    # Graph is typically paused at USER_CONFIRMATION (right after the trip
+    # requirements are submitted); resuming with "yes" flows through
+    # node_user_confirmation -> node_draft_itinerary (which commits the
+    # draft) -> node_draft_confirm (which pauses).
     try:
         result = _invoke_graph(session, resume_value="yes")
     except Exception as exc:

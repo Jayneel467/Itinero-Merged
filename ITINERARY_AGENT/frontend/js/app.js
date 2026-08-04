@@ -95,14 +95,14 @@ function _updateProgressSteps(activePanel) {
   const stepMap = {
     requirements: 'requirements',
     chat: 'requirements',
-    flights: 'flights',
     draft: 'draft',
     compare: 'compare',
+    flights: 'flights',
     hotels: 'hotels',
     final: 'final',
   };
   const active = stepMap[activePanel] || 'requirements';
-  const order = ['requirements', 'flights', 'draft', 'compare', 'hotels', 'final'];
+  const order = ['requirements', 'draft', 'compare', 'flights', 'hotels', 'final'];
   const idx = order.indexOf(active);
 
   document.querySelectorAll('.progress-steps .step').forEach(el => {
@@ -206,13 +206,13 @@ async function handleRequirementsSubmit() {
     AppState.workflowStep = res.workflow_step;
     updateTripSummary(AppState.tripRequirements);
 
-    // Show the trip summary in chat and start flight search
+    // Show the trip summary in chat and start draft generation
     Chat.addMessage('assistant', res.assistant_message);
     showPanel('chat');
-    showToast('Trip requirements saved! Now searching for flights…', 'success');
+    showToast('Trip requirements saved! Now generating your draft itinerary…', 'success');
 
-    // Trigger automatic flight search
-    await _autoSearchFlights();
+    // Trigger automatic draft generation
+    await _fetchAndShowDraft();
 
   } catch (err) {
     hideLoading();
@@ -221,7 +221,12 @@ async function handleRequirementsSubmit() {
   }
 }
 
-async function _autoSearchFlights() {
+/**
+ * "Continue to Flights" from the draft panel → resume the workflow at the
+ * draft confirmation with "yes" so the graph proceeds to flight search.
+ * The ranked flight list is returned and rendered for selection.
+ */
+async function _continueToFlights() {
   showLoading('Searching for the best flights… ✈️');
   try {
     const req = AppState.tripRequirements;
@@ -233,11 +238,13 @@ async function _autoSearchFlights() {
       max_price: req.budget || undefined,
     });
     hideLoading();
-    AppState.flights = res.flights || [];
+    AppState.flights = res.flights || res.flight_results || [];
     if (AppState.flights.length) {
       Chat.addMessage('assistant',
-        `✈️ Found **${res.count} flights** from ${req.departure_city} to ${req.destination}! Please select one below.`);
+        `✈️ Found **${res.count || AppState.flights.length} flights** from ${req.departure_city} to ${req.destination}! Please select one below.`);
       _showFlights(AppState.flights);
+    } else {
+      await _handleUiAction(res);
     }
   } catch (err) {
     hideLoading();
@@ -284,7 +291,7 @@ async function handleUserMessage(text) {
 async function _handleUiAction(res) {
   const action = res.ui_action;
 
-  if (action === 'show_flights' || res.flight_results?.length) {
+  if (action === 'show_flights') {
     AppState.flights = res.flight_results || [];
     if (AppState.flights.length) _showFlights(AppState.flights);
   }
@@ -316,7 +323,7 @@ async function _handleUiAction(res) {
     showPanel('draft');
   }
 
-  if (action === 'show_hotels' || res.hotel_results?.length) {
+  if (action === 'show_hotels' && res.hotel_results?.length) {
     AppState.hotels = res.hotel_results || [];
     if (AppState.hotels.length) await _showHotels(res);
   }
@@ -426,13 +433,14 @@ async function _submitPassengerDetails(data) {
 }
 
 /**
- * "Continue to Booking" on the pre-book confirmation → resume the workflow
- * with "yes" to generate the draft itinerary.
+ * "Continue to Hotels" on the pre-book confirmation → resume the workflow
+ * with "yes" to continue directly to the hotel flow (the draft itinerary
+ * is NOT regenerated — it was already committed before flight selection).
  */
 async function _continueToBooking() {
   Chat.setInputDisabled(true);
   Chat.showTyping();
-  showLoading('Generating your draft itinerary…');
+  showLoading('Searching for hotels…');
   try {
     const res = await apiChat(AppState.sessionId, 'yes');
     Chat.removeTyping();
@@ -467,7 +475,7 @@ async function _fetchAndShowDraft() {
     Itinerary.renderDraft(AppState.draftItinerary);
     showPanel('draft');
     showToast('Draft itinerary ready!', 'success');
-    Chat.addMessage('assistant', '📋 **Draft Itinerary ready!** Review it below, then book hotels or edit it.');
+    Chat.addMessage('assistant', '📋 **Draft Itinerary ready!** Review it below, then continue to flight selection.');
   } catch (err) {
     Chat.addMessage('assistant', `❌ Could not generate itinerary: ${err.message}`);
   } finally {
@@ -700,7 +708,11 @@ async function _showHotels(res) {
       try {
         const r = await apiSelectHotel(AppState.sessionId, hotel.hotel_id);
         if (r.room_offers && r.room_offers.length) {
-          Hotel.showRoomOffers(r.room_offers, r.current_night || currentN, hotel, _handleRoomPick);
+          // Prefer the server-side enriched hotel (images / details) from the
+          // interrupt payload; fall back to the card's hotel object.
+          const payloadHotel = r.ui_payload && r.ui_payload.hotel;
+          const enriched = (payloadHotel && payloadHotel.hotel_id === hotel.hotel_id) ? payloadHotel : hotel;
+          Hotel.showRoomOffers(r.room_offers, r.current_night || currentN, enriched, _handleRoomPick);
         } else {
           showToast('No bookable rooms for this hotel — try another.', 'warning');
           Chat.addMessage('assistant', r.assistant_message || 'No rooms available for this hotel.');
@@ -739,6 +751,12 @@ async function _afterRoomSelect(res) {
     return;
   }
 
+  if (payload && payload.type === 'hotel_reuse_decision') {
+    _showHotelReuseModal(payload);
+    Chat.addMessage('assistant', payload.message || '');
+    return;
+  }
+
   if (payload && ['hotel_search_error', 'hotel_no_results', 'hotel_no_rooms'].includes(payload.type)) {
     _showHotelIssueModal(payload);
     return;
@@ -752,6 +770,45 @@ async function _afterRoomSelect(res) {
   } else {
     showToast('Something went wrong — try again.', 'error');
   }
+}
+
+/**
+ * Modal when the next day's activities are far from the current hotel —
+ * ask whether to search a new hotel, keep the same one, or skip the night.
+ */
+function _showHotelReuseModal(payload) {
+  const modal = document.getElementById('modal-hotel-reuse');
+  if (!modal) return;
+
+  const body = document.getElementById('modal-hotel-reuse-body');
+  if (body) {
+    body.innerHTML = `
+      <p style="white-space:pre-line">${payload.message || ''}</p>`;
+  }
+
+  const close = () => modal.classList.remove('open');
+  document.getElementById('btn-close-hotel-reuse')?.addEventListener('click', close, { once: true });
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); }, { once: true });
+
+  const decide = async (decision) => {
+    close();
+    showLoading('Working on your hotels…');
+    try {
+      const res = await apiSearchHotels(AppState.sessionId, { decision });
+      hideLoading();
+      if (res.hotels && res.hotels.length) await _showHotels(res);
+      else _afterRoomSelect(res);
+    } catch (e) {
+      hideLoading();
+      showToast(e.message, 'error');
+    }
+  };
+
+  document.getElementById('btn-hotel-reuse-search')?.addEventListener('click', () => decide('search'), { once: true });
+  document.getElementById('btn-hotel-reuse-keep')?.addEventListener('click', () => decide('keep'), { once: true });
+  document.getElementById('btn-hotel-reuse-skip')?.addEventListener('click', () => decide('skip'), { once: true });
+
+  modal.classList.add('open');
 }
 
 /** Modal for hotel search / room-availability issues with retry/skip/cancel actions. */
@@ -967,30 +1024,9 @@ function _bindButtons() {
     });
   });
 
-  // Draft panel: continue to hotels
-  document.getElementById('btn-continue-hotels')?.addEventListener('click', async () => {
-    showPanel('chat');
-    showLoading('Searching for hotels…');
-    try {
-      const req = AppState.tripRequirements;
-      const days = _calcNumDays();
-      const maxPPN = req.budget ? Math.round((req.budget / Math.max(days, 1)) * 0.4) : undefined;
-      const res = await apiSearchHotels(AppState.sessionId, {
-        destination: req.destination || '',
-        check_in: req.departure_date || '',
-        check_out: req.return_date || '',
-        num_guests: req.num_travelers || 1,
-        max_price_per_night: maxPPN,
-      });
-      AppState.hotels = res.hotels;
-      hideLoading();
-      Chat.addMessage('assistant',
-        `Found **${res.hotel_count || res.count || 0} hotels** in ${req.destination || 'your destination'}! 🏨`);
-      await _showHotels(res);
-    } catch (err) {
-      hideLoading();
-      showToast(err.message, 'error');
-    }
+  // Draft panel: continue to flight search
+  document.getElementById('btn-continue-flights')?.addEventListener('click', async () => {
+    await _continueToFlights();
   });
 
   // Draft panel: edit — opens the edit modal (NOT just back to chat)

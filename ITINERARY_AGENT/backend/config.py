@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = False
 
+    # Max distance (km) between the current hotel and the next day's
+    # activities before we ask the user whether to search a new hotel.
+    hotel_reuse_max_distance_km: float = 5.0
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

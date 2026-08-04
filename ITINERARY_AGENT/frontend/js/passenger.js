@@ -5,7 +5,7 @@
  *                       (supports multiple passengers) and submits it via
  *                       POST /api/flight/passenger-details.
  * PrebookConfirmation : shows the result of a successful pre-book with a
- *                       "Continue to Booking" action.
+ *                       "Continue to Hotels" action.
  */
 
 const PassengerForm = (() => {
@@ -444,7 +444,7 @@ const PrebookConfirmation = (() => {
   /**
    * Show the pre-book confirmation modal.
    * @param {object}   payload    - ui_payload from the workflow interrupt
-   * @param {Function} onContinue - called when the user clicks "Continue to Booking"
+   * @param {Function} onContinue - called when the user clicks "Continue to Hotels"
    */
   function show(payload, onContinue) {
     _onContinue = onContinue;

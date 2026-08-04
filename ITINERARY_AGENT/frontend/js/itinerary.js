@@ -136,7 +136,7 @@ const Itinerary = (() => {
           <h1 class="itin-title">${_esc(data.trip_title || dest + ' Itinerary')}</h1>
           <div class="itin-header-badges">
             ${badge}
-            ${isDraft ? '<span class="itin-badge badge-warning">✈ Demo Flight</span>' : ''}
+            ${isDraft ? '<span class="itin-badge badge-info">✈️ Flight Pending</span>' : ''}
             ${isDraft ? '<span class="itin-badge badge-info">🏨 Hotel Pending</span>' : '<span class="itin-badge badge-success">🏨 Hotel Booked</span>'}
           </div>
         </div>
@@ -154,7 +154,9 @@ const Itinerary = (() => {
   // ── Flight section ────────────────────────────────────────────────────────
 
   function _flightSectionHtml(flight, prebook) {
-    if (!flight) return '<p class="itin-empty">No flight data available.</p>';
+    if (!flight) {
+      return '<p class="itin-empty">✈️ Flight selection comes next — choose your flight after reviewing this draft.</p>';
+    }
 
     const dep = flight.departure_time ? new Date(flight.departure_time) : null;
     const arr = flight.arrival_time   ? new Date(flight.arrival_time)   : null;
@@ -186,41 +188,9 @@ const Itinerary = (() => {
     return `<div class="itin-flight-card">${table}</div>`;
   }
 
-  // ── Hotel section ─────────────────────────────────────────────────────────
+  // ── Hotel section (final itinerary — confirmed hotel(s) only) ─────────────
 
-  function _hotelSectionHtml(prebooks, isDraft, draftHotel) {
-    // Draft: show suggested hotel
-    if (isDraft) {
-      if (!draftHotel) {
-        return `<div class="itin-hotel-pending">
-          <span class="itin-badge badge-warning">🏨 Hotel Pending</span>
-          <p>Your hotel will be selected after confirming this draft itinerary.</p>
-        </div>`;
-      }
-      const amenities = (draftHotel.amenities || []).slice(0, 5)
-        .map(a => `<span class="itin-amenity-chip">${_esc(a)}</span>`).join('');
-      return `
-        <div class="itin-hotel-card">
-          <div class="itin-hotel-card-header">
-            <span class="itin-hotel-icon">🏨</span>
-            <div>
-              <div class="itin-hotel-name">${_esc(draftHotel.name)}</div>
-              <div class="itin-hotel-stars">${_starsHtml(draftHotel.rating)}
-                <span class="itin-hotel-rating-num">(${draftHotel.rating}/5)</span>
-              </div>
-            </div>
-            <span class="itin-badge badge-warning" style="margin-left:auto">Suggested</span>
-          </div>
-          <table class="itin-table">
-            <tr><th>📍 Location</th><td>${_esc(draftHotel.address)}</td></tr>
-            <tr><th>🛏️ Room Type</th><td>${_esc(draftHotel.room_type)}</td></tr>
-            <tr><th>💵 Price</th><td>&#8377;${_fmt(draftHotel.price_per_night)}/night</td></tr>
-          </table>
-          <div class="itin-amenities">${amenities}</div>
-          <p class="itin-hotel-note">✅ Confirm this hotel during the booking step.</p>
-        </div>`;
-    }
-
+  function _hotelSectionHtml(prebooks) {
     // Final: real booked hotel(s)
     if (!prebooks || !Object.keys(prebooks).length) {
       return '<p class="itin-empty">No hotel booked.</p>';
@@ -291,7 +261,11 @@ const Itinerary = (() => {
       { icon: '🎡', label: 'Activities',        val: breakdown.activities || 0, cls: 'clr-activities' },
       { icon: '🛍️', label: 'Shopping',          val: breakdown.shopping   || 0, cls: 'clr-shopping' },
       { icon: '🛡️', label: 'Buffer / Misc',     val: breakdown.buffer     || 0, cls: 'clr-buffer' },
-    ];
+    ].filter(it => it.val > 0);
+
+    // Draft state: flights & hotels are selected after the draft — show a
+    // note instead of zero-value rows.
+    const travelPending = !(breakdown.flights > 0) && !(breakdown.hotel > 0);
 
     const bars = items.map(it => {
       const pct = Math.min(100, Math.round((it.val / total) * 100));
@@ -314,6 +288,7 @@ const Itinerary = (() => {
           <span>💳 Total Estimated</span>
           <span class="itin-budget-total-amount">&#8377;${_fmt(total)}</span>
         </div>
+        ${travelPending ? '<p class="itin-hotel-pending" style="margin-top:.75rem">✈️ Flight &amp; 🏨 hotel costs are added after you select them — this breakdown covers your on-ground expenses only.</p>' : ''}
       </div>`;
   }
 
@@ -595,7 +570,7 @@ const Itinerary = (() => {
   function _progressTrackerHtml(isDraft, hasHotel) {
     const steps = [
       { icon: '✅', label: 'Requirements', done: true  },
-      { icon: '✅', label: 'Flight',       done: true  },
+      { icon: isDraft ? '⏳' : '✅', label: 'Flight',       done: !isDraft },
       { icon: isDraft ? '⏳' : '✅', label: 'Hotel',  done: !isDraft || hasHotel },
       { icon: '✅', label: 'Itinerary',    done: true  },
     ];
@@ -660,16 +635,25 @@ const Itinerary = (() => {
 
     // draft._req is injected by app.js (trip requirements mirror)
     const req       = draft._req || {};
-    const flight    = draft._flight || null;
     const days      = _calcDays(req.departure_date, req.return_date) || (draft.days || []).length || 1;
-    const draftHotel = draft._draft_hotel || null;
+    const destName  = (req.destination || 'Your').charAt(0).toUpperCase() + (req.destination || 'Your').slice(1);
 
     let html = '';
     html += _progressTrackerHtml(true, false);
-    html += _tripHeaderHtml({ ...draft, _req: req, trip_title: `✈️ ${(req.destination || 'Your').charAt(0).toUpperCase() + (req.destination || 'Your').slice(1)} Travel Itinerary` }, true);
+    html += _tripHeaderHtml({ ...draft, _req: req, trip_title: `✈️ ${destName} Travel Itinerary` }, true);
 
-    html += _accordion('✈️', 'Flight Information',     'section-flight',    _flightSectionHtml(flight, null),                       true);
-    html += _accordion('🏨', 'Hotel Information',      'section-hotel',     _hotelSectionHtml(null, true, draftHotel),              true);
+    // Next-steps banner — flights & hotels are selected AFTER this draft,
+    // so the draft intentionally shows no flight or hotel details.
+    html += `
+      <div class="itin-next-steps">
+        <div class="itin-next-steps-title">🗺️ Your travel plan is ready</div>
+        <p class="itin-next-steps-text">This draft covers your day-by-day plan, attractions, restaurants and budget.</p>
+        <p class="itin-next-steps-text">
+          ✈️ <strong>Flight</strong> &amp; 🏨 <strong>hotel</strong> details will be added
+          after you select them in the next steps.
+        </p>
+      </div>`;
+
     html += _accordion('💰', 'Budget Breakdown',       'section-budget',    _budgetSectionHtml(draft.budget_breakdown, req.budget), true);
     html += _accordion('🌤️', 'Weather Forecast',       'section-weather',   _weatherSectionHtml(draft.weather),                    false);
     html += _accordion('🌟', 'Destination Highlights', 'section-highlights',_highlightsSectionHtml(draft._web_data),               false);
@@ -702,7 +686,7 @@ const Itinerary = (() => {
     html += _tripHeaderHtml({ ...final, _req: req }, false);
 
     html += _accordion('✈️', 'Flight Information',     'section-flight',    _flightSectionHtml(flight, prebook),                    true);
-    html += _accordion('🏨', 'Hotel Information',      'section-hotel',     _hotelSectionHtml(prebooks, false, null),              true);
+    html += _accordion('🏨', 'Hotel Information',      'section-hotel',     _hotelSectionHtml(prebooks),                          true);
     html += _accordion('💰', 'Budget Breakdown',       'section-budget',    _budgetSectionHtml(final.budget_breakdown, final.total_cost), true);
     html += _accordion('🌤️', 'Weather Forecast',       'section-weather',   _weatherSectionHtml(final.weather),                   false);
     html += _accordion('🌟', 'Destination Highlights', 'section-highlights',_highlightsSectionHtml(final._web_data),              false);
