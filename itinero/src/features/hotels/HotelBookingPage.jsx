@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { PageLayout } from "@/components/layout";
 import BookingStepper from './components/BookingStepper';
 import HotelRoomCard from './components/HotelRoomCard';
@@ -7,6 +7,7 @@ import HotelBookingSummary from './components/HotelBookingSummary';
 import { Modal } from '@/components/ui/Modal';
 import CustomDatePicker from '@/components/ui/DatePicker/CustomDatePicker';
 import { Calendar as CalendarIcon } from 'lucide-react';
+import { hotelService } from './services/hotelService';
 import styles from './HotelBookingPage.module.css';
 
 const CustomModalDateInput = React.forwardRef(({ value, onClick, isOpen }, ref) => (
@@ -21,111 +22,131 @@ const CustomModalDateInput = React.forwardRef(({ value, onClick, isOpen }, ref) 
   </div>
 ));
 
+function toDate(v, fallbackDays = 0) {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return v;
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+    const d = new Date(v.slice(0, 10) + 'T12:00:00');
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return new Date(Date.now() + fallbackDays * 86400000);
+}
+
+function toYmd(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
 export default function HotelBookingPage() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep] = useState(1);
   const navigate = useNavigate();
   const { id } = useParams();
-  
-  // Dummy data based on the design
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const base = import.meta.env.BASE_URL;
-  
-  const rooms = [
-    {
-      id: 1,
-      title: 'Deluxe Room',
-      image: `${base}hotel_room.png`,
-      bedType: 'King Bed',
-      capacity: 2,
-      size: '220sq ft',
-      view: 'City View',
-      floor: 'High Floor',
-      freeCancellation: true,
-      freeBreakfast: true,
-      payAtHotel: true,
-      roomsLeft: 2,
-      price: 2599,
-      taxes: 4679
-    },
-    {
-      id: 2,
-      title: 'Executive Room',
-      image: `${base}hotel_room.png`,
-      bedType: 'King Bed',
-      capacity: 2,
-      size: '220sq ft',
-      view: 'Sea View',
-      floor: 'Balcony',
-      freeCancellation: true,
-      freeBreakfast: true,
-      payAtHotel: true,
-      roomsLeft: null,
-      price: 2999,
-      taxes: 4679
-    },
-    {
-      id: 3,
-      title: 'Family Suite',
-      image: `${base}hotel_room.png`,
-      bedType: 'King Bed',
-      capacity: 2,
-      size: '220sq ft',
-      view: 'Ocean View',
-      floor: 'High Floor',
-      freeCancellation: true,
-      freeBreakfast: true,
-      payAtHotel: true,
-      roomsLeft: null,
-      price: 4599,
-      taxes: 4679
-    }
-  ];
 
-  const [selectedRoomId, setSelectedRoomId] = useState(1); // Default to first room
-  const [checkIn, setCheckIn] = useState(new Date());
-  const [checkOut, setCheckOut] = useState(new Date(Date.now() + 86400000 * 3)); // default 3 nights
-  const [roomsCount, setRoomsCount] = useState(1);
-  const [adults, setAdults] = useState(2);
+  const initialHotel = location.state?.hotel || null;
+
+  const [checkIn, setCheckIn] = useState(() => toDate(searchParams.get('checkIn') || location.state?.checkIn, 0));
+  const [checkOut, setCheckOut] = useState(() => toDate(searchParams.get('checkOut') || location.state?.checkOut, 3));
+  const [roomsCount, setRoomsCount] = useState(() => Number(searchParams.get('rooms') || location.state?.rooms || 1));
+  const [adults, setAdults] = useState(() => Number(searchParams.get('guests') || location.state?.guests || 2));
   const [children, setChildren] = useState(0);
 
-  // Modal open state
+  const [rooms, setRooms] = useState([]);
+  const [hotelMeta, setHotelMeta] = useState(initialHotel);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [configuringRoomId, setConfiguringRoomId] = useState(null);
+  const [modalCheckIn, setModalCheckIn] = useState(checkIn);
+  const [modalCheckOut, setModalCheckOut] = useState(checkOut);
+  const [modalRooms, setModalRooms] = useState(roomsCount);
+  const [modalAdults, setModalAdults] = useState(adults);
+  const [modalChildren, setModalChildren] = useState(children);
 
-  // Modal temporary state
-  const [modalCheckIn, setModalCheckIn] = useState(new Date());
-  const [modalCheckOut, setModalCheckOut] = useState(new Date(Date.now() + 86400000 * 3));
-  const [modalRooms, setModalRooms] = useState(1);
-  const [modalAdults, setModalAdults] = useState(2);
-  const [modalChildren, setModalChildren] = useState(0);
+  const loadRates = async () => {
+    if (!id) return;
+    setLoading(true);
+    setError('');
+    const res = await hotelService.getRates(id, {
+      check_in: toYmd(checkIn),
+      check_out: toYmd(checkOut),
+      guests: adults + children,
+      rooms: roomsCount,
+      currency: 'INR',
+    });
+    const list = Array.isArray(res.rooms) ? res.rooms : [];
+    const withImages = list.map((r) => ({
+      ...r,
+      image: r.image || `${base}hotel_room.png`,
+      taxes: Number(r.taxes) || 0,
+      price: Number(r.price) || 0,
+    }));
+    setRooms(withImages);
+    if (res.hotel) setHotelMeta((prev) => ({ ...prev, ...res.hotel }));
+    if (withImages.length) {
+      setSelectedRoomId(withImages[0].id);
+    } else {
+      setSelectedRoomId(null);
+      setError(res.message || 'No live room rates for these dates.');
+    }
+    setLoading(false);
+  };
 
-  const selectedRoom = rooms.find(r => r.id === selectedRoomId) || rooms[0];
-  const configuringRoom = rooms.find(r => r.id === configuringRoomId) || rooms[0];
+  useEffect(() => {
+    loadRates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, toYmd(checkIn), toYmd(checkOut), adults, children, roomsCount]);
+
+  const selectedRoom = useMemo(
+    () => rooms.find((r) => r.id === selectedRoomId) || rooms[0],
+    [rooms, selectedRoomId]
+  );
+  const configuringRoom = rooms.find((r) => r.id === configuringRoomId) || selectedRoom;
 
   const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000));
 
-  const summaryData = {
-    hotelName: 'Atlantis The Palm',
-    hotelImage: selectedRoom.image,
-    location: 'Palm Jumeirah, Dubai, UAE',
-    checkIn: { 
-      date: checkIn.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), 
-      day: checkIn.toLocaleDateString('en-US', { weekday: 'short' }) 
-    },
-    checkOut: { 
-      date: checkOut.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), 
-      day: checkOut.toLocaleDateString('en-US', { weekday: 'short' }) 
-    },
-    guests: adults + children,
-    rooms: roomsCount,
-    nights: nights,
-    roomsTotal: selectedRoom.price * nights * roomsCount,
-    taxesTotal: selectedRoom.taxes * roomsCount,
-    totalPrice: (selectedRoom.price * nights * roomsCount) + (selectedRoom.taxes * roomsCount)
-  };
+  const summaryData = selectedRoom
+    ? {
+        hotelName: hotelMeta?.name || 'Hotel',
+        hotelImage: selectedRoom.image || hotelMeta?.image || `${base}hotel_room.png`,
+        location: hotelMeta?.location || '',
+        checkIn: {
+          date: checkIn.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          day: checkIn.toLocaleDateString('en-US', { weekday: 'short' }),
+        },
+        checkOut: {
+          date: checkOut.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          day: checkOut.toLocaleDateString('en-US', { weekday: 'short' }),
+        },
+        guests: adults + children,
+        rooms: roomsCount,
+        nights,
+        roomsTotal: (selectedRoom.price || 0) * nights * roomsCount,
+        taxesTotal: (selectedRoom.taxes || 0) * roomsCount,
+        totalPrice:
+          selectedRoom.totalPrice != null
+            ? Number(selectedRoom.totalPrice) * roomsCount
+            : (selectedRoom.price || 0) * nights * roomsCount + (selectedRoom.taxes || 0) * roomsCount,
+      }
+    : {
+        hotelName: hotelMeta?.name || 'Hotel',
+        hotelImage: hotelMeta?.image || `${base}hotel_room.png`,
+        location: hotelMeta?.location || '',
+        checkIn: { date: '', day: '' },
+        checkOut: { date: '', day: '' },
+        guests: adults + children,
+        rooms: roomsCount,
+        nights,
+        roomsTotal: 0,
+        taxesTotal: 0,
+        totalPrice: 0,
+      };
 
   const handleSelectRoom = (roomId) => {
     setConfiguringRoomId(roomId);
-    // Pre-populate modal with current selection details
     setModalCheckIn(checkIn);
     setModalCheckOut(checkOut);
     setModalRooms(roomsCount);
@@ -141,57 +162,75 @@ export default function HotelBookingPage() {
     setRoomsCount(modalRooms);
     setAdults(modalAdults);
     setChildren(modalChildren);
+    setSearchParams({
+      checkIn: toYmd(modalCheckIn),
+      checkOut: toYmd(modalCheckOut),
+      guests: String(modalAdults + modalChildren),
+      rooms: String(modalRooms),
+    });
     setIsConfigOpen(false);
   };
 
   const handleContinue = () => {
-    navigate(`/hotel/${id || '123'}/guest-details`);
+    if (!selectedRoom) return;
+    navigate(`/hotel/${id}/guest-details`, {
+      state: {
+        hotel: hotelMeta,
+        room: selectedRoom,
+        checkIn: toYmd(checkIn),
+        checkOut: toYmd(checkOut),
+        guests: adults + children,
+        rooms: roomsCount,
+        offerId: selectedRoom.offerId,
+      },
+    });
   };
 
-  // Helper formatting for dates in Modal preview
-  const formatModalDate = (date) => {
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+  const formatModalDate = (date) =>
+    date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
     <PageLayout>
       <div className={styles.pageContainer}>
-        {/* Stepper Block */}
         <div className={styles.stepperWrapper}>
           <BookingStepper currentStep={currentStep} />
         </div>
-        
-        {/* Main Content Layout */}
+
         <div className={styles.mainLayout}>
           <div className={styles.roomsList}>
-            {rooms.map(room => (
-              <HotelRoomCard 
-                key={room.id} 
-                room={room} 
-                onSelect={() => handleSelectRoom(room.id)} 
-                isSelected={room.id === selectedRoomId}
-              />
-            ))}
+            {loading && (
+              <p style={{ padding: 24, color: '#6b635c' }}>Loading live LiteAPI room rates…</p>
+            )}
+            {!loading && error && (
+              <p style={{ padding: 24, color: '#b45309' }}>{error}</p>
+            )}
+            {!loading &&
+              rooms.map((room) => (
+                <HotelRoomCard
+                  key={room.id}
+                  room={room}
+                  onSelect={() => handleSelectRoom(room.id)}
+                  isSelected={room.id === selectedRoomId}
+                />
+              ))}
           </div>
-          
+
           <div className={styles.sidebar}>
-            <HotelBookingSummary 
-              bookingInfo={summaryData} 
+            <HotelBookingSummary
+              bookingInfo={summaryData}
               onButtonClick={handleContinue}
+              buttonText={selectedRoom ? 'Continue' : 'Select a room'}
             />
           </div>
         </div>
       </div>
 
-      {/* Booking Configuration Modal */}
-      <Modal 
-        isOpen={isConfigOpen} 
-        onClose={() => setIsConfigOpen(false)} 
+      <Modal
+        isOpen={isConfigOpen}
+        onClose={() => setIsConfigOpen(false)}
         title={`Configure Booking: ${configuringRoom?.title || 'Room'}`}
       >
         <div className="p-6 bg-white flex flex-col gap-6">
-          
-          {/* Dates Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="relative z-50">
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Check In</label>
@@ -220,88 +259,50 @@ export default function HotelBookingPage() {
             </div>
           </div>
 
-          {/* Guests Section */}
-          <div className="flex flex-col gap-4 border-t border-gray-100 pt-5">
-            <h4 className="text-sm font-bold text-[#001439] mb-1">Guests & Rooms</h4>
-            
-            {/* Rooms Selector */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-bold text-gray-700 text-sm">Rooms</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setModalRooms(prev => Math.max(1, prev - 1))} 
-                  disabled={modalRooms <= 1} 
-                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-colors"
-                >
-                  -
-                </button>
-                <span className="font-bold text-[#001439] w-4 text-center">{modalRooms}</span>
-                <button 
-                  onClick={() => setModalRooms(prev => prev + 1)} 
-                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Adults Selector */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-bold text-gray-700 text-sm">Adults</span>
-                <span className="block text-xs text-gray-400">Ages 13 or above</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setModalAdults(prev => Math.max(1, prev - 1))} 
-                  disabled={modalAdults <= 1} 
-                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-colors"
-                >
-                  -
-                </button>
-                <span className="font-bold text-[#001439] w-4 text-center">{modalAdults}</span>
-                <button 
-                  onClick={() => setModalAdults(prev => prev + 1)} 
-                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Children Selector */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-bold text-gray-700 text-sm">Children</span>
-                <span className="block text-xs text-gray-400">Ages 0 - 12</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setModalChildren(prev => Math.max(0, prev - 1))} 
-                  disabled={modalChildren <= 0} 
-                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-colors"
-                >
-                  -
-                </button>
-                <span className="font-bold text-[#001439] w-4 text-center">{modalChildren}</span>
-                <button 
-                  onClick={() => setModalChildren(prev => prev + 1)} 
-                  className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  +
-                </button>
-              </div>
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            <label className="text-sm">
+              Rooms
+              <input
+                type="number"
+                min={1}
+                className="mt-1 w-full border rounded-lg p-2"
+                value={modalRooms}
+                onChange={(e) => setModalRooms(Number(e.target.value) || 1)}
+              />
+            </label>
+            <label className="text-sm">
+              Adults
+              <input
+                type="number"
+                min={1}
+                className="mt-1 w-full border rounded-lg p-2"
+                value={modalAdults}
+                onChange={(e) => setModalAdults(Number(e.target.value) || 1)}
+              />
+            </label>
+            <label className="text-sm">
+              Children
+              <input
+                type="number"
+                min={0}
+                className="mt-1 w-full border rounded-lg p-2"
+                value={modalChildren}
+                onChange={(e) => setModalChildren(Number(e.target.value) || 0)}
+              />
+            </label>
           </div>
 
-          {/* Confirm Button */}
-          <button 
+          <p className="text-sm text-gray-500">
+            Preview: {formatModalDate(modalCheckIn)} → {formatModalDate(modalCheckOut)}. Confirming
+            reloads live rates from LiteAPI.
+          </p>
+
+          <button
+            type="button"
+            className="w-full bg-[#F97211] text-white font-semibold rounded-xl py-3"
             onClick={handleConfirmConfig}
-            className="mt-4 w-full py-3 bg-[#E86A10] hover:bg-[#d15a0c] text-white rounded-lg font-bold transition-colors shadow-md hover:shadow-lg"
           >
-            Confirm & Select Room
+            Apply & reload live rates
           </button>
         </div>
       </Modal>

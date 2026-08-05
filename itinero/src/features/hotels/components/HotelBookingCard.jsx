@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Calendar as CalendarIcon, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/DatePicker/CustomDatePicker';
+import { hotelService } from '../services/hotelService';
 import styles from '../HotelDetailPage.module.css';
 
 const CustomDateInput = React.forwardRef(({ value, onClick, isOpen }, ref) => (
@@ -16,20 +17,33 @@ const CustomDateInput = React.forwardRef(({ value, onClick, isOpen }, ref) => (
   </div>
 ));
 
+function toYmd(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
 export default function HotelBookingCard() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
 
-  // State
-  const [checkIn, setCheckIn] = useState(new Date());
-  const [checkOut, setCheckOut] = useState(new Date(Date.now() + 86400000 * 3)); // 3 days from now
+  const [checkIn, setCheckIn] = useState(() => {
+    const v = searchParams.get('checkIn');
+    return v ? new Date(v + 'T12:00:00') : new Date();
+  });
+  const [checkOut, setCheckOut] = useState(() => {
+    const v = searchParams.get('checkOut');
+    return v ? new Date(v + 'T12:00:00') : new Date(Date.now() + 86400000 * 3);
+  });
   
-  const [rooms, setRooms] = useState(1);
-  const [adults, setAdults] = useState(2);
+  const [rooms, setRooms] = useState(Number(searchParams.get('rooms') || 1));
+  const [adults, setAdults] = useState(Number(searchParams.get('guests') || 2));
   const [children, setChildren] = useState(0);
   const [showGuests, setShowGuests] = useState(false);
+  const [minNight, setMinNight] = useState(null);
+  const [total, setTotal] = useState(null);
+  const [loadingPrice, setLoadingPrice] = useState(false);
 
-  // Refs for click outside
   const guestsRef = useRef(null);
 
   useEffect(() => {
@@ -42,8 +56,41 @@ export default function HotelBookingCard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!id) return;
+      setLoadingPrice(true);
+      const res = await hotelService.getRates(id, {
+        check_in: toYmd(checkIn),
+        check_out: toYmd(checkOut),
+        guests: adults + children,
+        rooms,
+        currency: 'INR',
+      });
+      if (cancelled) return;
+      const first = (res.rooms || [])[0];
+      if (first) {
+        setMinNight(first.pricePerNight || first.price || null);
+        setTotal(first.totalPrice || null);
+      } else {
+        setMinNight(null);
+        setTotal(null);
+      }
+      setLoadingPrice(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [id, checkIn, checkOut, adults, children, rooms]);
+
   const handleBookRoom = () => {
-    navigate(`/hotel/${id || '123'}/booking`);
+    const qs = new URLSearchParams({
+      checkIn: toYmd(checkIn),
+      checkOut: toYmd(checkOut),
+      guests: String(adults + children),
+      rooms: String(rooms),
+    });
+    navigate(`/hotel/${id}/booking?${qs.toString()}`);
   };
 
   const updateGuest = (type, op) => {
@@ -62,11 +109,10 @@ export default function HotelBookingCard() {
     <div className={styles.HotelBookingCard_card}>
       <div className={styles.HotelBookingCard_bestPrice}>
         <ShieldCheck size={18} className={styles.HotelBookingCard_shieldIcon} />
-        <span className={styles.HotelBookingCard_bestPriceText}>Best Price Guaranteed</span>
+        <span className={styles.HotelBookingCard_bestPriceText}>Live LiteAPI rates</span>
       </div>
 
       <div className={styles.HotelBookingCard_dateInputs}>
-        {/* Check In */}
         <div className="flex-1">
           <label className={styles.HotelBookingCard_label}>Check In</label>
           <CustomDatePicker
@@ -95,7 +141,6 @@ export default function HotelBookingCard() {
         </div>
       </div>
 
-      {/* Guests Dropdown */}
       <div className="relative" ref={guestsRef}>
         <label className={styles.HotelBookingCard_label}>Guests & Rooms</label>
         <div 
@@ -106,46 +151,24 @@ export default function HotelBookingCard() {
           {showGuests ? <ChevronUp size={14} className={styles.HotelBookingCard_chevronIcon} /> : <ChevronDown size={14} className={styles.HotelBookingCard_chevronIcon} />}
         </div>
 
-        {/* Guests Popover */}
         {showGuests && (
           <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-[16px] shadow-[0_15px_40px_rgba(0,0,0,0.15)] border border-gray-100 p-5 z-50 flex flex-col gap-4">
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-bold text-[#001439]">Rooms</div>
+            {[
+              ['rooms', 'Rooms', rooms, 1],
+              ['adults', 'Adults', adults, 1],
+              ['children', 'Children', children, 0],
+            ].map(([key, label, val, min]) => (
+              <div key={key} className="flex items-center justify-between">
+                <div className="font-bold text-[#001439]">{label}</div>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => updateGuest(key, 'sub')} disabled={val <= min} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] disabled:opacity-30 hover:bg-gray-50"><Minus size={14} /></button>
+                  <span className="font-bold w-4 text-center">{val}</span>
+                  <button type="button" onClick={() => updateGuest(key, 'add')} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] hover:bg-gray-50"><Plus size={14} /></button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => updateGuest('rooms', 'sub')} disabled={rooms <= 1} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] disabled:opacity-30 hover:bg-gray-50"><Minus size={14} /></button>
-                <span className="font-bold w-4 text-center">{rooms}</span>
-                <button onClick={() => updateGuest('rooms', 'add')} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] hover:bg-gray-50"><Plus size={14} /></button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-bold text-[#001439]">Adults</div>
-                <div className="text-xs text-gray-500">Ages 13 or above</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => updateGuest('adults', 'sub')} disabled={adults <= 1} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] disabled:opacity-30 hover:bg-gray-50"><Minus size={14} /></button>
-                <span className="font-bold w-4 text-center">{adults}</span>
-                <button onClick={() => updateGuest('adults', 'add')} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] hover:bg-gray-50"><Plus size={14} /></button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-bold text-[#001439]">Children</div>
-                <div className="text-xs text-gray-500">Ages 0 - 12</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => updateGuest('children', 'sub')} disabled={children <= 0} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] disabled:opacity-30 hover:bg-gray-50"><Minus size={14} /></button>
-                <span className="font-bold w-4 text-center">{children}</span>
-                <button onClick={() => updateGuest('children', 'add')} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001439] hover:bg-gray-50"><Plus size={14} /></button>
-              </div>
-            </div>
-            
+            ))}
             <button 
+              type="button"
               onClick={() => setShowGuests(false)}
               className="mt-2 w-full py-2 bg-[#001439] text-white rounded-lg font-bold hover:bg-[#000d26] transition-colors"
             >
@@ -157,19 +180,24 @@ export default function HotelBookingCard() {
 
       <div className={styles.HotelBookingCard_priceSection}>
         <div className={styles.HotelBookingCard_priceRow}>
-          <span className={styles.HotelBookingCard_price}>$265</span>
-          <span className={styles.HotelBookingCard_perNight}>per night</span>
+          <span className={styles.HotelBookingCard_price}>
+            {loadingPrice ? '…' : minNight != null ? `₹${Number(minNight).toLocaleString()}` : '—'}
+          </span>
+          <span className={styles.HotelBookingCard_perNight}>per night from</span>
         </div>
         <div className={styles.HotelBookingCard_totalPrice}>
-          $797 total<br/>
+          {total != null ? `₹${Number(total).toLocaleString()} total` : 'Select dates for live total'}
+          <br />
           Includes taxes & Fees
         </div>
       </div>
 
-      <button className={styles.HotelBookingCard_bookBtn} onClick={handleBookRoom}>Book Room</button>
+      <button className={styles.HotelBookingCard_bookBtn} type="button" onClick={handleBookRoom}>
+        See live rooms
+      </button>
       
       <div className={styles.HotelBookingCard_freeCancellation}>
-        Free cancellation
+        Prices from LiteAPI — never invented
       </div>
     </div>
   );

@@ -54,12 +54,12 @@ export default function HotelRoomCard({ room, onSelect, isSelected }) {
             
             <div className={styles.priceBlock}>
               <span className={styles.priceCurrency}>₹</span>
-              <span className={styles.priceAmount}>{room.price.toLocaleString()}</span>
+              <span className={styles.priceAmount}>{Number(room.price || 0).toLocaleString()}</span>
               <span className={styles.pricePerNight}>/ night</span>
             </div>
             
             <div className={styles.taxesText}>
-              +₹{room.taxes.toLocaleString()} taxes & fees
+              +₹{Number(room.taxes || 0).toLocaleString()} taxes & fees
             </div>
             
             {room.freeCancellation && (

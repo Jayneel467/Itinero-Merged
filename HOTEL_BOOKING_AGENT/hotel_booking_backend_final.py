@@ -246,7 +246,7 @@ def search_country_code(state: HotelState)-> str:
 def fetch_hotels_from_api(state:HotelState)-> List[Dict[str,Any]]:
 
      url="https://api.liteapi.travel/v3.0/data/hotels"
-     api_key = "sand_7aa9c679-c969-48b1-81eb-52849778cae3"
+     api_key = os.getenv("LITEAPI_KEY") or os.getenv("API_KEY") or os.getenv("LITEAPI_API_KEY") or ""
 
     # 2. Set the authorization headers
      headers = {
@@ -402,7 +402,7 @@ async def search_availability(state:HotelState, hotel_id: str) :
   #URL = "https://api.liteapi.travel/v3.0/prices/hotels"
   #URL="https://api.liteapi.travel/v3.0/hotels/availability"
   URL="https://api.liteapi.travel/v3.0/hotels/rates"
-  API_KEY = "sand_7aa9c679-c969-48b1-81eb-52849778cae3"  # Sandbox/Production key
+  API_KEY = os.getenv("LITEAPI_KEY") or os.getenv("API_KEY") or os.getenv("LITEAPI_API_KEY") or ""  # Sandbox/Production key
 
   HEADERS = {
   
@@ -1572,7 +1572,7 @@ def process_the_missing_info(state:HotelState):
 
 
 
-API_KEY = "sand_7aa9c679-c969-48b1-81eb-52849778cae3"  # Sandbox API
+API_KEY = os.getenv("LITEAPI_KEY") or os.getenv("API_KEY") or os.getenv("LITEAPI_API_KEY") or ""  # Sandbox API
 PREBOOK_URL = "https://book.liteapi.travel/v3.0/rates/prebook"
 BOOK_URL = "https://book.liteapi.travel/v3.0/rates/book"
 

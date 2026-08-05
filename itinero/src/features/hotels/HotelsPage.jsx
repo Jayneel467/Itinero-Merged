@@ -3,12 +3,13 @@ import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import SharedHotelSearchBar from "@/components/SharedHotelSearchBar/SharedHotelSearchBar";
 import { HotelSidebar } from "./components/HotelSidebar";
+import { HotelCard } from "./components/HotelCard";
 import useHotelSearch from "./hooks/useHotelSearch";
 import { SlidersHorizontal, X } from "lucide-react";
 import styles from "./HotelsPage.module.css";
 
 /**
- * Hotels results — honest empty state until LiteAPI hotels are live (no mock inventory).
+ * Hotels results — live LiteAPI inventory via supervisor (no mock rates).
  */
 export default function HotelsPage() {
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -32,7 +33,7 @@ export default function HotelsPage() {
               <header className={styles.sortToolbar}>
                 <span className={styles.resultsCount}>
                   {isLoading
-                    ? "Searching…"
+                    ? "Searching live rates…"
                     : hotels.length
                       ? `${hotels.length} Stays Found`
                       : "Hotels"}
@@ -50,11 +51,19 @@ export default function HotelsPage() {
 
               {isLoading && (
                 <div role="status" style={{ padding: 24, color: "#475467", fontWeight: 600 }}>
-                  Vero is checking hotel availability…
+                  Checking live LiteAPI availability…
                 </div>
               )}
 
-              {!isLoading && (
+              {!isLoading && hotels.length > 0 && (
+                <div className={styles.hotelCardsContainer}>
+                  {hotels.map((hotel) => (
+                    <HotelCard key={hotel.id} hotel={hotel} searchQuery={query} />
+                  ))}
+                </div>
+              )}
+
+              {!isLoading && hotels.length === 0 && (
                 <div
                   role="status"
                   style={{
@@ -66,12 +75,21 @@ export default function HotelsPage() {
                   }}
                 >
                   <p style={{ margin: 0, fontWeight: 700, color: "#001439", fontSize: 18 }}>
-                    {error || message || "Live hotel search isn’t connected yet."}
+                    {error || message || "Search a city to see live hotel rates."}
                   </p>
-                  <p style={{ margin: "12px 0 0", fontSize: 14, color: "#667085", maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+                  <p
+                    style={{
+                      margin: "12px 0 0",
+                      fontSize: 14,
+                      color: "#667085",
+                      maxWidth: 480,
+                      marginLeft: "auto",
+                      marginRight: "auto",
+                    }}
+                  >
                     {query.city
-                      ? `No sample hotels are shown for ${query.city}. Ask Vero about flights or a trip plan instead.`
-                      : "Search a city above, or ask Vero — we won’t invent stays."}
+                      ? `No live rates returned for ${query.city}. Try different dates — we never invent stays.`
+                      : "Or ask Vero to plan hotels as part of your trip."}
                   </p>
                   <Link
                     to="/vero"
@@ -99,10 +117,7 @@ export default function HotelsPage() {
         <div
           style={{
             position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            inset: 0,
             backgroundColor: "rgba(0,0,0,0.5)",
             zIndex: 1000,
             display: "flex",
@@ -123,7 +138,7 @@ export default function HotelsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 24, fontFamily: "Outfit" }}>Filters</h3>
+              <h3 style={{ margin: 0, fontSize: 24 }}>Filters</h3>
               <button
                 type="button"
                 onClick={() => setIsFilterDrawerOpen(false)}
@@ -132,9 +147,6 @@ export default function HotelsPage() {
                 <X size={24} />
               </button>
             </div>
-            <p style={{ color: "#667085", fontSize: 14 }}>
-              Filters apply once live hotel inventory is connected. Ask Vero for stay ideas in the meantime.
-            </p>
             <HotelSidebar />
           </div>
         </div>

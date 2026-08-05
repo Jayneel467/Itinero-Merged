@@ -195,8 +195,8 @@ class HotelAgent:
         """
         Search hotels based on a natural-language instruction.
 
-        Tries real LiteAPI data first. Falls back to LLM-generated dummy data
-        if the real call fails or returns no results.
+        Tries real LiteAPI data first. Returns an honest empty response if
+        LiteAPI fails — never invents hotel rates.
         """
         logger.info("HotelAgent.search_hotels called [%s]", day_label or "no label")
         logger.debug("Instruction: %s", instruction)
@@ -207,12 +207,22 @@ class HotelAgent:
             if real_hotels:
                 logger.info("HotelAgent: using real LiteAPI data (%d results) [%s]", len(real_hotels), day_label)
                 return self._build_response_from_hotels(real_hotels, instruction, search_params, day_label)
-            logger.warning("HotelAgent: real LiteAPI returned no results — falling back to LLM [%s]", day_label)
+            logger.warning("HotelAgent: real LiteAPI returned no results — no dummy fallback [%s]", day_label)
 
-        # ── Fallback: LLM-generated dummy data ────────────────────────────────
-        enriched = self._enrich_search_instruction(instruction, search_params)
-        raw_json = self._call_llm(_HOTEL_AGENT_SYSTEM_PROMPT, enriched)
-        return self._parse_search_response(raw_json, instruction, search_params, day_label)
+        return HotelAgentResponse(
+            status=AgentResponseStatus.NOT_FOUND,
+            action_performed="search_hotels",
+            summary=(
+                "I couldn't find live hotel rates for that search right now. "
+                "Try different dates or a nearby city — I won't invent prices."
+            ),
+            hotels=[],
+            total_results=0,
+            errors=["No live LiteAPI results"],
+            suggested_next_action="Retry with different dates or city",
+            raw_instruction=instruction,
+            day_label=day_label or "",
+        )
 
     def filter_hotels(
         self,
@@ -379,8 +389,8 @@ class HotelAgent:
             payload = {
                 "checkin": str(params.check_in),
                 "checkout": str(params.check_out),
-                "currency": "USD",
-                "guestNationality": "US",
+                "currency": "INR",
+                "guestNationality": "IN",
                 "occupancies": [{"adults": params.adults or 1}],
                 "cityName": city_name,
                 "countryCode": country_code,

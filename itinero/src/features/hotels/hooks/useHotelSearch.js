@@ -3,8 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { hotelService } from "../services/hotelService";
 
 /**
- * Live hotel search against supervisor GET /api/hotels/search.
- * Supervisor returns honest empty/degraded until LiteAPI hotels are live — no mocks.
+ * Live hotel search against supervisor GET /api/hotels/search (LiteAPI).
+ * Never invents sample inventory — empty/degraded means no live rates.
  */
 export default function useHotelSearch() {
   const [searchParams] = useSearchParams();
@@ -26,7 +26,7 @@ export default function useHotelSearch() {
     if (!query.city) {
       setHotels([]);
       setError("");
-      setMessage("Choose a city and dates, then search. Live hotel inventory isn’t connected yet — Vero won’t invent stays.");
+      setMessage("Choose a city and dates, then search for live LiteAPI stays.");
       return;
     }
 

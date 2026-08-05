@@ -21,9 +21,10 @@ export const ENDPOINTS = {
     COMPLETE: "/api/flights/complete",
   },
 
-  // ── Hotels ──────────────────────────────
+  // ── Hotels (LiteAPI via supervisor) ─────
   HOTELS: {
     SEARCH: "/api/hotels/search",
+    RATES: (id) => `/api/hotels/${encodeURIComponent(id)}/rates`,
   },
 
   // ── Destinations (not live on supervisor) ─

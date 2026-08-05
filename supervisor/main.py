@@ -8,6 +8,7 @@ Routes:
   POST /api/flights/search         — structured flight search (manual flow)
   POST /api/flights/price-calendar — min live fare per date (manual date strip)
   GET  /api/hotels/search          — structured hotel search (LiteAPI live)
+  GET  /api/hotels/{id}/rates      — live room rates for one hotel (LiteAPI)
   GET  /api/health
   GET  /api/capabilities
 """
@@ -2074,6 +2075,29 @@ async def hotels_search(city: str, check_in: str, check_out: str, guests: int = 
         check_out=check_out,
         guests=guests,
         rooms=rooms,
+    )
+
+
+@app.get("/api/hotels/{hotel_id}/rates")
+async def hotel_rates(
+    hotel_id: str,
+    check_in: str,
+    check_out: str,
+    guests: int = 2,
+    rooms: int = 1,
+    currency: str = "INR",
+):
+    """Manual hotel room rates for one property — LiteAPI /hotels/rates (no fakes)."""
+    from supervisor.hotel_structured import structured_hotel_rates
+
+    return await structured_hotel_rates(
+        hotel_id=hotel_id,
+        check_in=check_in,
+        check_out=check_out,
+        guests=guests,
+        rooms=rooms,
+        currency=currency or "INR",
+        nationality="IN",
     )
 
 

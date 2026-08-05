@@ -193,8 +193,7 @@ class FlightAgent:
         Search flights based on a natural-language instruction.
 
         Tries real LiteAPI data first (via general_agent's travel_service).
-        Falls back to LLM-generated dummy data if the real call fails or
-        returns no results — so the agent always has something to show.
+        Returns an honest empty response if LiteAPI fails — never invents fares.
         """
         logger.info("FlightAgent.search_flights called")
         logger.debug("Instruction: %s", instruction)
@@ -205,12 +204,22 @@ class FlightAgent:
             if real_flights:
                 logger.info("FlightAgent: using real LiteAPI data (%d results)", len(real_flights))
                 return self._build_response_from_flights(real_flights, instruction)
-            logger.warning("FlightAgent: real LiteAPI returned no results — falling back to LLM")
+            logger.warning("FlightAgent: real LiteAPI returned no results — no dummy fallback")
 
-        # ── Fallback: LLM-generated dummy data ────────────────────────────────
-        enriched_instruction = self._enrich_search_instruction(instruction, search_params)
-        raw_json = self._call_llm(_FLIGHT_AGENT_SYSTEM_PROMPT, enriched_instruction)
-        return self._parse_search_response(raw_json, instruction)
+        # Honest empty — never LLM-fabricate prices for the user
+        return FlightAgentResponse(
+            status=AgentResponseStatus.NOT_FOUND,
+            action_performed="search_flights",
+            summary=(
+                "I couldn't find live flight rates for that search right now. "
+                "Try different dates or airports — I won't invent fares."
+            ),
+            flights=[],
+            total_results=0,
+            errors=["No live LiteAPI results"],
+            suggested_next_action="Retry with different dates or airports",
+            raw_instruction=instruction,
+        )
 
     def filter_flights(
         self,

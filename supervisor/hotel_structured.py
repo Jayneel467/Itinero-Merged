@@ -347,3 +347,209 @@ async def structured_hotel_search(
             "guests": guests,
             "rooms": rooms,
         }
+
+
+def _parse_room_offers(
+    rate_payload: dict[str, Any] | None,
+    *,
+    nights: int,
+    hotel_meta: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Flatten LiteAPI /hotels/rates roomTypes into UI room cards."""
+    if not rate_payload or not isinstance(rate_payload, dict):
+        return []
+    data = rate_payload.get("data") or []
+    rooms_out: list[dict[str, Any]] = []
+    meta = hotel_meta or {}
+    default_image = (
+        meta.get("main_photo")
+        or meta.get("thumbnail")
+        or (meta.get("images") or [None])[0]
+        or ""
+    )
+
+    for hotel in data:
+        for room in hotel.get("roomTypes") or []:
+            offer = room.get("offerRetailRate") or {}
+            try:
+                total = float(offer.get("amount") or 0)
+            except (TypeError, ValueError):
+                total = 0.0
+            if total <= 0:
+                continue
+            currency = str(offer.get("currency") or "INR")
+            rates = room.get("rates") or [{}]
+            rate0 = rates[0] if rates else {}
+            offer_id = (
+                room.get("offerId")
+                or rate0.get("offerId")
+                or rate0.get("rateId")
+                or room.get("offer_id")
+            )
+            board = rate0.get("boardName") or rate0.get("name") or room.get("name") or "Room"
+            cancel = rate0.get("cancellationPolicies") or rate0.get("cancelPolicy") or {}
+            free_cancel = bool(
+                rate0.get("refundable")
+                or rate0.get("freeCancellation")
+                or (isinstance(cancel, dict) and cancel.get("refundable"))
+            )
+            breakfast = "breakfast" in str(board).lower() or bool(rate0.get("breakfastIncluded"))
+            per_night = round(total / max(1, nights), 2)
+            # Approximate taxes as gap vs retail if mappedRate present, else 18% GST estimate
+            mapped = room.get("offerMappedRate") or {}
+            try:
+                mapped_amt = float(mapped.get("amount") or 0)
+            except (TypeError, ValueError):
+                mapped_amt = 0.0
+            taxes = max(0.0, round(total - mapped_amt, 2)) if mapped_amt > 0 else round(total * 0.18, 2)
+            base = max(0.0, round(total - taxes, 2))
+            per_night_base = round(base / max(1, nights), 2)
+
+            images = []
+            for img in room.get("photos") or room.get("images") or []:
+                url = img.get("url") if isinstance(img, dict) else img
+                if url:
+                    images.append(url)
+            if not images and default_image:
+                images = [default_image]
+
+            rooms_out.append(
+                {
+                    "id": str(offer_id or f"{hotel.get('hotelId') or hotel.get('id')}-{len(rooms_out)}"),
+                    "offerId": offer_id,
+                    "hotelId": str(hotel.get("hotelId") or hotel.get("id") or meta.get("id") or ""),
+                    "title": str(room.get("name") or board or "Room"),
+                    "image": images[0] if images else default_image,
+                    "images": images,
+                    "bedType": str(rate0.get("bedType") or room.get("bedType") or "Standard bed"),
+                    "capacity": int(rate0.get("maxOccupancy") or rate0.get("adults") or 2),
+                    "size": str(room.get("roomSize") or rate0.get("roomSize") or "—"),
+                    "view": str(room.get("view") or "Standard view"),
+                    "floor": str(room.get("floor") or "—"),
+                    "board": str(board),
+                    "freeCancellation": free_cancel,
+                    "freeBreakfast": breakfast,
+                    "payAtHotel": bool(rate0.get("payAtProperty") or rate0.get("payAtHotel")),
+                    "roomsLeft": rate0.get("remaining") or rate0.get("roomsLeft"),
+                    "price": per_night_base if per_night_base > 0 else per_night,
+                    "taxes": taxes,
+                    "totalPrice": total,
+                    "pricePerNight": per_night,
+                    "currency": currency,
+                    "nights": nights,
+                    "rawRate": {
+                        "boardName": board,
+                        "offerId": offer_id,
+                        "refundable": free_cancel,
+                    },
+                }
+            )
+
+    rooms_out.sort(key=lambda r: r.get("totalPrice") or 1e18)
+    return rooms_out
+
+
+async def structured_hotel_rates(
+    *,
+    hotel_id: str,
+    check_in: str,
+    check_out: str,
+    guests: int = 2,
+    rooms: int = 1,
+    currency: str = "INR",
+    nationality: str = "IN",
+) -> dict[str, Any]:
+    """Live LiteAPI room rates for one hotel (manual booking page)."""
+    hid = str(hotel_id or "").strip()
+    if not hid:
+        return {
+            "hotel": None,
+            "rooms": [],
+            "mode": "degraded",
+            "message": "Missing hotel id.",
+            "error": "missing_hotel_id",
+        }
+    if not _api_key():
+        return {
+            "hotel": None,
+            "rooms": [],
+            "mode": "degraded",
+            "message": "LiteAPI key is missing — room rates cannot run.",
+            "error": "missing_liteapi_key",
+        }
+
+    nights = _nights(check_in, check_out)
+    key = _api_key()
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-API-Key": key,
+    }
+
+    hotel_meta: dict[str, Any] = {"id": hid}
+    try:
+        async with httpx.AsyncClient(timeout=40.0) as client:
+            # Optional hotel metadata
+            try:
+                meta_r = await client.get(
+                    f"{_LITEAPI_BASE}/data/hotel",
+                    headers={"Accept": "application/json", "X-API-Key": key},
+                    params={"hotelId": hid},
+                )
+                if meta_r.status_code == 200:
+                    meta_body = meta_r.json() or {}
+                    hotel_meta = meta_body.get("data") or meta_body or hotel_meta
+                    if isinstance(hotel_meta, list) and hotel_meta:
+                        hotel_meta = hotel_meta[0]
+            except Exception:
+                pass
+
+            sem = asyncio.Semaphore(1)
+            rates = await _fetch_rate(
+                client,
+                hotel_id=hid,
+                check_in=check_in,
+                check_out=check_out,
+                guests=guests,
+                rooms=rooms,
+                currency=currency,
+                nationality=nationality,
+                sem=sem,
+            )
+
+        room_cards = _parse_room_offers(rates, nights=nights, hotel_meta=hotel_meta)
+        name = str(hotel_meta.get("name") or "Hotel")
+        address = str(hotel_meta.get("address") or hotel_meta.get("city") or "")
+        image = hotel_meta.get("main_photo") or hotel_meta.get("thumbnail") or ""
+
+        return {
+            "hotel": {
+                "id": hid,
+                "name": name,
+                "location": address,
+                "image": image,
+                "currency": currency,
+            },
+            "rooms": room_cards,
+            "mode": "live",
+            "message": (
+                f"Found {len(room_cards)} live room rates"
+                if room_cards
+                else "No bookable room rates for these dates."
+            ),
+            "error": None if room_cards else "no_rates",
+            "nights": nights,
+            "check_in": check_in[:10],
+            "check_out": check_out[:10],
+            "guests": guests,
+            "rooms_requested": rooms,
+        }
+    except Exception as exc:
+        traceback.print_exc()
+        return {
+            "hotel": {"id": hid},
+            "rooms": [],
+            "mode": "degraded",
+            "message": f"Live room rates failed ({type(exc).__name__}). No sample rooms shown.",
+            "error": f"{type(exc).__name__}: {exc}",
+        }

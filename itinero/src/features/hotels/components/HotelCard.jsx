@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styles from '../HotelsPage.module.css';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export const HotelCard = ({ hotel }) => {
+export const HotelCard = ({ hotel, searchQuery }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const navigate = useNavigate();
   const images = hotel.images || [hotel.image];
@@ -21,7 +21,21 @@ export const HotelCard = ({ hotel }) => {
   };
 
   const handleCardClick = () => {
-    navigate(`/hotel/${hotel.id}`);
+    const qs = new URLSearchParams();
+    if (searchQuery?.checkIn) qs.set('checkIn', searchQuery.checkIn);
+    if (searchQuery?.checkOut) qs.set('checkOut', searchQuery.checkOut);
+    if (searchQuery?.guests) qs.set('guests', String(searchQuery.guests));
+    if (searchQuery?.rooms) qs.set('rooms', String(searchQuery.rooms));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    navigate(`/hotel/${hotel.id}/booking${suffix}`, {
+      state: {
+        hotel,
+        checkIn: searchQuery?.checkIn,
+        checkOut: searchQuery?.checkOut,
+        guests: searchQuery?.guests,
+        rooms: searchQuery?.rooms,
+      },
+    });
   };
 
   return (
@@ -106,7 +120,7 @@ export const HotelCard = ({ hotel }) => {
           </div>
 
           <div className={styles.hotelTagsRow}>
-            {hotel.tags.map((tag, index) => (
+            {(hotel.tags || []).map((tag, index) => (
               <span key={index} className={tag === 'Free cancellation' ? styles.tagGreen : styles.tagGray}>
                 {tag}
               </span>
@@ -116,14 +130,21 @@ export const HotelCard = ({ hotel }) => {
 
         <div className={styles.hotelDetailsRight}>
           <div className={styles.priceLabel}>Per Night</div>
-          <div className={styles.pricePerNight}>₹{hotel.pricePerNight.toLocaleString()}</div>
+          <div className={styles.pricePerNight}>
+            {hotel.has_price === false || !hotel.pricePerNight
+              ? 'Rates on request'
+              : `₹${Number(hotel.pricePerNight).toLocaleString()}`}
+          </div>
           <div className={styles.totalPrice}>
-            ₹{hotel.totalPrice.toLocaleString()} total<br />
+            {hotel.has_price === false || !hotel.totalPrice
+              ? '—'
+              : `₹${Number(hotel.totalPrice).toLocaleString()} total`}
+            <br />
             <span className={styles.taxesText}>incl. taxes & fees</span>
           </div>
           
-          <button className={styles.bookNowBtn}>Book Now</button>
-          <button className={styles.seeOptionsBtn}>See room options &gt;</button>
+          <button className={styles.bookNowBtn} type="button">See rooms</button>
+          <button className={styles.seeOptionsBtn} type="button">Live LiteAPI rates &gt;</button>
         </div>
       </div>
     </div>
