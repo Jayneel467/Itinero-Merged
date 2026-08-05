@@ -6,14 +6,18 @@ Graph shape:
     START → agent → (tools_condition) → tools → (_route_after_tools) → agent → ... → END
                  ↘ END (no tool calls)                              ↘ itinerary → END
 
+`itinerary_node` generates the full day-by-day plan in one LLM call and its
+AIMessage is the final response for that turn — no second agent call needed.
+On the NEXT user turn, agent_node resumes normally with full context.
+
 `_route_after_tools` is the only new logic vs. the original MVP:
   - If the most-recent tool message contains the ESCALATE_TO_ITINERARY signal
     (placed there by the `escalate_to_itinerary` tool), route to itinerary_node.
   - Otherwise loop back to agent as before.
 
-To grow into full multi-agent later: add new specialist nodes in graph/nodes.py
-and wire them from itinerary_node in this file — the state schema and
-message-passing convention stay identical.
+After itinerary_node completes, the graph routes directly to END so the full
+itinerary is returned to the user immediately without a redundant agent call
+that would summarise it into a short "all set" message.
 """
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -33,8 +37,43 @@ _ESCALATION_SIGNAL = "ESCALATE_TO_ITINERARY"
 def _route_after_tools(state: AgentState) -> str:
     """Conditional edge function: inspects the most-recent batch of tool
     messages and returns 'itinerary' if an escalation was requested,
-    'agent' otherwise (standard ReAct loop-back)."""
-    for msg in reversed(state["messages"]):
+    'agent' otherwise (standard ReAct loop-back).
+
+    Loop guard: if update_trip_context has been called more than 2 times
+    since the last HumanMessage, force END to break the loop.  This prevents
+    the agent from calling the same state-saving tool dozens of times in one
+    turn (seen in logs as repeated 'Agent state updated: [selected_flight]').
+    """
+    messages = state.get("messages", [])
+
+    # ── Loop guard ─────────────────────────────────────────────────────────
+    # Count consecutive update_trip_context tool calls in the current turn
+    # (i.e. since the most-recent HumanMessage).
+    update_ctx_count = 0
+    for msg in reversed(messages):
+        msg_type = getattr(msg, "type", None)
+        if msg_type == "human":
+            break  # stop counting at the boundary of the previous turn
+        if msg_type == "tool":
+            # ToolMessage content starts with the tool name in some versions;
+            # we match by checking the tool_call_id chain on AI messages.
+            pass
+        if msg_type == "ai":
+            tool_calls = getattr(msg, "tool_calls", None) or []
+            for tc in tool_calls:
+                if tc.get("name") == "update_trip_context":
+                    update_ctx_count += 1
+
+    if update_ctx_count > 2:
+        import logging
+        logging.getLogger(__name__).warning(
+            "_route_after_tools: loop guard triggered (%d update_trip_context calls) — forcing END",
+            update_ctx_count,
+        )
+        return END
+
+    # ── Escalation check ───────────────────────────────────────────────────
+    for msg in reversed(messages):
         msg_type = getattr(msg, "type", None)
         if msg_type == "tool":
             if _ESCALATION_SIGNAL in (msg.content or ""):
@@ -70,8 +109,10 @@ def build_graph():
         {"agent": "agent", "itinerary": "itinerary"},
     )
 
-    # Itinerary node always ends the general agent's turn — the itinerary agent
-    # takes full ownership from this point onward.
+    # After itinerary: the node's AIMessage IS the full trip plan.
+    # Route directly to END so the complete itinerary is returned to the user.
+    # On the next user turn, agent_node resumes normally — it will have
+    # trip_context[itinerary_complete]=True so it knows planning is done.
     graph.add_edge("itinerary", END)
 
     # MemorySaver gives the agent short-term memory across turns, keyed by

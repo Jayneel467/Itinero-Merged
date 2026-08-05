@@ -49,9 +49,7 @@ def search_places_text(query: str, page_size: int) -> dict:
         "X-Goog-FieldMask": (
             "places.displayName,places.formattedAddress,places.rating,"
             "places.userRatingCount,places.priceLevel,"
-            "places.primaryType,places.types,"
-            "places.currentOpeningHours.openNow,"
-            "places.googleMapsUri,places.websiteUri"
+            "places.currentOpeningHours.openNow,places.googleMapsUri"
         ),
     }
     payload = {"textQuery": query, "pageSize": page_size}

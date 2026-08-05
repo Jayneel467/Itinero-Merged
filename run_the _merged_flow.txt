@@ -1,0 +1,13 @@
+Terminal 1 — Backend (Vero agent + ITINERARY_AGENT hand-off, merged, single port):
+
+uvicorn general_agent.run:app --reload --port 8001
+
+
+
+Terminal 2 — Frontend (React UI):
+
+cd .\ui\
+npm run dev   # → http://localhost:3000
+
+
+

@@ -21,8 +21,9 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 LITEAPI_KEY = os.getenv("LITEAPI_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")  # used for Routes, Places (New), Geocoding
 
-MODEL_NAME = os.getenv("ITINERO_MODEL", "gpt-4o")
+MODEL_NAME = os.getenv("ITINERO_MODEL", "gpt-4o-mini")
 MODEL_TEMPERATURE = float(os.getenv("ITINERO_TEMPERATURE", "0.3"))
+
 
 # Where the graph's flow diagram gets saved on first run.
 GRAPH_IMAGE_PATH = os.path.join(

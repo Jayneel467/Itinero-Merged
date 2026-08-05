@@ -13,7 +13,9 @@ def get_llm():
         model=MODEL_NAME,
         temperature=MODEL_TEMPERATURE,
         api_key=OPENAI_API_KEY,
+        max_retries=5,
     )
+
 
 
 def get_llm_with_tools():

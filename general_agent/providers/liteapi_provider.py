@@ -49,3 +49,19 @@ def search_flight_rates(payload: dict) -> dict:
     except requests.exceptions.RequestException as e:
         logger.warning("LiteAPI flight search failed: %s", e)
         raise ProviderRequestError("LiteAPI flights", str(e)) from e
+
+
+def get_airport_reference_data() -> dict:
+    """GET /data/iataCodes - full IATA airport reference list (~9000 entries:
+    code, name, latitude, longitude, countryCode). Used to resolve a plain
+    city name to the airport code LiteAPI's flight search actually requires
+    - see services/location_resolver.py."""
+    try:
+        response = requests.get(
+            f"{BASE_URL}/data/iataCodes", headers=_headers(), timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.warning("LiteAPI airport reference data fetch failed: %s", e)
+        raise ProviderRequestError("LiteAPI airports", str(e)) from e
