@@ -2,16 +2,21 @@
  * Application-wide configuration.
  * Single source of truth for env-based settings and feature flags.
  *
- * Manual flight/hotel search → API_BASE_URL (LiteAPI via FastAPI routes).
- * Ask Vero chat → same host is fine, but different endpoints (/api/chat).
+ * Manual flight/hotel search → API_BASE_URL (LiteAPI via FastAPI / supervisor).
+ * Ask Vero chat → VERO_API_URL (general_agent.run — LLM orchestrator).
  */
 
 function resolveApiBaseUrl() {
   const fromEnv = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
-  // Prefer explicit env; otherwise hit the local flights/booking API directly
-  // (not the Vite page origin — avoids /itinero base-path / proxy confusion).
   if (fromEnv) return fromEnv;
   return "http://127.0.0.1:8000";
+}
+
+function resolveVeroApiBaseUrl() {
+  const fromEnv = (import.meta.env.VITE_VERO_API_URL || "").trim().replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  // Default: Vero orchestrator (general_agent.run) on 8001
+  return "http://127.0.0.1:8001";
 }
 
 export const APP_CONFIG = {
@@ -19,6 +24,9 @@ export const APP_CONFIG = {
 
   /** Booking / flight-search API (POST /api/flights/search). Not the Vero chat agent. */
   API_BASE_URL: resolveApiBaseUrl(),
+
+  /** Vero chat API (POST /api/chat) — general agent orchestrator. */
+  VERO_API_BASE_URL: resolveVeroApiBaseUrl(),
 
   /** Base path for client-side routing (matches vite.config.js `base`) */
   BASE_PATH: "/itinero",
@@ -29,9 +37,9 @@ export const APP_CONFIG = {
   FEATURES: {
     AI_CHAT: true,
     FLIGHT_BOOKING: true,
-    HOTEL_BOOKING: false,
+    HOTEL_BOOKING: true,
     DEALS: true,
-    USER_AUTH: false,
+    USER_AUTH: true,
     DARK_MODE: false,
   },
 

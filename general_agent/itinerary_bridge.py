@@ -1,7 +1,8 @@
 """
 Itinerary Bridge
 ================
-Connects the general agent (Vero) to the ITINERARY_AGENT specialist.
+Connects Vero (general agent orchestrator) to the itinerary planning engine.
+User-facing copy must always say Vero — never name internal agents.
 
 Responsibilities:
   1. Add the ITINERARY_AGENT package to sys.path so its imports resolve.

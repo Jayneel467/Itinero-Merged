@@ -30,17 +30,17 @@ export function FlowChooser() {
         className="group rounded-[20px] border border-[#F97211]/50 bg-[#F97211]/20 p-5 backdrop-blur-sm transition hover:bg-[#F97211]/30"
       >
         <p className="text-[12px] font-semibold uppercase tracking-wide text-[#FFD5A8]">
-          Complete AI flow
+          Ask Vero
         </p>
         <p className="mt-1 text-[18px] font-bold text-white">
-          Supervisor plans with you
+          Vero plans with you
         </p>
         <p className="mt-2 text-[13px] leading-relaxed text-white/75">
-          Chat-first journey: research → flights → hotels → itinerary via
-          specialist agents.
+          Chat-first journey: research, flights, hotels, and itineraries —
+          all through Vero, your AI travel buddy.
         </p>
         <span className="mt-4 inline-flex text-[13px] font-bold text-white group-hover:underline">
-          Plan with AI →
+          Plan with Vero →
         </span>
       </Link>
     </div>

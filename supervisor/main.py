@@ -7,7 +7,7 @@ Routes:
   POST /api/chat                   — Vero supervisor turn (AI flow)
   POST /api/flights/search         — structured flight search (manual flow)
   POST /api/flights/price-calendar — min live fare per date (manual date strip)
-  GET  /api/hotels/search          — hotel search (honest empty until LiteAPI hotels live)
+  GET  /api/hotels/search          — structured hotel search (LiteAPI live)
   GET  /api/health
   GET  /api/capabilities
 """
@@ -2064,20 +2064,17 @@ async def flights_complete(req: FlightCompleteRequest):
 
 
 @app.get("/api/hotels/search")
-def hotels_search(city: str, check_in: str, check_out: str, guests: int = 2, rooms: int = 1):
-    """Hotels not live yet — honest error, no sample properties."""
-    return {
-        "hotels": [],
-        "mode": "degraded",
-        "message": (
-            f"Live hotel search for {city} ({check_in} → {check_out}) isn't connected yet. "
-            "No sample hotels are shown. Ask in AI chat about flights or a trip plan instead."
-        ),
-        "route_path": ["start", "manual_booking", "hotel_unavailable"],
-        "error": "hotels_not_live",
-        "guests": guests,
-        "rooms": rooms,
-    }
+async def hotels_search(city: str, check_in: str, check_out: str, guests: int = 2, rooms: int = 1):
+    """Manual hotel search — LiteAPI live inventory (no sample hotels)."""
+    from supervisor.hotel_structured import structured_hotel_search
+
+    return await structured_hotel_search(
+        city=city,
+        check_in=check_in,
+        check_out=check_out,
+        guests=guests,
+        rooms=rooms,
+    )
 
 
 @app.get("/")

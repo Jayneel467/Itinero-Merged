@@ -11,10 +11,15 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from graph.workflow import build_graph
 import itinerary_bridge
+from services.user_facing import sanitize_user_facing_text
 
 
 class ItineroAgent:
-    """Thin public wrapper around the compiled LangGraph app."""
+    """Thin public wrapper around the compiled LangGraph app.
+
+    Internally this orchestrates research + itinerary engines. Externally
+    every reply is Vero — never expose specialist / supervisor names.
+    """
 
     def __init__(self):
         self._app = build_graph()
@@ -29,15 +34,14 @@ class ItineroAgent:
 
         Routing: trip_context["engine"] decides who owns this turn. When it's
         "itinerary" (set by graph/nodes.py::itinerary_node on handoff), the
-        message is driven straight into the real ITINERARY_AGENT session via
-        itinerary_bridge — Vero's LLM is not called at all for that turn.
-        Otherwise this falls through to the normal General Agent graph.
+        message is driven straight into the itinerary planning session via
+        itinerary_bridge — Vero's conversational LLM is not called for that turn.
+        Otherwise this falls through to the normal Vero (general) graph.
 
         Unified memory: every itinerary-flow turn is ALSO appended to Vero's
         own `messages` list (via update_state's add_messages reducer), so
         Vero's own conversation history has no blind spot for what happened
-        during the hand-off — not just the truncated summary left behind in
-        trip_context once the session completes.
+        during deeper planning.
         """
         config = {"configurable": {"thread_id": thread_id}}
 
@@ -47,7 +51,7 @@ class ItineroAgent:
         if trip_context.get("engine") == "itinerary" and not itinerary_bridge.is_exit_request(message):
             itin_state = trip_context.get("itinerary_state") or {}
             result = itinerary_bridge.continue_itinerary_session(itin_state, message)
-            reply_text = result["reply"]
+            reply_text = sanitize_user_facing_text(result["reply"])
 
             if result["complete"]:
                 trip_context.update(itinerary_bridge.extract_final_result(result["state"]))
@@ -74,7 +78,7 @@ class ItineroAgent:
             config=config,
         )
         all_msgs = result.get("messages", [])
-        reply_text = all_msgs[-1].content if all_msgs else ""
+        reply_text = sanitize_user_facing_text(all_msgs[-1].content if all_msgs else "")
 
         # Only look at tool messages from THIS turn — i.e. messages that come
         # AFTER the last HumanMessage.  Scanning all historical tool messages

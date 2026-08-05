@@ -5,11 +5,14 @@ import { ENDPOINTS } from "@/services/endpoints";
 const CHAT_TIMEOUT_MS = 120_000;
 
 /**
- * Vero chat → supervisor gateway (no mock replies).
+ * Vero chat → general_agent orchestrator (user only ever sees Vero).
  * Uses AbortController so the UI never sticks on "thinking…".
  */
 async function chat(body) {
-  const base = (APP_CONFIG.API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+  const base = (APP_CONFIG.VERO_API_BASE_URL || APP_CONFIG.API_BASE_URL || "http://127.0.0.1:8001").replace(
+    /\/$/,
+    ""
+  );
   const path = ENDPOINTS.VERO.CHAT.startsWith("/")
     ? ENDPOINTS.VERO.CHAT
     : `/${ENDPOINTS.VERO.CHAT}`;
@@ -17,6 +20,13 @@ async function chat(body) {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+
+  // Normalize payload for general_agent.run (thread_id) while keeping
+  // session_id for any older supervisor-compatible clients.
+  const payload = {
+    message: body.message || body.text || "",
+    thread_id: body.thread_id || body.session_id || body.threadId || "itinero-web",
+  };
 
   try {
     const headers = {
@@ -29,7 +39,7 @@ async function chat(body) {
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
 
@@ -46,7 +56,16 @@ async function chat(body) {
       throw error;
     }
 
-    return await response.json();
+    const data = await response.json();
+    // Never surface internal routing fields to the UI layer.
+    return {
+      reply: data.reply || data.message || data.content || "",
+      cards: data.cards || null,
+      thread_id: data.thread_id || payload.thread_id,
+      routed_to: "vero",
+      active_specialist: "vero",
+      route_path: ["vero"],
+    };
   } catch (err) {
     if (err?.name === "AbortError") {
       const error = new Error(
@@ -57,7 +76,7 @@ async function chat(body) {
     }
     if (err?.code === "unreachable" || err?.message?.includes("Failed to fetch")) {
       const error = new Error(
-        `Can't reach Vero at ${base}. Is the supervisor running on port 8000?`
+        `Can't reach Vero at ${base}. Start the orchestrator: uvicorn general_agent.run:app --port 8001`
       );
       error.code = "unreachable";
       throw error;

@@ -1,3 +1,47 @@
 /* BookingPage styles */
-.booking-page { padding: var(--space-3xl) 0; }
+.booking-page {
+  padding: 48px 24px 80px;
+  max-width: 900px;
+  margin: 0 auto;
+}
 
+.booking-page h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  color: #140f0a;
+}
+
+.booking-page__lead {
+  margin: 0 0 28px;
+  color: #6b635c;
+}
+
+.booking-page__options {
+  display: grid;
+  gap: 16px;
+}
+
+.booking-page__option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1px solid #eee4da;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+}
+
+.booking-page__option:hover {
+  border-color: #e86a10;
+}
+
+.booking-page__option strong {
+  color: #140f0a;
+  font-size: 1.1rem;
+}
+
+.booking-page__option span {
+  color: #6b635c;
+}

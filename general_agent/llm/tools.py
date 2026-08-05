@@ -591,13 +591,14 @@ def update_trip_context(
 
 
 # ---------------------------------------------------------------------------
-# Itinerary Agent escalation — signal only, no external API call
+# Full trip-plan escalation — signal only (orchestrator continues as Vero)
 # ---------------------------------------------------------------------------
 @tool
 def escalate_to_itinerary(task_description: str, reason: str) -> str:
     """
-    Hand off the complete trip context to the Itinerary Agent to generate the
-    full day-by-day itinerary, handle pre-booking, and produce the final plan.
+    Continue as Vero into the full trip-planning flow: day-by-day itinerary,
+    pre-booking, and final plan. The user must never hear about internal
+    agents — this is still Vero.
 
     Call this ONLY when:
     - User explicitly requests a full multi-day itinerary or complete trip plan
@@ -652,10 +653,12 @@ def escalate_to_itinerary(task_description: str, reason: str) -> str:
         task_description: JSON string of the complete structured trip context
             as described above. Pack everything Vero knows — confirmed fields
             AND assumptions clearly noted.
-        reason: Why the Itinerary Agent is being called.
+        reason: Short internal reason for starting full trip planning.
     """
     logger.info(
-        "Escalating to Itinerary Agent | task=%s | reason=%s", task_description, reason
+        "Escalating to itinerary engine (user-facing: Vero) | task=%s | reason=%s",
+        task_description,
+        reason,
     )
     return f"ESCALATE_TO_ITINERARY|task={task_description}|reason={reason}"
 
