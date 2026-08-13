@@ -26,7 +26,7 @@ const SUGGESTIONS = [
   "Weather in Goa next week",
   "Mumbai to Delhi on 26 July",
   "Plan a 5-day trip to Surat",
-  "Where to eat in Surat — I'm veg",
+  "Where to eat in Surat - I'm veg",
 ];
 
 export default function AiPage() {
@@ -35,7 +35,7 @@ export default function AiPage() {
     {
       role: "assistant",
       content:
-        "Hey — I'm Itinero. Tell me where you want to go, a flight you need, or just bounce trip ideas. I'll plan with you.",
+        "Hey - I'm Itinero. Tell me where you want to go, a flight you need, or just bounce trip ideas. I'll plan with you.",
       specialist: "supervisor",
     },
   ]);
@@ -170,7 +170,7 @@ export default function AiPage() {
                     Where to next?
                   </h1>
                   <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#5a7189]">
-                    Flights, weather, food, or a full plan — just say it in your own words.
+                    Flights, weather, food, or a full plan - just say it in your own words.
                   </p>
                 </div>
               )}
@@ -257,7 +257,7 @@ export default function AiPage() {
           </div>
         </section>
 
-        {/* Side panel — only when there are real results */}
+        {/* Side panel - only when there are real results */}
         {hasSideContent && panelOpen && (
           <aside className="animate-fade-in hidden w-[420px] shrink-0 flex-col border-l border-[#d7e0ea]/50 bg-white/55 backdrop-blur-xl lg:flex">
             <div className="flex items-center gap-1 border-b border-[#d7e0ea]/60 px-3 py-2">

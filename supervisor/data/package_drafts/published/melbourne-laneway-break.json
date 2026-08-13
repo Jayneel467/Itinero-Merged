@@ -1,0 +1,198 @@
+{
+  "id": "pkg-melbourne-laneway-break",
+  "slug": "melbourne-laneway-break",
+  "title": "Melbourne Laneway Break",
+  "tagline": "Coffee culture, laneway art, and easy day trips.",
+  "overview": "4-day plan based in Melbourne. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "food"
+  ],
+  "region": "domestic",
+  "markets": [
+    "AU"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Melbourne"
+  ],
+  "recommendedDurationDays": [
+    4,
+    6
+  ],
+  "minDurationDays": 3,
+  "durationDays": 4,
+  "durationNights": 3,
+  "destinations": [
+    "Melbourne"
+  ],
+  "flight": {
+    "gatewayAirport": "MEL",
+    "gatewayCity": "Melbourne"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Melbourne walk",
+    "Local food",
+    "Easy pacing"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Sep",
+    "Oct"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": true,
+  "currency": "AUD",
+  "stay": {
+    "city": "Melbourne",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Melbourne",
+      "description": "Arrive Melbourne in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Melbourne highlights",
+      "description": "Melbourne highlights in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Melbourne",
+      "description": "Arrive Melbourne in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Melbourne highlights",
+      "description": "Melbourne highlights in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Melbourne.",
+      "stayCity": "Melbourne",
+      "anchors": [
+        "Melbourne"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "AU",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

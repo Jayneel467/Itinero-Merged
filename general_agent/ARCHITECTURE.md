@@ -1,105 +1,82 @@
-# Itinero General Agent — Internal Architecture
+# Itinero General Agent (Vero) — Architecture
 
-## Execution Flow
+Canonical product docs: [AI_STACK.md](./AI_STACK.md) · [AI_DEVELOPMENT.md](./AI_DEVELOPMENT.md) · `general_agent/runtime.py`
+
+## Execution flow
 
 ```
 User message
      │
      ▼
- agent_node  ──────────────────────────────────────────────────────────────────
- (GPT-4o)    Prepends fresh system prompt (with live datetime) to message history.
-     │        LLM decides: plain reply OR call tool(s).
+ hard locks (companion safety / live-unknowns / page-aware ranks)
      │
-     ├── No tool call needed ──────────────────────────────────────────► END
+     ▼
+ agent_node  (OpenAI tools lane OR DeepSeek planner/synth)
+     │        Fresh system prompt each turn (PROMPT_VERSION pinned).
      │
-     └── Tool call(s) requested
+     ├── No tool call ──────────────────────────────────────────► END
+     │
+     └── Tool call(s)
                │
                ▼
-          tools_node  (LangGraph ToolNode — executes whichever tools LLM asked for)
+          tools_node  (ToolNode + honest TOOL_ERROR handler)
                │
-               ├── Tool result is normal ──────────────────► back to agent_node
-               │                                             (loop until done)
+               ├── ESCALATE_TO_ITINERARY in tool results ──► itinerary_node ──► END
                │
-               └── Tool result contains "ESCALATE_TO_SUPERVISOR"
-                         │
-                         ▼
-                   supervisor_node ────────────────────────────────────────► END
-                   (shows handoff message; real supervisor invocation is TODO)
+               ├── update_trip_context loop guard (>2) ──────────► END
+               │
+               └── else ──────────────────────────────────► agent_node (ReAct)
 ```
 
----
+After tools, the **synth** lane (DeepSeek) may write the user-facing answer with tools unbound.
+
+Supervisor chat (`supervisor/intent_router.py`) chooses capability first:
+`payment` / `flights` / `itinerary` / `research` / `supervisor` — LLM-first with money sticky locks.
 
 ## Nodes
 
-| Node                | File               | Runs when                                      | Does                                                                                  |
-| ------------------- | ------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `agent_node`      | `graph/nodes.py` | Every turn, always first                       | Builds system prompt + message history → calls LLM → returns reply or tool requests |
-| `tools_node`      | LangGraph built-in | LLM returned ≥1 tool call                     | Executes all requested tools, appends`ToolMessage` results                          |
-| `supervisor_node` | `graph/nodes.py` | Any tool result contains the escalation signal | Shows "connecting to specialist team" message → terminates turn                      |
+| Node | File | Role |
+|------|------|------|
+| `agent_node` | `graph/nodes.py` | LLM reason + tool requests; lane via `choose_lane` |
+| `tools` | LangGraph `ToolNode` | Execute tools; never invent success on failure |
+| `itinerary` | `graph/nodes.py` | First-turn handoff to `ITINERARY_AGENT` via `itinerary_bridge` |
 
----
+Subsequent itinerary turns are owned by `agent.py` while `trip_context["engine"] == "itinerary"` (bypass graph until exit).
 
-## Tools — When Each Gets Called
+## Escalation
 
-| Tool                       | Called when user…                                                                                                    | Underlying API            |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `destination_search`     | Asks about safety, visa, fuel price, local costs, destination facts, or anything that could be stale in training data | Tavily                    |
-| `get_weather`            | Asks about current weather, climate, or what to pack                                                                  | OpenWeather               |
-| `search_hotels`          | Asks to see hotel options — even without dates (agent assumes a window)                                              | LiteAPI`/hotels/rates`  |
-| `search_flights`         | Asks to see flight options — even without dates (agent assumes a window)                                             | LiteAPI`/flights/rates` |
-| `get_route`              | Asks for distance, drive time, or road-trip duration between two places                                               | Google Routes API         |
-| `search_places`          | Asks "what's near X", wants attractions / restaurants / landmarks                                                     | Google Places API         |
-| `geocode_location`       | Place name is ambiguous or coordinates are needed                                                                     | Google Geocoding API      |
-| `escalate_to_supervisor` | User wants to book, wants a full multi-day itinerary, wants tracking/PDF                                              | Signal-only (no API)      |
+Signal: `ESCALATE_TO_ITINERARY` from `escalate_to_itinerary` tool → `_route_after_tools` → `itinerary_node`.
 
----
+(There is **no** `supervisor_node` / `ESCALATE_TO_SUPERVISOR` in live code.)
 
-## Tool → Service → Provider Chain
+## Memory / checkpointer
 
-Every tool is a thin wrapper. The real work is one layer down:
+| Backend | Env | Notes |
+|---------|-----|-------|
+| SQLite (default) | `VERO_CHECKPOINT=sqlite` | Durable across process restarts (single node) |
+| Memory | `VERO_CHECKPOINT=memory` | Process-local only — demos / tests |
+| Path | `VERO_CHECKPOINT_PATH` | Default `general_agent/data/vero_checkpoints.sqlite` |
 
-```
-llm/tools.py          (thin @tool — validates args, calls service)
-      │
-      ▼
-services/travel_service.py   (builds payload, parses JSON, formats string)
-      │
-      ▼
-providers/*.py               (raw HTTP call, raises ProviderRequestError on failure)
-      │
-      ▼
-External API                 (Tavily / OpenWeather / LiteAPI / Google)
-```
+Multi-replica production still needs Redis/Postgres saver (P1) so all Vero workers share `thread_id` state. Supervisor Redis sessions (`supervisor/session_store.py`) are separate from this checkpointer — keep `session_id` ≡ `thread_id`.
 
-If the provider call fails → `ProviderRequestError` is caught in `travel_service.py` → returns a plain error string to the LLM → LLM tells the user something went wrong.
+## Runtime envelope
 
----
+Every turn returns `agent_meta`: `trace_id`, tools, latency, `agent_build`, `prompt_version`, path.
+Recursion bound: `VERO_RECURSION_LIMIT` (default 28).
 
 ## State
 
 ```python
 AgentState = {
-    "messages":     list   # full conversation history — add_messages keeps appending
-    "trip_context": dict   # reserved scratchpad (destination, dates, budget) — not yet written
+    "messages": list,      # add_messages reducer
+    "trip_context": dict,  # origin/dates/engine/ui_page/companion flags/…
 }
 ```
 
-`MemorySaver` checkpoints state by `thread_id` → conversation memory persists across turns within a session.
-
----
-
-## Escalation Signal Flow
+## Tool → service → provider
 
 ```
-LLM calls escalate_to_supervisor("book hotel in Goa", "user wants to book")
-    │
-    ▼  tools.py returns:
-"ESCALATE_TO_SUPERVISOR|task=book hotel in Goa|reason=user wants to book"
-    │
-    ▼  _route_after_tools() in workflow.py scans last ToolMessage
-finds signal → returns "supervisor"
-    │
-    ▼  supervisor_node runs → END
+llm/tools.py  →  services/*  →  providers/*  →  external APIs
 ```
 
-The signal string is **never shown to the user** — `supervisor_node` generates the actual reply.
+Booking money path is sticky in supervisor; Vero tools are search/select/escalate — forged `page_context` hold IDs are stripped in `agent.py`.

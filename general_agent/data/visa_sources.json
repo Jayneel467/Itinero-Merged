@@ -1,0 +1,479 @@
+{
+  "_meta": {
+    "purpose": "Authoritative immigration source LOCATIONS only. Never store visa-free days or hard rules here.",
+    "levels": {
+      "1": "Government immigration / foreign ministry / border / official eVisa-ETA / embassy",
+      "2": "IATA / airline / airport authority",
+      "3": "High-quality travel-document providers",
+      "4": "General web"
+    }
+  },
+  "_GLOBAL": {
+    "name": "Global reference",
+    "immigration_authority": "IATA Travel Centre (Timatic-style)",
+    "level": 2,
+    "visa_url": "https://www.iatatravelcentre.com/passport-visa-health-travel-document-requirements.htm",
+    "domains": ["iatatravelcentre.com", "iata.org"]
+  },
+  "SCHENGEN": {
+    "name": "Schengen Area",
+    "immigration_authority": "European Commission — Visa policy / ETIAS",
+    "level": 1,
+    "visa_url": "https://home-affairs.ec.europa.eu/policies/schengen-borders-and-visa/visa-policy_en",
+    "eta_url": "https://travel-europe.europa.eu/etias_en",
+    "entry_url": "https://home-affairs.ec.europa.eu/policies/schengen-borders-and-visa/border-crossing_en",
+    "domains": ["europa.eu", "home-affairs.ec.europa.eu", "travel-europe.europa.eu"]
+  },
+  "GB": {
+    "name": "United Kingdom",
+    "immigration_authority": "UK Government (Home Office / UKVI)",
+    "level": 1,
+    "visa_url": "https://www.gov.uk/check-uk-visa",
+    "transit_url": "https://www.gov.uk/transit-visa",
+    "eta_url": "https://www.gov.uk/guidance/apply-for-an-electronic-travel-authorisation-eta",
+    "entry_url": "https://www.gov.uk/uk-border-control",
+    "domains": ["gov.uk"]
+  },
+  "US": {
+    "name": "United States",
+    "immigration_authority": "U.S. Department of State / CBP",
+    "level": 1,
+    "visa_url": "https://travel.state.gov/content/travel/en/us-visas.html",
+    "eta_url": "https://esta.cbp.dhs.gov/",
+    "entry_url": "https://www.cbp.gov/travel",
+    "domains": ["travel.state.gov", "cbp.gov", "dhs.gov", "esta.cbp.dhs.gov", "uscis.gov"]
+  },
+  "CA": {
+    "name": "Canada",
+    "immigration_authority": "IRCC",
+    "level": 1,
+    "visa_url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada.html",
+    "eta_url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/eta.html",
+    "transit_url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/transit.html",
+    "domains": ["canada.ca", "cic.gc.ca"]
+  },
+  "AU": {
+    "name": "Australia",
+    "immigration_authority": "Department of Home Affairs",
+    "level": 1,
+    "visa_url": "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-finder",
+    "eta_url": "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/electronic-travel-authority-601",
+    "domains": ["homeaffairs.gov.au", "immi.homeaffairs.gov.au"]
+  },
+  "NZ": {
+    "name": "New Zealand",
+    "immigration_authority": "Immigration New Zealand",
+    "level": 1,
+    "visa_url": "https://www.immigration.govt.nz/new-zealand-visas",
+    "eta_url": "https://www.immigration.govt.nz/new-zealand-visas/visas/visa/nzeta",
+    "domains": ["immigration.govt.nz"]
+  },
+  "IE": {
+    "name": "Ireland",
+    "immigration_authority": "Irish Immigration Service",
+    "level": 1,
+    "visa_url": "https://www.irishimmigration.ie/coming-to-visit-ireland/",
+    "transit_url": "https://www.irishimmigration.ie/coming-to-visit-ireland/transit-visa/",
+    "domains": ["irishimmigration.ie", "gov.ie"]
+  },
+  "CH": {
+    "name": "Switzerland",
+    "immigration_authority": "State Secretariat for Migration (SEM)",
+    "level": 1,
+    "visa_url": "https://www.sem.admin.ch/sem/en/home/themen/einreise.html",
+    "domains": ["sem.admin.ch", "admin.ch"]
+  },
+  "FR": {
+    "name": "France",
+    "immigration_authority": "France-Visas / Ministère de l'Europe et des Affaires étrangères",
+    "level": 1,
+    "visa_url": "https://france-visas.gouv.fr/",
+    "domains": ["france-visas.gouv.fr", "diplomatie.gouv.fr", "gouv.fr"],
+    "schengen": true
+  },
+  "DE": {
+    "name": "Germany",
+    "immigration_authority": "Federal Foreign Office",
+    "level": 1,
+    "visa_url": "https://www.auswaertiges-amt.de/en/visa-service",
+    "domains": ["auswaertiges-amt.de"],
+    "schengen": true
+  },
+  "IT": {
+    "name": "Italy",
+    "immigration_authority": "Ministry of Foreign Affairs — Visa for Italy",
+    "level": 1,
+    "visa_url": "https://vistoperitalia.esteri.it/home/en",
+    "domains": ["esteri.it", "vistoperitalia.esteri.it"],
+    "schengen": true
+  },
+  "ES": {
+    "name": "Spain",
+    "immigration_authority": "Ministerio de Asuntos Exteriores",
+    "level": 1,
+    "visa_url": "https://www.exteriores.gob.es/en/ServiciosAlCiudadano/Paginas/Informacion-para-extranjeros.aspx",
+    "domains": ["exteriores.gob.es", "gob.es"],
+    "schengen": true
+  },
+  "NL": {
+    "name": "Netherlands",
+    "immigration_authority": "IND",
+    "level": 1,
+    "visa_url": "https://ind.nl/en/visas",
+    "domains": ["ind.nl", "netherlandsworldwide.nl"],
+    "schengen": true
+  },
+  "PT": {
+    "name": "Portugal",
+    "immigration_authority": "AIMA / Portal das Comunidades",
+    "level": 1,
+    "visa_url": "https://vistos.mne.gov.pt/en/",
+    "domains": ["mne.gov.pt", "gov.pt"],
+    "schengen": true
+  },
+  "GR": {
+    "name": "Greece",
+    "immigration_authority": "Hellenic Ministry of Foreign Affairs",
+    "level": 1,
+    "visa_url": "https://www.mfa.gr/en/visas/",
+    "domains": ["mfa.gr"],
+    "schengen": true
+  },
+  "AT": {
+    "name": "Austria",
+    "immigration_authority": "Austrian Federal Ministry for European and International Affairs",
+    "level": 1,
+    "visa_url": "https://www.bmeia.gv.at/en/travel-stay/entry-and-residence-in-austria/visa/",
+    "domains": ["bmeia.gv.at"],
+    "schengen": true
+  },
+  "BE": {
+    "name": "Belgium",
+    "immigration_authority": "Immigration Office Belgium",
+    "level": 1,
+    "visa_url": "https://dofi.ibz.be/en/themes/third-country-nationals/short-stay",
+    "domains": ["ibz.be", "dofi.ibz.be"],
+    "schengen": true
+  },
+  "SE": {
+    "name": "Sweden",
+    "immigration_authority": "Swedish Migration Agency",
+    "level": 1,
+    "visa_url": "https://www.migrationsverket.se/English/Private-individuals/Visiting-Sweden.html",
+    "domains": ["migrationsverket.se"],
+    "schengen": true
+  },
+  "NO": {
+    "name": "Norway",
+    "immigration_authority": "UDI",
+    "level": 1,
+    "visa_url": "https://www.udi.no/en/want-to-apply/visit-and-holiday/",
+    "domains": ["udi.no"],
+    "schengen": true
+  },
+  "DK": {
+    "name": "Denmark",
+    "immigration_authority": "Danish Immigration Service / New to Denmark",
+    "level": 1,
+    "visa_url": "https://www.nyidanmark.dk/en-GB/You-want-to-apply/Short-stay-visa",
+    "domains": ["nyidanmark.dk", "um.dk"],
+    "schengen": true
+  },
+  "FI": {
+    "name": "Finland",
+    "immigration_authority": "Finnish Immigration Service",
+    "level": 1,
+    "visa_url": "https://migri.fi/en/visa",
+    "domains": ["migri.fi"],
+    "schengen": true
+  },
+  "PL": {
+    "name": "Poland",
+    "immigration_authority": "Office for Foreigners / MFA Poland",
+    "level": 1,
+    "visa_url": "https://www.gov.pl/web/diplomacy/visas",
+    "domains": ["gov.pl"],
+    "schengen": true
+  },
+  "CZ": {
+    "name": "Czechia",
+    "immigration_authority": "Ministry of Foreign Affairs of the Czech Republic",
+    "level": 1,
+    "visa_url": "https://mzv.gov.cz/jnp/en/information_for_aliens/index.html",
+    "domains": ["mzv.gov.cz", "gov.cz"],
+    "schengen": true
+  },
+  "HR": {
+    "name": "Croatia",
+    "immigration_authority": "Ministry of Foreign and European Affairs",
+    "level": 1,
+    "visa_url": "https://mvep.gov.hr/en",
+    "domains": ["mvep.gov.hr", "gov.hr"],
+    "schengen": true
+  },
+  "HU": {
+    "name": "Hungary",
+    "immigration_authority": "Ministry of Foreign Affairs and Trade",
+    "level": 1,
+    "visa_url": "https://konzuliszolgalat.kormany.hu/en",
+    "domains": ["kormany.hu"],
+    "schengen": true
+  },
+  "JP": {
+    "name": "Japan",
+    "immigration_authority": "Ministry of Foreign Affairs of Japan",
+    "level": 1,
+    "visa_url": "https://www.mofa.go.jp/j_info/visit/visa/index.html",
+    "domains": ["mofa.go.jp", "moj.go.jp"]
+  },
+  "KR": {
+    "name": "South Korea",
+    "immigration_authority": "K-ETA / HiKorea / MOFA",
+    "level": 1,
+    "visa_url": "https://www.visa.go.kr/",
+    "eta_url": "https://www.k-eta.go.kr/",
+    "domains": ["visa.go.kr", "k-eta.go.kr", "hikorea.go.kr", "mofa.go.kr"]
+  },
+  "CN": {
+    "name": "China",
+    "immigration_authority": "NIA / Chinese Visa Application Service",
+    "level": 1,
+    "visa_url": "https://www.visaforchina.cn/",
+    "entry_url": "https://en.nia.gov.cn/",
+    "domains": ["nia.gov.cn", "visaforchina.cn", "visaforchina.org"]
+  },
+  "HK": {
+    "name": "Hong Kong SAR",
+    "immigration_authority": "Immigration Department, HKSAR",
+    "level": 1,
+    "visa_url": "https://www.immd.gov.hk/eng/services/visas/visit-transit/visit.html",
+    "transit_url": "https://www.immd.gov.hk/eng/services/visas/visit-transit/transit.html",
+    "domains": ["immd.gov.hk"]
+  },
+  "TW": {
+    "name": "Taiwan",
+    "immigration_authority": "BOCA / National Immigration Agency",
+    "level": 1,
+    "visa_url": "https://www.boca.gov.tw/mp-2.html",
+    "domains": ["boca.gov.tw", "immigration.gov.tw"]
+  },
+  "SG": {
+    "name": "Singapore",
+    "immigration_authority": "ICA Singapore",
+    "level": 1,
+    "visa_url": "https://www.ica.gov.sg/enter-transit-depart/entering-singapore/visa_requirements",
+    "transit_url": "https://www.ica.gov.sg/enter-transit-depart/entering-singapore",
+    "entry_url": "https://www.ica.gov.sg/enter-transit-depart/entering-singapore",
+    "domains": ["ica.gov.sg"]
+  },
+  "MY": {
+    "name": "Malaysia",
+    "immigration_authority": "Immigration Department of Malaysia",
+    "level": 1,
+    "visa_url": "https://www.imi.gov.my/index.php/en/",
+    "entry_url": "https://imigresen-online.imi.gov.my/mdac/main",
+    "domains": ["imi.gov.my"]
+  },
+  "TH": {
+    "name": "Thailand",
+    "immigration_authority": "Thai Immigration / MFA / Thai e-Visa",
+    "level": 1,
+    "visa_url": "https://www.thaievisa.go.th/",
+    "entry_url": "https://www.immigration.go.th/",
+    "eta_url": "https://tdac.immigration.go.th/",
+    "domains": ["thaievisa.go.th", "immigration.go.th", "mfa.go.th", "thaiembassy.org"]
+  },
+  "VN": {
+    "name": "Vietnam",
+    "immigration_authority": "Vietnam Immigration / eVisa",
+    "level": 1,
+    "visa_url": "https://evisa.gov.vn/",
+    "domains": ["evisa.gov.vn", "xuatnhapcanh.gov.vn", "lanhsuvietnam.gov.vn"]
+  },
+  "ID": {
+    "name": "Indonesia",
+    "immigration_authority": "Directorate General of Immigration — Molina / eVOA",
+    "level": 1,
+    "visa_url": "https://evisa.imigrasi.go.id/",
+    "entry_url": "https://www.imigrasi.go.id/",
+    "domains": ["imigrasi.go.id", "evisa.imigrasi.go.id"]
+  },
+  "PH": {
+    "name": "Philippines",
+    "immigration_authority": "Bureau of Immigration",
+    "level": 1,
+    "visa_url": "https://immigration.gov.ph/",
+    "domains": ["immigration.gov.ph"]
+  },
+  "KH": {
+    "name": "Cambodia",
+    "immigration_authority": "Cambodia e-Visa",
+    "level": 1,
+    "visa_url": "https://www.evisa.gov.kh/",
+    "domains": ["evisa.gov.kh"]
+  },
+  "IN": {
+    "name": "India",
+    "immigration_authority": "Bureau of Immigration / Indian Visa Online / MHA",
+    "level": 1,
+    "visa_url": "https://indianvisaonline.gov.in/",
+    "entry_url": "https://www.mha.gov.in/",
+    "domains": ["indianvisaonline.gov.in", "mha.gov.in", "boi.gov.in"]
+  },
+  "LK": {
+    "name": "Sri Lanka",
+    "immigration_authority": "Department of Immigration and Emigration — ETA",
+    "level": 1,
+    "visa_url": "https://www.eta.gov.lk/",
+    "domains": ["eta.gov.lk", "immigration.gov.lk"]
+  },
+  "MV": {
+    "name": "Maldives",
+    "immigration_authority": "Maldives Immigration",
+    "level": 1,
+    "visa_url": "https://immigration.gov.mv/",
+    "domains": ["immigration.gov.mv"]
+  },
+  "NP": {
+    "name": "Nepal",
+    "immigration_authority": "Department of Immigration Nepal",
+    "level": 1,
+    "visa_url": "https://www.immigration.gov.np/",
+    "domains": ["immigration.gov.np"]
+  },
+  "AE": {
+    "name": "United Arab Emirates",
+    "immigration_authority": "ICP / u.ae",
+    "level": 1,
+    "visa_url": "https://u.ae/en/information-and-services/visa-and-emirates-id/residence-visa",
+    "entry_url": "https://icp.gov.ae/en/",
+    "domains": ["u.ae", "icp.gov.ae", "gov.ae"]
+  },
+  "SA": {
+    "name": "Saudi Arabia",
+    "immigration_authority": "MOFA Saudi eVisa / Tawakkalna travel",
+    "level": 1,
+    "visa_url": "https://visa.mofa.gov.sa/",
+    "domains": ["mofa.gov.sa", "visitsaudi.com"]
+  },
+  "QA": {
+    "name": "Qatar",
+    "immigration_authority": "MOI Qatar / Hayya",
+    "level": 1,
+    "visa_url": "https://www.moi.gov.qa/EN/Pages/default.aspx",
+    "eta_url": "https://hayya.qa/",
+    "domains": ["moi.gov.qa", "hayya.qa", "visitqatar.com"]
+  },
+  "BH": {
+    "name": "Bahrain",
+    "immigration_authority": "Bahrain eVisa",
+    "level": 1,
+    "visa_url": "https://www.evisa.gov.bh/",
+    "domains": ["evisa.gov.bh"]
+  },
+  "OM": {
+    "name": "Oman",
+    "immigration_authority": "Royal Oman Police eVisa",
+    "level": 1,
+    "visa_url": "https://evisa.rop.gov.om/",
+    "domains": ["rop.gov.om", "evisa.rop.gov.om"]
+  },
+  "KW": {
+    "name": "Kuwait",
+    "immigration_authority": "MOI Kuwait",
+    "level": 1,
+    "visa_url": "https://evisa.moi.gov.kw/",
+    "domains": ["moi.gov.kw", "evisa.moi.gov.kw"]
+  },
+  "TR": {
+    "name": "Türkiye",
+    "immigration_authority": "Republic of Türkiye e-Visa",
+    "level": 1,
+    "visa_url": "https://www.evisa.gov.tr/",
+    "domains": ["evisa.gov.tr", "mfa.gov.tr"]
+  },
+  "EG": {
+    "name": "Egypt",
+    "immigration_authority": "Egypt e-Visa",
+    "level": 1,
+    "visa_url": "https://www.visa2egypt.gov.eg/",
+    "domains": ["visa2egypt.gov.eg"]
+  },
+  "KE": {
+    "name": "Kenya",
+    "immigration_authority": "eCitizen / Directorate of Immigration Services",
+    "level": 1,
+    "visa_url": "https://www.etakenya.go.ke/",
+    "domains": ["etakenya.go.ke", "ecitizen.go.ke", "immigration.go.ke"]
+  },
+  "TZ": {
+    "name": "Tanzania",
+    "immigration_authority": "Tanzania Immigration eVisa",
+    "level": 1,
+    "visa_url": "https://visa.immigration.go.tz/",
+    "domains": ["immigration.go.tz"]
+  },
+  "ZA": {
+    "name": "South Africa",
+    "immigration_authority": "Department of Home Affairs",
+    "level": 1,
+    "visa_url": "https://www.dha.gov.za/index.php/immigration-services",
+    "domains": ["dha.gov.za"]
+  },
+  "RW": {
+    "name": "Rwanda",
+    "immigration_authority": "Rwanda Directorate General of Immigration",
+    "level": 1,
+    "visa_url": "https://www.migration.gov.rw/",
+    "domains": ["migration.gov.rw", "irembo.gov.rw"]
+  },
+  "MA": {
+    "name": "Morocco",
+    "immigration_authority": "Ministry of Foreign Affairs Morocco",
+    "level": 1,
+    "visa_url": "https://www.diplomatie.ma/",
+    "domains": ["diplomatie.ma"]
+  },
+  "MX": {
+    "name": "Mexico",
+    "immigration_authority": "INM / gob.mx",
+    "level": 1,
+    "visa_url": "https://www.gob.mx/inm",
+    "domains": ["gob.mx", "inm.gob.mx"]
+  },
+  "BR": {
+    "name": "Brazil",
+    "immigration_authority": "Ministério das Relações Exteriores",
+    "level": 1,
+    "visa_url": "https://www.gov.br/mre/pt-br/assuntos/portal-consular/vistos",
+    "domains": ["gov.br"]
+  },
+  "AR": {
+    "name": "Argentina",
+    "immigration_authority": "Dirección Nacional de Migraciones",
+    "level": 1,
+    "visa_url": "https://www.argentina.gob.ar/interior/migraciones",
+    "domains": ["argentina.gob.ar"]
+  },
+  "CL": {
+    "name": "Chile",
+    "immigration_authority": "Servicio Nacional de Migraciones",
+    "level": 1,
+    "visa_url": "https://www.serviciomigraciones.cl/",
+    "domains": ["serviciomigraciones.cl", "extranjeria.gob.cl"]
+  },
+  "PE": {
+    "name": "Peru",
+    "immigration_authority": "Migraciones Perú",
+    "level": 1,
+    "visa_url": "https://www.gob.pe/migraciones",
+    "domains": ["gob.pe", "migraciones.gob.pe"]
+  },
+  "CO": {
+    "name": "Colombia",
+    "immigration_authority": "Migración Colombia / Cancillería",
+    "level": 1,
+    "visa_url": "https://www.cancilleria.gov.co/tramites_servicios/visa",
+    "domains": ["cancilleria.gov.co", "migracioncolombia.gov.co"]
+  }
+}

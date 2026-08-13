@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import styles from "./FlightsPage.module.css";
+import { useCurrency } from "@/context/CurrencyContext";
 
 function FilterAccordion({ title, children, defaultOpen = false }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -25,6 +26,7 @@ export default function SidebarFilters({
   filters,
   onChange,
 }) {
+  const { formatMoney } = useCurrency();
   const minBound = priceBounds.min || 0;
   const maxBound = priceBounds.max || 0;
   const [minPrice, setMinPrice] = useState(minBound);
@@ -40,7 +42,8 @@ export default function SidebarFilters({
   const selectedStops = filters?.stops || [];
   const selectedDepartureTimes = filters?.departureTimes || [];
   const selectedArrivalTimes = filters?.arrivalTimes || [];
-  const duration = filters?.maxDurationHours ?? 24;
+  // null = no cap (needed for long-haul connections that run 30-60h+)
+  const duration = filters?.maxDurationHours;
 
   const emit = (patch) => onChange?.({ ...filters, ...patch });
 
@@ -58,18 +61,14 @@ export default function SidebarFilters({
     });
   };
 
-  const range = Math.max(1, maxBound - minBound);
-  const minPercent = maxBound > minBound ? ((minPrice - minBound) / range) * 100 : 0;
-  const maxPercent = maxBound > minBound ? ((maxPrice - minBound) / range) * 100 : 100;
-
   const visibleAirlines = airlineCounts.filter((a) =>
     a.name.toLowerCase().includes(airlineSearch.toLowerCase())
   );
 
-  const fmt = (n) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+  const fmt = (n) => formatMoney(n);
 
   return (
-    <div className={styles["sidebar-card"]} style={{ marginBottom: 20 }}>
+    <div className={styles["sidebar-card"]}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: "#001439", fontWeight: 700 }}>Filters</h2>
         <span className={styles["filter-header-clear"]} onClick={handleClearAll} style={{ cursor: "pointer" }}>
@@ -82,7 +81,7 @@ export default function SidebarFilters({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
             <span style={{ fontWeight: 700, fontSize: 13, color: "#001439" }}>Price Range</span>
             <span style={{ fontWeight: 700, fontSize: 13, color: "#001439" }}>
-              {fmt(minPrice)} – {fmt(maxPrice)}
+              {fmt(minPrice)} - {fmt(maxPrice)}
             </span>
           </div>
           <input
@@ -95,12 +94,11 @@ export default function SidebarFilters({
               setMaxPrice(v);
               emit({ maxPrice: v });
             }}
-            className={styles["custom-slider-input"]}
-            style={{ width: "100%", accentColor: "#F97211" }}
+            className={styles["price-range-input"]}
+            aria-label="Maximum price"
           />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#888" }}>
+          <div className={styles["filter-price-bounds"]}>
             <span>{fmt(minBound)}</span>
-            <span style={{ width: `${maxPercent - minPercent}%` }} />
             <span>{fmt(maxBound)}</span>
           </div>
         </div>
@@ -220,14 +218,31 @@ export default function SidebarFilters({
         <div style={{ marginTop: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
             <span style={{ fontSize: 13, color: "#666", fontWeight: 600 }}>
-              Up to {duration} hours
+              {duration == null ? "Any duration" : `Up to ${duration} hours`}
             </span>
+            {duration != null && (
+              <button
+                type="button"
+                onClick={() => emit({ maxDurationHours: null })}
+                style={{
+                  border: "none",
+                  background: "none",
+                  color: "#F97211",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Clear
+              </button>
+            )}
           </div>
           <input
             type="range"
             min={1}
-            max={48}
-            value={duration}
+            max={120}
+            value={duration ?? 120}
             onChange={(e) => emit({ maxDurationHours: Number(e.target.value) })}
             className={styles["custom-slider-input"]}
             style={{ width: "100%", accentColor: "#F97211" }}
@@ -240,7 +255,7 @@ export default function SidebarFilters({
           Refundable Flights
         </p>
         <p style={{ margin: "6px 0 0", fontSize: 11, color: "#B7BFCC" }}>
-          Refund rules are confirmed with the airline at payment — not filterable from the live feed.
+          Refund rules are confirmed with the airline at payment - not filterable from the live feed.
         </p>
       </div>
     </div>

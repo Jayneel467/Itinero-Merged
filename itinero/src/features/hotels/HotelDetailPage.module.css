@@ -1479,6 +1479,8 @@
   gap: 4px;
   cursor: pointer;
   padding: 0;
+  text-decoration: none;
+  font-family: inherit;
 }
 
 .HotelHelpCard_linkBtn:hover {

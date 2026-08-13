@@ -1,49 +1,188 @@
-/* LoginPage styles */
+/* Login / auth - Itinero navy + orange */
+
 .auth-page {
+  --auth-navy: #001438;
+  --auth-navy-2: #0a2754;
+  --auth-orange: #f97211;
+  --auth-cream: #fff8f2;
+  --auth-ink: #001438;
+  --auth-muted: #5b6b7f;
+
   min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 28px 20px;
+  position: relative;
+  overflow: hidden;
+  font-family: Outfit, system-ui, sans-serif;
+  color: #fff;
+  background:
+    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(249, 114, 17, 0.28), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 88% 82%, rgba(56, 120, 220, 0.22), transparent 50%),
+    linear-gradient(165deg, var(--auth-navy) 0%, var(--auth-navy-2) 48%, #001028 100%);
+}
+
+.auth-page__glow {
+  position: absolute;
+  inset: auto;
+  width: min(520px, 70vw);
+  height: min(520px, 70vw);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(249, 114, 17, 0.18), transparent 68%);
+  filter: blur(8px);
+  pointer-events: none;
+  animation: auth-drift 14s ease-in-out infinite alternate;
+}
+
+.auth-page__glow--a {
+  top: -12%;
+  left: -8%;
+}
+
+.auth-page__glow--b {
+  right: -10%;
+  bottom: -18%;
+  animation-delay: -4s;
+  background: radial-gradient(circle, rgba(90, 150, 255, 0.16), transparent 68%);
+}
+
+.auth-page__stage {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+  text-align: center;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: auth-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-page__logo-wrap {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(circle at top left, rgba(232, 106, 16, 0.12), transparent 40%),
-    linear-gradient(180deg, #fff8f2 0%, #ffffff 55%);
-  padding: 24px;
-}
-
-.auth-card {
-  max-width: 440px;
-  width: 100%;
-  padding: 40px 32px;
+  padding: 14px 22px;
   background: #fff;
-  border: 1px solid #eee4da;
-  border-radius: 24px;
-  box-shadow: 0 18px 50px rgba(20, 16, 12, 0.08);
-  text-align: center;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
 }
 
-.auth-card h1 {
-  margin: 0 0 8px;
-  font-size: 2rem;
-  color: #140f0a;
+.auth-page__logo {
+  height: 36px;
+  width: auto;
+  display: block;
+  object-fit: contain;
 }
 
-.auth-card__subtitle {
-  margin: 0 0 24px;
-  color: #6b635c;
-  line-height: 1.5;
+.auth-page__vero {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
+  animation: auth-float 5s ease-in-out infinite;
 }
 
-.auth-card__cta {
-  width: 100%;
+.auth-page__kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.auth-page__title {
+  margin: 0;
+  font-size: clamp(1.85rem, 4vw, 2.35rem);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.auth-page__title em {
+  font-style: normal;
+  color: var(--auth-orange);
+}
+
+.auth-page__copy {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(232, 237, 244, 0.78);
+}
+
+.auth-page__cta {
+  margin-top: 8px;
   border: 0;
   border-radius: 999px;
-  background: #e86a10;
+  background: var(--auth-orange);
   color: #fff;
-  font-weight: 600;
-  padding: 14px 20px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 14px 28px;
   cursor: pointer;
+  box-shadow: 0 12px 28px rgba(249, 114, 17, 0.35);
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.auth-card__cta:hover {
-  background: #d35f0e;
+.auth-page__cta:hover {
+  background: #e5670f;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(249, 114, 17, 0.42);
+}
+
+.auth-page__cta:active {
+  transform: translateY(0);
+}
+
+.auth-page__foot {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: rgba(232, 237, 244, 0.45);
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes auth-drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(24px, 16px);
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-page {
+    padding: 20px 16px;
+  }
+
+  .auth-page__vero {
+    width: 80px;
+    height: 80px;
+  }
 }

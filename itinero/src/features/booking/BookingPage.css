@@ -8,12 +8,12 @@
 .booking-page h1 {
   margin: 0 0 8px;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
-  color: #140f0a;
+  color: #001438;
 }
 
 .booking-page__lead {
   margin: 0 0 28px;
-  color: #6b635c;
+  color: #49607e;
 }
 
 .booking-page__options {
@@ -27,21 +27,21 @@
   gap: 6px;
   padding: 22px;
   border-radius: 18px;
-  border: 1px solid #eee4da;
+  border: 1px solid #e8edf2;
   background: #fff;
   text-decoration: none;
   color: inherit;
 }
 
 .booking-page__option:hover {
-  border-color: #e86a10;
+  border-color: #f97211;
 }
 
 .booking-page__option strong {
-  color: #140f0a;
+  color: #001438;
   font-size: 1.1rem;
 }
 
 .booking-page__option span {
-  color: #6b635c;
+  color: #49607e;
 }

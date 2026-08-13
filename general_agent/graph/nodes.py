@@ -22,7 +22,7 @@ from langchain_core.messages import SystemMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 
 from models.state import AgentState
-from llm.model import get_llm_with_tools
+from llm.model import get_llm_for_turn
 from llm.prompts import build_system_prompt
 import itinerary_bridge
 
@@ -32,6 +32,14 @@ logger = logging.getLogger(__name__)
 # Kept in sync with llm/tools.py and graph/workflow.py.
 _ESCALATION_SIGNAL = "ESCALATE_TO_ITINERARY"
 
+_PLANNER_EXTRA = (
+    "\n\n[Lane: planner/synth — DeepSeek] "
+    "You are writing the user-facing travel answer. Do NOT invent live fares, "
+    "gates, or availability. If the history already contains tool results, "
+    "synthesize them clearly. If the user needs live search or booking, say "
+    "you'll look that up next (the tools lane will handle it)."
+)
+
 
 def agent_node(state: AgentState):
     """The single reasoning node: calls the LLM (with tools bound) on the
@@ -40,10 +48,12 @@ def agent_node(state: AgentState):
 
     A fresh system prompt is injected on every turn so the agent always has
     the correct current date/time and the latest confirmed trip state.
+
+    Dual-LLM: OpenAI handles tool/booking turns; DeepSeek handles plan-only
+    and post-tool synthesis when DEEPSEEK_API_KEY is set.
     """
-    llm = get_llm_with_tools()
     messages = list(state["messages"])
-    trip_context = state.get("trip_context", {})
+    trip_context = state.get("trip_context", {}) or {}
 
     # Strip existing system messages to avoid duplication
     non_system_messages = [m for m in messages if m.type != "system"]
@@ -58,19 +68,49 @@ def agent_node(state: AgentState):
         while non_system_messages and getattr(non_system_messages[0], "type", None) == "tool":
             non_system_messages = non_system_messages[1:]
 
+    llm, lane = get_llm_for_turn(non_system_messages, trip_context)
+
     # Inject fresh system message (rebuilds with current datetime and trip state each turn)
-    fresh_system = SystemMessage(content=build_system_prompt(trip_context))
+    system_body = build_system_prompt(trip_context)
+    if lane in ("planner", "synth"):
+        system_body = system_body + _PLANNER_EXTRA
+    fresh_system = SystemMessage(content=system_body)
     final_messages = [fresh_system] + non_system_messages
 
     try:
         response = llm.invoke(final_messages)
     except Exception as exc:
-        logger.exception("agent_node LLM invocation error: %s", exc)
-        return {
-            "messages": [AIMessage(content="I ran into a temporary connection issue. Please try your request again.")]
-        }
+        logger.exception("agent_node LLM invocation error lane=%s: %s", lane, exc)
+        # Planner/synth failure → one retry on OpenAI tools lane.
+        if lane in ("planner", "synth"):
+            try:
+                from llm.model import get_llm_with_tools
+
+                logger.warning("vero_llm falling back to OpenAI tools after %s failure", lane)
+                response = get_llm_with_tools().invoke(
+                    [SystemMessage(content=build_system_prompt(trip_context))] + non_system_messages
+                )
+                lane = "tools_fallback"
+            except Exception as exc2:
+                logger.exception("agent_node OpenAI fallback failed: %s", exc2)
+                return {
+                    "messages": [
+                        AIMessage(
+                            content="I ran into a temporary connection issue. Please try your request again."
+                        )
+                    ]
+                }
+        else:
+            return {
+                "messages": [
+                    AIMessage(
+                        content="I ran into a temporary connection issue. Please try your request again."
+                    )
+                ]
+            }
 
     updates = {"messages": [response]}
+    logger.info("vero_llm lane=%s done tool_calls=%s", lane, bool(getattr(response, "tool_calls", None)))
 
     tool_calls = getattr(response, "tool_calls", None)
     if tool_calls:
@@ -80,7 +120,7 @@ def agent_node(state: AgentState):
         # Intercept update_trip_context tool calls and write directly to state.
         # JSON-string fields (selected_flight, selected_hotel, return_flight,
         # leg_data) are parsed into real dicts so the context is always clean.
-        new_context = {}
+        new_context = dict(trip_context or {})
         for tc in tool_calls:
             if tc["name"] == "update_trip_context":
                 args = tc.get("args", {})
@@ -118,8 +158,45 @@ def agent_node(state: AgentState):
 
                 # Save all remaining non-empty values at top level
                 for k, v in args.items():
-                    if v is not None and str(v).strip() != "":
-                        new_context[k] = v
+                    if v is None:
+                        continue
+                    if isinstance(v, str) and not v.strip():
+                        continue
+                    # selected_flight dicts must match quick_flight_search cache
+                    # (select_searched_flight). Block LLM-fabricated offer ids.
+                    if k == "selected_flight" and isinstance(v, dict):
+                        cached = (new_context.get("quick_flight_search") or {}).get("results") or []
+                        fid = str(v.get("flight_id") or "").strip()
+                        oid = str(v.get("offer_id") or v.get("offerId") or "").strip()
+                        match = None
+                        if fid:
+                            match = next(
+                                (f for f in cached if isinstance(f, dict) and str(f.get("flight_id") or "") == fid),
+                                None,
+                            )
+                        if match is None and oid:
+                            match = next(
+                                (
+                                    f
+                                    for f in cached
+                                    if isinstance(f, dict)
+                                    and str(f.get("offer_id") or f.get("offerId") or "").strip() == oid
+                                ),
+                                None,
+                            )
+                        cache_oid = (
+                            str(match.get("offer_id") or match.get("offerId") or "").strip()
+                            if isinstance(match, dict)
+                            else ""
+                        )
+                        if match is None or (oid and cache_oid and oid != cache_oid):
+                            logger.warning(
+                                "Rejecting update_trip_context selected_flight not in quick_flight_search"
+                            )
+                            continue
+                        new_context[k] = match
+                        continue
+                    new_context[k] = v
 
         if new_context:
             updates["trip_context"] = new_context
@@ -159,11 +236,13 @@ def itinerary_node(state: AgentState, config: RunnableConfig):
 
     logger.info("Itinerary node: handing off | thread=%s | task=%s", thread_id, task_description[:120])
 
-    itin_state, reply_text = itinerary_bridge.start_itinerary_session(state, task_description)
+    itin_state, reply_text, cards = itinerary_bridge.start_itinerary_session(state, task_description)
 
     merged_context = dict(state.get("trip_context", {}) or {})
     merged_context["engine"] = "itinerary"
     merged_context["itinerary_state"] = itin_state
+    if cards:
+        merged_context["pending_cards"] = cards
 
     return {
         "messages": [AIMessage(content=reply_text)],

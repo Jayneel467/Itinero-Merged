@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   PageLayout — Standard page structure
+   PageLayout - Standard page structure
    ═══════════════════════════════════════════════════════ */
 
 .page-layout {
@@ -33,5 +33,22 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Vero Chatbot Layout Shift */
+.vero-layout-wrapper {
+  transition: padding-right 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    margin-right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+}
+
+.vero-is-open {
+  padding-right: min(400px, 36vw);
+}
+
+@media (max-width: 1024px) {
+  .vero-is-open {
+    padding-right: 0;
   }
 }

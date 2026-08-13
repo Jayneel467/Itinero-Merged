@@ -5,13 +5,30 @@
 @import "./styles/animations.css";
 @import "./styles/responsive.css";
 @import "./styles/utilities.css";
+@import "./styles/interactive.css";
+@import "./styles/dark.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "TT Hoves Pro Trial Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Outfit", "TT Hoves Pro Trial Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+html[dir="rtl"] body {
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir="rtl"] .navbar,
+html[dir="rtl"] .sidebar,
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+  direction: rtl;
 }
 
 /* Custom DatePicker Styling overrides */

@@ -1,167 +1,191 @@
 .summaryCard {
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  background-color: white;
-  box-shadow: rgba(0, 0, 0, 0.12) 0px 15px 30px;
-  padding: 24px;
-  position: sticky;
-  top: 24px;
+  border: 1px solid var(--color-gray-200, #e8edf2);
+  border-radius: 16px;
+  background-color: #fff;
+  box-shadow: 0 10px 28px rgba(0, 20, 56, 0.06);
+  padding: 22px;
 }
 
 .summaryTitle {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 20px 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #637588);
+  margin: 0 0 16px;
 }
 
 .hotelInfo {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .hotelImage {
   width: 72px;
   height: 72px;
-  border-radius: 8px;
+  border-radius: 12px;
   object-fit: cover;
-  background-color: #E5E7EB;
+  background-color: #e5e7eb;
+  flex-shrink: 0;
 }
 
 .hotelDetails {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .hotelName {
   font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 4px 0;
+  font-weight: 800;
+  color: var(--color-navy, #001438);
+  margin: 0 0 4px;
+  line-height: 1.3;
 }
 
 .stars {
   display: flex;
   gap: 2px;
-  color: #F59E0B;
-  font-size: 14px;
+  color: #f59e0b;
   margin-bottom: 4px;
+}
+
+.roomName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #344054;
+  margin-bottom: 2px;
 }
 
 .hotelLocation {
   font-size: 13px;
-  color: #6B7280;
+  color: var(--color-text-muted, #637588);
 }
 
 .datesSection {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #E5E7EB;
-  margin-bottom: 20px;
+  gap: 14px 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-gray-200, #e8edf2);
+  margin-bottom: 16px;
 }
 
 .dateBlock {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .dateLabel {
-  font-size: 13px;
-  color: #6B7280;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #637588);
 }
 
 .dateValue {
-  font-size: 15px;
-  font-weight: 600;
-  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-navy, #001438);
 }
 
 .dateDay {
-  color: #6B7280;
-  font-weight: 400;
+  color: var(--color-text-muted, #637588);
+  font-weight: 500;
 }
 
 .priceBreakdown {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #E5E7EB;
-  margin-bottom: 20px;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-gray-200, #e8edf2);
+  margin-bottom: 14px;
 }
 
 .priceRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   font-size: 14px;
-  color: #4B5563;
+  color: #475467;
 }
 
 .priceValue {
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--color-navy, #001438);
 }
 
 .totalRow {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   margin-bottom: 4px;
+  gap: 12px;
 }
 
 .totalLabel {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-navy, #001438);
 }
 
 .totalPrice {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
-  color: #111827;
+  color: var(--color-navy, #001438);
+  letter-spacing: -0.02em;
 }
 
 .inclusiveText {
   font-size: 12px;
-  color: #6B7280;
-  margin-bottom: 24px;
+  color: var(--color-text-muted, #637588);
+  margin-bottom: 18px;
 }
 
 .continueBtn {
-  background-color: #E86A10;
+  background: var(--color-primary, #f97211);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 14px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s, filter 0.15s;
   width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
-.continueBtn:hover {
-  background-color: #d15a0c;
+.continueBtn:hover:not(:disabled) {
+  background: var(--color-primary-hover, #e5670f);
+}
+
+.continueBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .badgeInfo {
-  background-color: #ECFDF5;
-  color: #059669;
-  padding: 12px;
-  border-radius: 8px;
+  background-color: #f8fafc;
+  color: #475467;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e4e7ec;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.4;
 }

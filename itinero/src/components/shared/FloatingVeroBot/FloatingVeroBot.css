@@ -4,8 +4,8 @@
 
 .vero-bot {
   position: fixed;
-  bottom: 30px;
-  right: 30px;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
   z-index: 999;
   display: flex;
   flex-direction: column;

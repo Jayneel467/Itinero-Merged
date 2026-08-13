@@ -1,6 +1,6 @@
 /**
  * localStorage abstraction with JSON serialization and error handling.
- * Use the useLocalStorage hook for React state — this is for raw storage access.
+ * Use the useLocalStorage hook for React state - this is for raw storage access.
  *
  * Usage:
  *   storage.set('user', { name: 'Alice' });

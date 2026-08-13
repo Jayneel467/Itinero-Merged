@@ -3,6 +3,9 @@
  * Usage: import { Button, Card, Badge } from '@/components/ui';
  */
 export { default as Button } from './Button';
+export { default as ActionButton } from '../shared/ActionButton';
+export { default as ActionRow } from '../shared/ActionRow';
+export { default as FilterDrawer } from '../shared/FilterDrawer';
 export { default as Card } from './Card';
 export { default as SectionHeader } from './SectionHeader';
 // export { default as Input } from './Input';

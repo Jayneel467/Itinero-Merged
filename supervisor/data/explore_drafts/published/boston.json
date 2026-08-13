@@ -1,0 +1,38 @@
+{
+  "id": "boston",
+  "slug": "boston",
+  "city": "Boston",
+  "country": "USA",
+  "continent": "americas",
+  "iata": "BOS",
+  "themes": [
+    "city",
+    "food",
+    "culture"
+  ],
+  "imageId": "photo-1501594907352-04cda38ebc29",
+  "blurb": "Harbour walks, university energy, and New England seafood.",
+  "trendingScore": 84,
+  "minTripDays": 3,
+  "lat": 42.36,
+  "lng": -71.06,
+  "markets": [
+    "US",
+    "*"
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "US",
+    "authoredAt": "2026-08-12T16:42:39Z",
+    "author": "explore_factory.author.seed",
+    "checkedAt": "2026-08-12T16:42:39Z",
+    "checker": "explore_factory.checker",
+    "checkIssues": [],
+    "reverifiedAt": "2026-08-12T16:42:39Z",
+    "reverifier": "explore_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

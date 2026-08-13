@@ -1,0 +1,199 @@
+{
+  "id": "pkg-vancouver-coast-mountains",
+  "slug": "vancouver-coast-mountains",
+  "title": "Vancouver Coast & Mountains",
+  "tagline": "Ocean walks with mountain edges in view.",
+  "overview": "4-day plan based in Vancouver. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "hills",
+    "adventure"
+  ],
+  "region": "domestic",
+  "markets": [
+    "CA"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Vancouver"
+  ],
+  "recommendedDurationDays": [
+    4,
+    6
+  ],
+  "minDurationDays": 3,
+  "durationDays": 4,
+  "durationNights": 3,
+  "destinations": [
+    "Vancouver"
+  ],
+  "flight": {
+    "gatewayAirport": "YVR",
+    "gatewayCity": "Vancouver"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Vancouver walk",
+    "Local food",
+    "Easy pacing"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Sep",
+    "Oct"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": false,
+  "currency": "CAD",
+  "stay": {
+    "city": "Vancouver",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Vancouver",
+      "description": "Arrive Vancouver in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Vancouver highlights",
+      "description": "Vancouver highlights in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Vancouver",
+      "description": "Arrive Vancouver in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Vancouver highlights",
+      "description": "Vancouver highlights in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Vancouver.",
+      "stayCity": "Vancouver",
+      "anchors": [
+        "Vancouver"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "CA",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

@@ -1,0 +1,150 @@
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+  color: var(--color-navy, #001438);
+}
+
+.kicker {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary, #f97211);
+}
+
+.wrap h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.2rem);
+}
+
+.lead {
+  margin: 10px 0 24px;
+  color: var(--color-text-muted, #637588);
+  line-height: 1.5;
+}
+
+.card {
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid var(--color-gray-200, #e8edf2);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.cta {
+  display: inline-flex;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--color-primary, #f97211);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.balanceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 640px) {
+  .balanceGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.balanceCard {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--color-gray-200, #e8edf2);
+  background: #fff;
+}
+
+.balanceCard span {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted, #637588);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.balanceCard strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.balanceCard small {
+  color: var(--color-text-muted, #637588);
+  font-size: 12px;
+}
+
+.section {
+  margin-top: 24px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--color-gray-200, #e8edf2);
+  background: #fff;
+}
+
+.section h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+
+.section ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-gray-200, #e8edf2);
+}
+
+.history li:last-child {
+  border-bottom: none;
+}
+
+.history strong {
+  display: block;
+  font-size: 14px;
+}
+
+.history span {
+  font-size: 12px;
+  color: var(--color-text-muted, #637588);
+  text-transform: capitalize;
+}
+
+.history time {
+  font-size: 12px;
+  color: var(--color-text-muted, #637588);
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-text-muted, #637588);
+}

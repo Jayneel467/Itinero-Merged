@@ -1,0 +1,14 @@
+.main {
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  flex: 1;
+  min-height: 0;
+  height: calc(100dvh - 88px);
+  background: #f3f5f8;
+}

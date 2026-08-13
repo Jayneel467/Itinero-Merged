@@ -1,1 +1,0 @@
-# IATA Timatic API to check if passenger has valid documents etc to pass the boarding gate

@@ -1,33 +1,59 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowUp,
   Building2,
   Briefcase,
-  CalendarDays,
+  Gift,
   Globe2,
   Menu,
   Mic,
   Plane,
   Plus,
   Share2,
-  UserRound,
+  Ticket,
   X,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout";
-import { AI_BUDDY_IMAGES, NAVBAR_IMAGES } from "@/constants/images";
+import { NAVBAR_IMAGES } from "@/constants/images";
 import useVeroChat from "./hooks/useVeroChat";
+import useVeroVoice from "./hooks/useVeroVoice";
 import {
   ClarificationOverlay,
   ClarificationWidgets,
-  SuggestionChips,
+  VeroCardsDeck,
   VeroFlightCards,
   VeroPlaceCards,
+  VeroVisaSources,
   VeroTypingStatus,
+  VeroVoiceStage,
+  SuggestionChips,
+  VeroMessageBubble,
+  VeroSidebar,
 } from "./components";
 import { suggestFollowUps } from "./utils/suggestFollowUps";
+import { starterChipsFromPageContext, welcomeFromPageContext } from "./utils/pageContext";
+import { getActiveThread } from "./utils/chatStore";
+import {
+  trainsSearchPath,
+  busesSearchPath,
+  flightsSearchPath,
+  hotelsSearchPath,
+  packagesSearchPath,
+  trackTrainPath,
+  trackFlightPath,
+  trackAirportPath,
+  openTripsPath,
+  pnrPath,
+  trainFoodPath,
+  navActionFromVeroCards,
+  pageNavActionFromMessage,
+} from "./utils/pageFilterIntent";
+import { useVeroUiOptional } from "@/context/VeroUiContext";
 import { needsFlightClarification } from "./utils/statusLines";
 import "./VeroPage.css";
+import "./components/VeroSidebar.css";
+import "./components/VeroCardsDeck.css";
 
 const QUICK_ACTIONS = [
   {
@@ -35,8 +61,8 @@ const QUICK_ACTIONS = [
     title: "Flights",
     subtitle: "Search & Book Flights",
     Icon: Plane,
-    action: "seed",
-    prompt: "I want to search and book flights",
+    action: "navigate",
+    to: "/flights",
   },
   {
     id: "hotels",
@@ -47,51 +73,186 @@ const QUICK_ACTIONS = [
     to: "/hotels",
   },
   {
-    id: "trips",
-    title: "My Trips",
-    subtitle: "View & Manage Your Trip",
-    Icon: Briefcase,
-    action: "seed",
-    prompt: "Help me view and manage my trips",
+    id: "packages",
+    title: "Packages",
+    subtitle: "Build a trip with Vero",
+    Icon: Gift,
+    action: "navigate",
+    to: "/packages",
   },
   {
     id: "explore",
     title: "Explore",
-    subtitle: "Discover New Destinations",
+    subtitle: "Discover destinations",
     Icon: Globe2,
     action: "navigate",
-    to: "/",
+    to: "/explore",
+  },
+  {
+    id: "events",
+    title: "Events",
+    subtitle: "Concerts & live tickets",
+    Icon: Ticket,
+    action: "navigate",
+    to: "/events",
+  },
+  {
+    id: "trips",
+    title: "My Trips",
+    subtitle: "View & manage bookings",
+    Icon: Briefcase,
+    action: "navigate",
+    to: "/trips",
   },
 ];
 
 /**
- * Full-page Vero AI chat — wired to supervisor /api/chat.
+ * Full-page Vero AI chat - wired to supervisor /api/chat.
  * Sidebar shell + empty-state tiles matching product reference.
  */
 export default function VeroPage() {
   const navigate = useNavigate();
+  const veroUi = useVeroUiOptional();
+  const handleItineroActions = useCallback(
+    (actions, cards) => {
+      const list = [...(actions || [])];
+      const cardNav = navActionFromVeroCards(cards);
+      if (cardNav) list.push(cardNav);
+      for (const action of list) {
+        if (!action?.type) continue;
+        if (
+          action.type === "search_trains" &&
+          (action.origin || action.from_code) &&
+          (action.destination || action.to_code)
+        ) {
+          navigate(trainsSearchPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (
+          action.type === "search_buses" &&
+          (action.origin || action.from) &&
+          (action.destination || action.to)
+        ) {
+          navigate(busesSearchPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "search_flights" && action.origin && action.destination) {
+          navigate(flightsSearchPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "search_hotels" && action.city) {
+          navigate(hotelsSearchPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "search_packages") {
+          navigate(packagesSearchPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "track_train" && action.number) {
+          navigate(trackTrainPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "track_airport" && action.airport) {
+          navigate(trackAirportPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "track_flight" && action.flight) {
+          navigate(trackFlightPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "check_pnr" && action.pnr) {
+          navigate(pnrPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "order_train_food") {
+          navigate(trainFoodPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "open_trips" || action.type === "open_cancel") {
+          navigate(openTripsPath(action));
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "open_profile") {
+          navigate("/profile");
+          veroUi?.openVero?.();
+          return;
+        }
+      }
+    },
+    [navigate, veroUi]
+  );
   const {
     messages,
     isTyping,
-    sendMessage,
+    sendMessage: sendChatMessage,
     submitSlotAnswers,
     clearSession,
+    loadThread,
+    deleteSavedThread,
+    savedThreads,
     error,
     sessionId,
-  } = useVeroChat();
+  } = useVeroChat({ onItineroActions: handleItineroActions });
+  const pageContext = veroUi?.pageContext || null;
+  const mascotSrc = NAVBAR_IMAGES.veroAvatar;
+  const welcome = useMemo(() => {
+    const w = welcomeFromPageContext(pageContext);
+    if (!pageContext?.screen) {
+      return {
+        ...w,
+        desc: "Tell me the trip - I'll pull hotels, flights, or a full plan while we talk.",
+      };
+    }
+    return w;
+  }, [pageContext]);
+
+  const sendMessage = useCallback(
+    (text, options) => {
+      const trimmed = String(text || "").trim();
+      if (trimmed) {
+        const localNav = pageNavActionFromMessage(trimmed, pageContext);
+        if (localNav) {
+          handleItineroActions([localNav]);
+        }
+      }
+      return sendChatMessage(text, options);
+    },
+    [sendChatMessage, handleItineroActions, pageContext]
+  );
   const [draft, setDraft] = useState("");
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [dismissedPromptKey, setDismissedPromptKey] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [listening, setListening] = useState(false);
   const [shareHint, setShareHint] = useState("");
   const threadRef = useRef(null);
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
-  const recognitionRef = useRef(null);
   const fileInputRef = useRef(null);
+  const voice = useVeroVoice({
+    onTranscript: (text, meta) => sendMessage(text, meta),
+  });
 
   const hasMessages = messages.length > 0;
+
+  // Resume thread when arriving from the floating widget's fullscreen button.
+  useEffect(() => {
+    const active = getActiveThread();
+    if (active?.id && active.messages?.length) {
+      loadThread(active.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const latestPromptMsg = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -122,16 +283,6 @@ export default function VeroPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isTyping]);
-
-  useEffect(() => {
-    return () => {
-      try {
-        recognitionRef.current?.stop?.();
-      } catch {
-        /* ignore */
-      }
-    };
-  }, []);
 
   function onSubmit(e) {
     e.preventDefault();
@@ -175,8 +326,8 @@ export default function VeroPage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Chat with Vero — Itinero",
-          text: "Plan your trip with Vero, Itinero’s AI travel assistant.",
+          title: "Chat with Vero - Itinero",
+          text: "Plan your trip with Vero, Itinero’s travel agent.",
           url,
         });
         return;
@@ -190,34 +341,7 @@ export default function VeroPage() {
   }
 
   function handleMic() {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setShareHint("Voice not supported here");
-      window.setTimeout(() => setShareHint(""), 2200);
-      return;
-    }
-    if (listening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setListening(false);
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-IN";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript || "";
-      if (transcript) {
-        setDraft((prev) => (prev ? `${prev.trim()} ${transcript}` : transcript));
-        inputRef.current?.focus();
-      }
-    };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
-    recognitionRef.current = recognition;
-    setListening(true);
-    recognition.start();
+    voice.toggleVoice();
   }
 
   function onAttachFile(e) {
@@ -276,7 +400,7 @@ export default function VeroPage() {
     return "";
   }, [messages]);
 
-  /** Clarify vs live-search loading copy — skip airline jokes when only asking for a date. */
+  /** Clarify vs live-search loading copy - skip airline jokes when only asking for a date. */
   const typingMode = useMemo(() => {
     if (!isTyping) return undefined;
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -289,32 +413,20 @@ export default function VeroPage() {
     return undefined;
   }, [isTyping, messages]);
 
-  const latestAssistantIndex = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      if (messages[i].role === "assistant") return i;
-    }
-    return -1;
-  }, [messages]);
-
-  function followUpsForMessage(msg, index) {
-    let userText = "";
-    for (let j = index - 1; j >= 0; j -= 1) {
-      if (messages[j].role === "user") {
-        userText = messages[j].content || "";
-        break;
-      }
-    }
+  const followUpChips = useMemo(() => {
+    if (isTyping) return [];
+    if (!hasMessages) return starterChipsFromPageContext(pageContext) || [];
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
     return suggestFollowUps({
-      userText,
-      replyText: msg.content || "",
-      apiSuggestions: msg.suggestions,
+      userText: latestUserMessage,
+      replyText: lastAssistant?.content,
+      apiSuggestions: lastAssistant?.suggestions,
+      hasCards: Boolean(lastAssistant?.cards?.items?.length),
     });
-  }
-
-  const mascotSrc = AI_BUDDY_IMAGES.chatAvatar || NAVBAR_IMAGES.veroAvatar;
+  }, [isTyping, hasMessages, messages, latestUserMessage, pageContext]);
 
   return (
-    <PageLayout showNavbar={false} showFooter={false} className="vero-shell-main">
+    <PageLayout showNavbar={false} showFooter={false} showVeroBot={false} className="vero-shell-main">
       <div className={`vero-shell${sidebarOpen ? " vero-shell--nav-open" : ""}`}>
         {sidebarOpen && (
           <button
@@ -325,64 +437,22 @@ export default function VeroPage() {
           />
         )}
 
-        <aside className="vero-sidebar" aria-label="Vero navigation">
-          <div className="vero-sidebar__brand">
-            <img
-              src={mascotSrc}
-              alt=""
-              className="vero-sidebar__avatar"
-              width={40}
-              height={40}
-            />
-            <div className="vero-sidebar__brand-text">
-              <span className="vero-sidebar__name">Itinero</span>
-              <span className="vero-sidebar__tag">AI travel buddy</span>
-            </div>
-          </div>
+        <VeroSidebar
+          mascotSrc={mascotSrc}
+          logoSrc={NAVBAR_IMAGES.logo}
+          savedThreads={savedThreads}
+          activeThreadId={sessionId}
+          newChatActive={!hasMessages}
+          onNewChat={handleNewChat}
+          onLoadThread={(id) => {
+            loadThread(id);
+            setSidebarOpen(false);
+          }}
+          onDeleteThread={deleteSavedThread}
+          onNavClick={() => setSidebarOpen(false)}
+        />
 
-          <nav className="vero-sidebar__nav">
-            <button
-              type="button"
-              className="vero-sidebar__item vero-sidebar__item--active"
-              onClick={handleNewChat}
-            >
-              <Plane size={18} strokeWidth={2} aria-hidden />
-              <span>New Chat</span>
-            </button>
-            <button
-              type="button"
-              className="vero-sidebar__item"
-              onClick={() => {
-                setSidebarOpen(false);
-                sendMessage("Help me view and manage my trips");
-              }}
-            >
-              <Briefcase size={18} strokeWidth={2} aria-hidden />
-              <span>My Trips</span>
-            </button>
-            <Link
-              to="/flights"
-              className="vero-sidebar__item"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <CalendarDays size={18} strokeWidth={2} aria-hidden />
-              <span>Booking</span>
-            </Link>
-            <button
-              type="button"
-              className="vero-sidebar__item"
-              onClick={() => {
-                setSidebarOpen(false);
-                sendMessage("Help me set my travel profile and preferences");
-              }}
-            >
-              <UserRound size={18} strokeWidth={2} aria-hidden />
-              <span>Profile</span>
-            </button>
-          </nav>
-        </aside>
-
-        <section className="vero-page" aria-labelledby="vero-heading">
+        <section className={`vero-page${voice.voiceMode ? " is-voice" : ""}`} aria-labelledby="vero-heading">
           <header className="vero-page__topbar">
             <button
               type="button"
@@ -395,6 +465,15 @@ export default function VeroPage() {
             </button>
 
             <div className="vero-page__topbar-actions">
+              <button
+                type="button"
+                className="vero-page__icon-btn"
+                aria-label="New chat"
+                title="New chat"
+                onClick={handleNewChat}
+              >
+                <Plus size={18} strokeWidth={2} />
+              </button>
               {shareHint && (
                 <span className="vero-page__share-hint" role="status">
                   {shareHint}
@@ -419,6 +498,36 @@ export default function VeroPage() {
             </div>
           </header>
 
+          {voice.voiceMode ? (
+            <VeroVoiceStage
+              phase={voice.phase}
+              level={voice.level}
+              hint={voice.hint}
+              heard={voice.heardText}
+              liveCaption={voice.liveCaption}
+              reply={voice.replyText}
+              spokenLang={voice.spokenLang}
+              cards={(() => {
+                const a = [...messages].reverse().find((m) => m.role === "assistant");
+                return ["places", "events", "visa_sources", "trains", "buses"].includes(a?.cards?.type)
+                  ? null
+                  : a?.cards;
+              })()}
+              places={(() => {
+                const a = [...messages].reverse().find((m) => m.role === "assistant");
+                return a?.places || (["places", "events"].includes(a?.cards?.type) ? a.cards.items : null);
+              })()}
+              showLeftHint={(() => {
+                const a = [...messages].reverse().find((m) => m.role === "assistant");
+                return a?.cards?.type === "trains" || a?.cards?.type === "buses";
+              })()}
+              onToggle={handleMic}
+              onEnd={voice.stopVoice}
+              onSelectCard={(text) =>
+                voice.injectUtterance?.(text) || sendMessage(text, { voiceMode: true, spokenLanguage: voice.spokenLang })
+              }
+            />
+          ) : null}
           <div
             className={`vero-page__thread${hasMessages ? "" : " vero-page__thread--empty"}`}
             role="log"
@@ -428,22 +537,27 @@ export default function VeroPage() {
           >
             {!hasMessages && (
               <div className="vero-page__empty">
-                <img
-                  src={mascotSrc}
-                  alt=""
-                  className="vero-page__hero-avatar"
-                  width={88}
-                  height={88}
-                />
-                <h1 id="vero-heading" className="vero-page__hello">
-                  Hi! I&apos;m Vero
-                </h1>
-                <p className="vero-page__role">Your AI travel assistant</p>
-                <p className="vero-page__hint">
-                  Tell me your travel plans or explore suggestions,
-                  <br />
-                  and I&apos;ll help create unforgettable journeys.
-                </p>
+                <div className="vero-page__hero">
+                  <img
+                    src={mascotSrc}
+                    alt=""
+                    className="vero-page__hero-avatar"
+                    width={96}
+                    height={96}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `${import.meta.env.BASE_URL}vero-chatbot.png`;
+                    }}
+                  />
+                  <h1 id="vero-heading" className="vero-page__hello">
+                    {welcome.title || "Vero"}
+                  </h1>
+                  <p className="vero-page__role">{welcome.subtitle || "Your travel agent"}</p>
+                  <p className="vero-page__hint">
+                    {welcome.desc ||
+                      "Tell me the trip - I'll pull hotels, flights, or a full plan while we talk."}
+                  </p>
+                </div>
 
                 <div className="vero-page__tiles" role="group" aria-label="Quick actions">
                   {QUICK_ACTIONS.map(({ id, title, subtitle, Icon, ...action }) => (
@@ -455,10 +569,12 @@ export default function VeroPage() {
                       onClick={() => handleQuickAction({ id, title, subtitle, Icon, ...action })}
                     >
                       <span className="vero-tile__icon" aria-hidden>
-                        <Icon size={22} strokeWidth={2} />
+                        <Icon size={20} strokeWidth={2.25} />
                       </span>
-                      <span className="vero-tile__title">{title}</span>
-                      <span className="vero-tile__subtitle">{subtitle}</span>
+                      <span className="vero-tile__copy">
+                        <span className="vero-tile__title">{title}</span>
+                        <span className="vero-tile__subtitle">{subtitle}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -472,41 +588,52 @@ export default function VeroPage() {
             )}
 
             {messages.map((m, i) => (
-              <div
+              <VeroMessageBubble
                 key={`${m.role}-${i}-${(m.content || "").slice(0, 12)}`}
-                className={
-                  m.role === "user"
-                    ? "vero-page__bubble vero-page__bubble--user"
-                    : "vero-page__bubble"
-                }
+                sender={m.role === "user" ? "user" : "bot"}
+                text={m.content}
+                time={m.time}
+                hasCards={Boolean(
+                  (m.cards?.items?.length && !["trains", "buses"].includes(m.cards?.type)) ||
+                    m.flights?.length ||
+                    m.places?.length
+                )}
               >
-                <span className="vero-page__who">{m.role === "user" ? "You" : "Vero"}</span>
-                <div className="vero-page__text">{formatMarkdownLite(m.content)}</div>
+                {m.role === "assistant" && m.cards?.items?.length > 0 && !["places", "events", "visa_sources", "trains", "buses"].includes(m.cards.type) && (
+                  <VeroCardsDeck cards={m.cards} onSelect={sendMessage} />
+                )}
+                {m.role === "assistant" && m.cards?.type === "visa_sources" ? (
+                  <VeroVisaSources cards={m.cards} />
+                ) : null}
                 {m.role === "assistant" && Array.isArray(m.flights) && m.flights.length > 0 && (
                   <VeroFlightCards flights={m.flights} sessionId={sessionId} />
                 )}
                 {m.role === "assistant" && Array.isArray(m.places) && m.places.length > 0 && (
                   <VeroPlaceCards places={m.places} />
                 )}
-                {m.role === "assistant" &&
-                  i === latestAssistantIndex &&
-                  !isTyping &&
-                  !m.meta?.error &&
-                  !(Array.isArray(m.ui_prompts) && m.ui_prompts.length > 0) && (
-                    <SuggestionChips
-                      suggestions={followUpsForMessage(m, i)}
-                      onSelect={sendMessage}
-                      disabled={isTyping}
-                    />
-                  )}
-              </div>
+              </VeroMessageBubble>
             ))}
 
-            <VeroTypingStatus
-              active={isTyping}
-              userMessage={latestUserMessage}
-              mode={typingMode}
-            />
+            {isTyping ? (
+              <VeroMessageBubble
+                sender="bot"
+                typing
+                typingNode={
+                  <VeroTypingStatus
+                    active
+                    userMessage={latestUserMessage}
+                    mode={typingMode}
+                  />
+                }
+              />
+            ) : null}
+            {hasMessages && (
+              <SuggestionChips
+                suggestions={followUpChips}
+                onSelect={sendMessage}
+                disabled={isTyping}
+              />
+            )}
             <div ref={bottomRef} />
           </div>
 
@@ -522,58 +649,87 @@ export default function VeroPage() {
               className="vero-page__reopen-picker"
               onClick={() => setOverlayOpen(true)}
             >
-              Continue — pick missing details
+              Continue - pick missing details
             </button>
           )}
 
-          <form className="vero-page__composer" onSubmit={onSubmit}>
-            <div className="vero-page__composer-shell">
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="vero-page__sr-only"
-                accept=".txt,.md,.csv,text/plain,image/*"
-                onChange={onAttachFile}
-                tabIndex={-1}
+          <div className="vero-page__dock">
+            {!hasMessages ? (
+              <SuggestionChips
+                suggestions={followUpChips}
+                onSelect={sendMessage}
+                disabled={isTyping}
               />
-              <button
-                type="button"
-                className="vero-page__composer-tool"
-                aria-label="Attach a note or file"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isTyping}
-              >
-                <Plus size={18} strokeWidth={2.25} />
-              </button>
-              <input
-                ref={inputRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Where to Next?"
-                aria-label="Message Vero"
-                disabled={isTyping}
-                autoComplete="off"
-              />
-              <button
-                type="button"
-                className={`vero-page__composer-tool${listening ? " is-listening" : ""}`}
-                aria-label={listening ? "Stop listening" : "Dictate message"}
-                aria-pressed={listening}
-                onClick={handleMic}
-                disabled={isTyping}
-              >
-                <Mic size={18} strokeWidth={2.25} />
-              </button>
-              <button
-                type="submit"
-                className="vero-page__send"
-                disabled={isTyping || !draft.trim()}
-                aria-label="Send message to Vero"
-              >
-                <ArrowUp size={18} strokeWidth={2.5} />
-              </button>
-            </div>
-          </form>
+            ) : null}
+            <form className="vero-page__composer" onSubmit={onSubmit}>
+              {voice.voiceMode ? (
+                <div className="vero-voice-call">
+                  <button
+                    type="button"
+                    className={`vero-voice-orb is-${voice.phase}`}
+                    style={{ "--level": Math.min(1, (voice.level || 0) * 8) }}
+                    onClick={handleMic}
+                    aria-label={voice.phase === "speaking" ? "Interrupt Vero" : "End voice"}
+                  >
+                    <Mic size={22} strokeWidth={2.25} />
+                  </button>
+                  <p className="vero-page__voice-hint" role="status">
+                    {voice.hint || "Listening…"}
+                  </p>
+                  <button type="button" className="vero-voice-end" onClick={voice.stopVoice}>
+                    End
+                  </button>
+                </div>
+              ) : (
+                <div className="vero-page__composer-shell">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="vero-page__sr-only"
+                    accept=".txt,.md,.csv,text/plain,image/*"
+                    onChange={onAttachFile}
+                    tabIndex={-1}
+                  />
+                  <button
+                    type="button"
+                    className="vero-page__composer-tool"
+                    aria-label="Attach a note or file"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isTyping}
+                  >
+                    <Plus size={18} strokeWidth={2.25} />
+                  </button>
+                  <input
+                    ref={inputRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Tell Vero the trip…"
+                    aria-label="Message Vero"
+                    disabled={isTyping}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    className="vero-page__composer-tool"
+                    aria-label="Talk to Vero"
+                    aria-pressed={false}
+                    onClick={handleMic}
+                    disabled={isTyping}
+                  >
+                    <Mic size={18} strokeWidth={2.25} />
+                  </button>
+                  <button
+                    type="submit"
+                    className="vero-page__send"
+                    disabled={isTyping || !draft.trim()}
+                    aria-label="Send message to Vero"
+                  >
+                    <ArrowUp size={18} strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
+            </form>
+          </div>
         </section>
       </div>
 
@@ -592,81 +748,4 @@ export default function VeroPage() {
       </ClarificationOverlay>
     </PageLayout>
   );
-}
-
-/**
- * Lightweight markdown: **bold**, *italic*, and `- ` / `* ` bullet lines.
- */
-function formatMarkdownLite(text) {
-  if (!text) return null;
-  const lines = String(text).split("\n");
-  const blocks = [];
-  let listItems = [];
-
-  function flushList() {
-    if (!listItems.length) return;
-    blocks.push(
-      <ul key={`ul-${blocks.length}`} className="vero-page__list">
-        {listItems.map((item, i) => (
-          <li key={i}>{formatInline(item)}</li>
-        ))}
-      </ul>
-    );
-    listItems = [];
-  }
-
-  lines.forEach((line, idx) => {
-    const bullet = line.match(/^\s*[-*]\s+(.+)$/);
-    if (bullet) {
-      listItems.push(bullet[1]);
-      return;
-    }
-    flushList();
-    if (line.trim() === "") {
-      blocks.push(<div key={`sp-${idx}`} className="vero-page__break" />);
-      return;
-    }
-    blocks.push(
-      <p key={`p-${idx}`} className="vero-page__para">
-        {formatInline(line)}
-      </p>
-    );
-  });
-  flushList();
-  return blocks;
-}
-
-function formatInline(text) {
-  // Links first, then bold/italic — so `[Maps](url)` never leaks as raw markdown.
-  const parts = String(text).split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  return parts.map((part, i) => {
-    const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (link) {
-      const href = link[2].trim();
-      const safe =
-        href.startsWith("http://") ||
-        href.startsWith("https://") ||
-        href.startsWith("mailto:");
-      if (safe) {
-        return (
-          <a
-            key={i}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="vero-page__md-link"
-          >
-            {link[1]}
-          </a>
-        );
-      }
-    }
-    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
-    }
-    if (part.startsWith("*") && part.endsWith("*") && part.length > 2 && !part.startsWith("**")) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    }
-    return <React.Fragment key={i}>{part}</React.Fragment>;
-  });
 }

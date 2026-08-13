@@ -1,0 +1,818 @@
+/* Floating Widget Container */
+.vero-floating-widget {
+  position: fixed;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  z-index: 9999;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.vero-floating-widget > * {
+  pointer-events: auto;
+}
+
+.vero-floating-widget.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px) scale(0.9);
+}
+
+/* Speech Bubble - compact so it doesn't cover Book/price */
+.vero-speech-bubble {
+  background: #FFFFFF;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 13px;
+  color: #000;
+  box-shadow: 0px 8px 20px rgba(0,0,0,0.1);
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+.vero-speech-bubble:hover {
+  transform: translateY(-2px);
+}
+
+/* Bubble Tail */
+.vero-speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  right: 28px;
+  left: auto;
+  transform: none;
+  border-width: 8px 8px 0;
+  border-style: solid;
+  border-color: #FFFFFF transparent transparent transparent;
+  display: block;
+  width: 0;
+}
+
+/* Floating Avatar Button */
+.vero-floating-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #F97211;
+  padding: 0;
+  background: #FFF;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0px 10px 25px rgba(249, 114, 17, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vero-floating-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0px 12px 30px rgba(249, 114, 17, 0.3);
+}
+
+.vero-floating-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------------- Drawer Styles ---------------- */
+.vero-drawer {
+  position: fixed;
+  top: 0;
+  right: -420px; /* Hidden initially */
+  width: 400px;
+  max-width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  background: #FFFFFF;
+  box-shadow: -10px 0 30px rgba(0,0,0,0.08);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-sans);
+  border-left: 1px solid #E5E5E5;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.vero-drawer.open {
+  right: 0;
+}
+
+@media (max-width: 480px) {
+  .vero-drawer {
+    width: 100%;
+    right: -100%;
+    border-left: 0;
+  }
+
+  .vero-drawer.open {
+    right: 0;
+  }
+}
+
+.vero-drawer-voice {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.vero-drawer.is-voice {
+  background: #f8f9fa;
+}
+
+.vero-drawer.is-voice .vero-drawer-header {
+  background: #fff;
+  border-bottom-color: #ebebeb;
+  flex-shrink: 0;
+}
+
+/* Header */
+.vero-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.vero-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vero-header-avatar-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.vero-header-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.vero-status-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  background-color: #22C55E;
+  border: 2px solid #FFF;
+  border-radius: 50%;
+}
+
+.vero-header-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.vero-header-title {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 18px;
+  color: #000;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vero-badge {
+  background: #F97211;
+  color: #FFF;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 12px;
+}
+
+.vero-header-subtitle {
+  font-size: 12px;
+  color: #888;
+  margin: 0;
+}
+
+.vero-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.vero-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #F5F5F5;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.vero-icon-btn:hover {
+  background: #EAEAEA;
+}
+
+.vero-icon-btn.is-active {
+  background: #FFEDD5;
+  color: #C2410C;
+}
+
+.vero-history-panel {
+  max-height: 220px;
+  overflow-y: auto;
+  border-bottom: 1px solid #F0F0F0;
+  padding: 8px 12px 12px;
+  background: #FAFAFA;
+}
+
+.vero-history-empty {
+  margin: 8px 4px;
+  font-size: 13px;
+  color: #888;
+}
+
+.vero-history-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vero-history-row .vero-history-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.vero-history-delete {
+  flex-shrink: 0;
+  align-self: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.vero-history-row:hover .vero-history-delete,
+.vero-history-row:focus-within .vero-history-delete {
+  opacity: 1;
+}
+
+.vero-history-delete:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.vero-history-delete:focus-visible {
+  opacity: 1;
+  outline: 2px solid #f97211;
+  outline-offset: 1px;
+}
+
+@media (hover: none) {
+  .vero-history-delete,
+  .vero-sidebar__chat-delete {
+    opacity: 0.6;
+  }
+}
+
+.vero-history-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.vero-history-item:hover,
+.vero-history-item.is-active {
+  background: #fff;
+  box-shadow: 0 0 0 1px #EBEBEB;
+}
+
+/* Body */
+.vero-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  background: #f4f5f7;
+}
+
+.vero-welcome-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 40px;
+  margin-top: 20px;
+}
+
+.vero-large-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.vero-welcome-title {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  font-weight: 700;
+  color: #000;
+  margin: 0 0 4px 0;
+}
+
+.vero-welcome-subtitle {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: #555;
+  margin: 0 0 12px 0;
+}
+
+.vero-welcome-desc {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 280px;
+}
+
+/* Messages */
+.vero-chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.vero-message {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.user-message {
+  flex-direction: row-reverse;
+}
+
+.user-message .vero-msg-bubble {
+  background: #F97211;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 16px 16px 0 16px;
+}
+
+.user-message .vero-msg-bubble p {
+  color: #FFFFFF;
+}
+
+.user-message .vero-msg-time {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.vero-msg-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.vero-msg-bubble {
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  padding: 14px 16px;
+  border-radius: 0 16px 16px 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  position: relative;
+  max-width: 320px;
+}
+
+.vero-msg-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(100%, 360px);
+  flex: 1;
+}
+
+.bot-message.has-cards .vero-msg-col {
+  max-width: 100%;
+}
+
+.bot-message.has-cards .vero-msg-bubble {
+  max-width: 100%;
+}
+
+.vero-msg-bubble p,
+.vero-msg-md {
+  margin: 0;
+  font-size: 13.5px;
+  color: #333;
+  line-height: 1.55;
+  white-space: normal;
+}
+
+.vero-msg-md ul {
+  margin: 6px 0 8px;
+  padding-left: 18px;
+}
+
+.vero-msg-md li {
+  margin-bottom: 4px;
+}
+
+.vero-msg-md a {
+  color: #1a73e8;
+  text-decoration: underline;
+}
+
+.vero-msg-time {
+  display: block;
+  font-size: 10px;
+  color: #AAA;
+  margin-top: 8px;
+  text-align: right;
+}
+
+/* Suggestions */
+.vero-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.vero-suggestion-chip {
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vero-chip-icon {
+  color: #666;
+}
+
+.vero-suggestion-chip:hover {
+  background: #F9F9F9;
+  border-color: #D5D5D5;
+  transform: translateY(-1px);
+}
+
+.vero-applied-pill {
+  display: inline-flex;
+  align-self: flex-end;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  background: #fff4eb;
+  border: 1px solid #ffd4b5;
+  border-radius: 999px;
+  padding: 4px 10px;
+  max-width: 100%;
+}
+
+.vero-drawer-footer .vero-page__followups,
+.vero-fs-input-section .vero-page__followups,
+.vero-page__followups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+  max-width: 100%;
+}
+
+.vero-page__followup {
+  border: 1px solid #ffd4b5;
+  background: #fff4eb;
+  color: #b45309;
+  border-radius: 999px;
+  padding: 8px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  min-height: 36px;
+  text-align: left;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.vero-page__followup:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #ffe8d6;
+  border-color: #ffc08a;
+}
+
+.vero-page__followup:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vero-drawer .vero-page__typing,
+.vero-fullscreen-container .vero-page__typing {
+  color: #475467;
+  padding: 0;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vero-drawer .vero-page__dots,
+.vero-fullscreen-container .vero-page__dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.vero-drawer .vero-page__dots i,
+.vero-fullscreen-container .vero-page__dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f97211;
+  display: block;
+  animation: vero-bounce 1s infinite ease-in-out;
+}
+
+.vero-drawer .vero-page__dots i:nth-child(2),
+.vero-fullscreen-container .vero-page__dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.vero-drawer .vero-page__dots i:nth-child(3),
+.vero-fullscreen-container .vero-page__dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.vero-drawer .vero-page__status-line,
+.vero-fullscreen-container .vero-page__status-line {
+  display: inline-block;
+  animation: vero-status-fade 0.45s ease;
+}
+
+@keyframes vero-status-fade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes vero-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* Footer / Input Area */
+.vero-drawer-footer {
+  padding: 20px;
+  border-top: 1px solid #F0F0F0;
+  background: #FFF;
+}
+
+.vero-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 24px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+}
+
+.vero-text-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  color: #333;
+  padding-left: 8px;
+}
+
+.vero-text-input::placeholder {
+  color: #999;
+}
+
+.vero-input-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #F5F5F5;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vero-input-icon-btn.outline {
+  background: transparent;
+  border: 1px solid #EBEBEB;
+}
+
+.vero-mic-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #F3F4F6;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.vero-mic-btn.is-listening {
+  background: #FEE2E2;
+  color: #B91C1C;
+  animation: vero-mic-pulse 1.1s ease-in-out infinite;
+}
+.vero-mic-btn.is-thinking,
+.vero-mic-btn.is-speaking {
+  background: #FFEDD5;
+  color: #C2410C;
+}
+@keyframes vero-mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(185, 28, 28, 0); }
+}
+.vero-voice-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #6B7280;
+  text-align: center;
+}
+.vero-voice-call {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0 4px;
+}
+.vero-voice-orb {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: #111827;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transform: scale(calc(1 + (var(--level, 0) * 0.22)));
+  transition: transform 80ms linear, background 0.2s ease;
+  box-shadow: 0 0 0 8px rgba(17, 24, 39, 0.08);
+}
+.vero-voice-orb.is-listening {
+  background: #F97211;
+  box-shadow: 0 0 0 10px rgba(249, 114, 17, 0.18);
+  animation: vero-mic-pulse 1.4s ease-in-out infinite;
+}
+.vero-voice-orb.is-thinking {
+  background: #C2410C;
+}
+.vero-voice-orb.is-speaking {
+  background: #001439;
+  animation: vero-speak-wave 1.2s ease-in-out infinite;
+}
+@keyframes vero-speak-wave {
+  0%, 100% { box-shadow: 0 0 0 8px rgba(0, 20, 57, 0.12); }
+  50% { box-shadow: 0 0 0 16px rgba(0, 20, 57, 0.08); }
+}
+.vero-voice-end {
+  border: none;
+  background: transparent;
+  color: #6B7280;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.vero-voice-end:hover {
+  color: #111827;
+}
+
+.vero-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #001439;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.vero-send-btn:hover {
+  background: #002266;
+}
+
+.vero-typing-bubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vero-typing-label {
+  margin: 0;
+  font-size: 14px;
+  color: #475467;
+}
+
+.vero-typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vero-typing-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f97211;
+  opacity: 0.35;
+  animation: veroTypingPulse 1s ease-in-out infinite;
+}
+
+.vero-typing-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.vero-typing-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes veroTypingPulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+

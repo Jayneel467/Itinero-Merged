@@ -1,0 +1,165 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #001438;
+  letter-spacing: -0.03em;
+}
+
+.head p {
+  margin: 4px 0 0;
+  color: #667085;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.head strong {
+  color: #001438;
+  letter-spacing: 0.04em;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.tab,
+.tabOn {
+  border: 1px solid #e5e7eb;
+  background: #f7f9fc;
+  color: #475467;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: 750;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabOn {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
+.tab small,
+.tabOn small {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day {
+  margin: 8px 2px 2px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #98a2b3;
+  letter-spacing: 0.02em;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #eef2f6;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.row:hover {
+  border-color: #fdba74;
+  background: #fffaf5;
+}
+
+.time {
+  font-weight: 800;
+  color: #001438;
+  font-size: 14px;
+}
+
+.time small {
+  display: block;
+  font-size: 10px;
+  color: #98a2b3;
+  font-weight: 700;
+}
+
+.mid {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mid strong {
+  font-size: 13px;
+  color: #001438;
+}
+
+.mid span {
+  font-size: 12px;
+  color: #667085;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ok {
+  background: #ecfdf3;
+  color: #067647;
+}
+.air {
+  background: #eff8ff;
+  color: #175cd3;
+}
+.late {
+  background: #fff6ed;
+  color: #c4320a;
+}
+.bad {
+  background: #fef3f2;
+  color: #b42318;
+}
+.muted {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.state {
+  margin: 8px 2px 0;
+  color: #667085;
+  font-weight: 650;
+  line-height: 1.5;
+  font-size: 13.5px;
+}

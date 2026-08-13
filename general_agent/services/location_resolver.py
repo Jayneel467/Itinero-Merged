@@ -35,6 +35,50 @@ from providers import google_maps_provider, liteapi_provider
 logger = logging.getLogger(__name__)
 
 _ISO_COUNTRY_RE = re.compile(r"^[A-Za-z]{2}$")
+_IATA_RE = re.compile(r"^[A-Z]{3}$")
+
+# City / alias → primary IATA. Not per-route rules — just names LiteAPI
+# cannot search as free text. Title-case "Goa" must not become Genoa (GOA).
+_CITY_IATA: dict[str, str] = {
+    "mumbai": "BOM",
+    "bombay": "BOM",
+    "delhi": "DEL",
+    "new delhi": "DEL",
+    "dubai": "DXB",
+    "goa": "GOI",
+    "ahmedabad": "AMD",
+    "amdavad": "AMD",
+    "surat": "STV",
+    "bangalore": "BLR",
+    "bengaluru": "BLR",
+    "hyderabad": "HYD",
+    "chennai": "MAA",
+    "madras": "MAA",
+    "kolkata": "CCU",
+    "calcutta": "CCU",
+    "pune": "PNQ",
+    "london": "LHR",
+    "new york": "JFK",
+    "nyc": "JFK",
+    "paris": "CDG",
+    "singapore": "SIN",
+    "bangkok": "BKK",
+    "doha": "DOH",
+    "abu dhabi": "AUH",
+    "frankfurt": "FRA",
+    "amsterdam": "AMS",
+    "tokyo": "NRT",
+    "hong kong": "HKG",
+    "istanbul": "IST",
+    "cairo": "CAI",
+}
+
+_HUB_RANK: dict[str, int] = {
+    "DXB": 99, "AUH": 90, "DOH": 96, "BOM": 90, "DEL": 92, "BLR": 82,
+    "JFK": 94, "EWR": 88, "LHR": 98, "LGW": 84, "CDG": 96, "ORY": 80,
+    "SIN": 94, "BKK": 90, "HKG": 93, "FRA": 96, "AMS": 95, "IST": 94,
+    "NRT": 90, "HND": 88, "GOI": 70, "GOX": 68, "AMD": 68, "STV": 50,
+}
 
 # Module-level cache: ~9000 airports, fetched once per process and reused -
 # this reference list doesn't change during a server's lifetime.
@@ -72,30 +116,49 @@ def _geocode_first(place: str) -> Optional[dict]:
     return results[0] if results else None
 
 
+def _catalog_has(code: str) -> bool:
+    c = str(code or "").upper()
+    if not _IATA_RE.match(c):
+        return False
+    return any(str(a.get("code") or "").upper() == c for a in _airports())
+
+
+def local_airport_key(place: str) -> Optional[str]:
+    """Map city/IATA to a comparable key with no network. None if unknown."""
+    if not place:
+        return None
+    t = place.strip()
+    alias = _CITY_IATA.get(t.lower())
+    if alias:
+        return alias.upper()
+    if _IATA_RE.match(t.upper()) and t.isalpha():
+        return t.upper()
+    return None
+
+
 def resolve_airport_code(place: str) -> Optional[str]:
-    """Return a 3-letter IATA airport code for a city/place name — the
-    nearest same-country airport to its geocoded location.
+    """Return a 3-letter IATA airport code for a city/place name.
 
-    NOTE: deliberately does NOT short-circuit on "already looks like 3
-    letters" — a handful of city names are themselves 3 letters (e.g.
-    "Goa"), and treating those as pre-resolved codes silently picks the
-    wrong, coincidentally-matching airport elsewhere in the world (verified
-    live: "Goa" -> "GOA", Genoa, Italy). Always resolve through geocoding.
-
-    Restricts candidates to the geocoded country: LiteAPI's own reference
-    dataset has data-quality issues (verified live: the nearest airport by
-    raw coordinates to Mumbai is "BRJ", tagged countryCode "AU", sitting
-    almost exactly on Mumbai's coordinates — clearly mislabeled/dirty data,
-    not a real option). Requiring a country match avoids that class of
-    error; falls back to the unrestricted nearest match only if no
-    same-country airport exists at all.
+    Trust ALL-CAPS codes already in the catalog (BOM, DXB). Title-case
+    3-letter cities like "Goa" go through aliases / geocode so they never
+    become Genoa (GOA). Prefer international / hub airports near the city.
     """
     if not place:
         return None
     candidate = place.strip()
+    alias = _CITY_IATA.get(candidate.lower())
+    if alias:
+        logger.info("location_resolver: '%s' -> %s (alias)", place, alias)
+        return alias
+
+    # Already an IATA code (from a previous resolve or the UI).
+    if _IATA_RE.match(candidate.upper()) and candidate.isupper() and _catalog_has(candidate.upper()):
+        return candidate.upper()
 
     result = _geocode_first(candidate)
     if not result:
+        if _IATA_RE.match(candidate.upper()) and _catalog_has(candidate.upper()):
+            return candidate.upper()
         return None
     loc = result.get("geometry", {}).get("location", {})
     lat, lng = loc.get("lat"), loc.get("lng")
@@ -116,10 +179,15 @@ def resolve_airport_code(place: str) -> Optional[str]:
     if not pool:
         pool = airports
 
-    nearest = min(
-        pool,
-        key=lambda a: _haversine_km(lat, lng, a.get("latitude", 0.0), a.get("longitude", 0.0)),
-    )
+    def _score(a: dict) -> float:
+        dist = _haversine_km(lat, lng, a.get("latitude", 0.0) or 0.0, a.get("longitude", 0.0) or 0.0)
+        code = str(a.get("code") or "").upper()
+        name = str(a.get("name") or "").lower()
+        hub = _HUB_RANK.get(code, 0)
+        intl = 25.0 if "international" in name else 0.0
+        return dist - hub / 4.0 - intl
+
+    nearest = min(pool, key=_score)
     code = nearest.get("code")
     logger.info("location_resolver: '%s' -> %s (%s)", place, code, nearest.get("name"))
     return code

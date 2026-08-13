@@ -1,27 +1,41 @@
 import React from "react";
-import "./Button.css";
+import ActionButton from "@/components/shared/ActionButton";
+
+const VARIANT_MAP = {
+  primary: "primary",
+  secondary: "ghost",
+  outline: "ghost",
+  ghost: "ghost",
+  pill: "ghost",
+};
 
 /**
- * Reusable Button component with multiple variants.
- *
- * @param {"primary"|"secondary"|"outline"|"ghost"|"pill"} variant
- * @param {"sm"|"md"|"lg"} size
- * @param {string} className - Additional classes
- * @param {React.ReactNode} children
+ * UI Button - thin wrapper around shared ActionButton.
+ * Prefer importing ActionButton directly for links and extra variants.
  */
 export default function Button({
   variant = "primary",
   size = "md",
+  pill = false,
+  block = false,
   className = "",
   children,
   ...props
 }) {
+  const mapped = VARIANT_MAP[variant] || "primary";
+  const isPill = pill || variant === "pill";
+  const sizeClass =
+    size === "sm" ? " !min-h-[36px] !px-3 !text-[13px]" : size === "lg" ? " !min-h-[48px] !px-6 !text-base" : "";
+
   return (
-    <button
-      className={`btn btn--${variant} btn--${size} ${className}`}
+    <ActionButton
+      variant={mapped}
+      pill={isPill}
+      block={block}
+      className={`${sizeClass} ${className}`.trim()}
       {...props}
     >
       {children}
-    </button>
+    </ActionButton>
   );
 }

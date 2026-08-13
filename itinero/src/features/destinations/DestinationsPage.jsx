@@ -6,7 +6,7 @@ import DestinationCard from "@/features/home/components/DestinationCard";
 import "./DestinationsPage.css";
 
 /**
- * Destinations explorer — grid of trending cities with search + filter.
+ * Destinations explorer - grid of trending cities with search + filter.
  */
 export default function DestinationsPage() {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function DestinationsPage() {
       <section className="destinations-page">
         <div className="destinations-page__header">
           <h1>Explore Destinations</h1>
-          <p>Find your next city escape — flights and stays from one place.</p>
+          <p>Find your next city escape - flights and stays from one place.</p>
           <input
             className="destinations-page__search"
             type="search"

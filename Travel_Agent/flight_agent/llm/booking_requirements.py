@@ -757,7 +757,12 @@ def booking_details_prompt(
 
 
 def summarize_attachable_services(services_attachable: Any) -> dict[str, Any]:
-    """Flatten LiteAPI servicesAttachable for the LLM and UI."""
+    """Flatten LiteAPI servicesAttachable for the LLM and UI.
+
+    LiteAPI documents seat + baggage ancillaries on prebook. Other categories
+    (meal, insurance, etc.) are passed through if the supplier returns them,
+    but the official schema only guarantees seat/baggage metadata.
+    """
     if not services_attachable:
         return {"available": False, "groups": [], "message": "No extra services for this offer."}
 
@@ -769,28 +774,80 @@ def summarize_attachable_services(services_attachable: Any) -> dict[str, Any]:
 
     for group in groups_raw:
         options = group.get("options") or group.get("services") or []
+        gtype = str(
+            group.get("type") or group.get("category") or "OTHER"
+        ).upper()
+        # Prefer richer seat lists; bags/meals stay shorter.
+        opt_limit = 120 if gtype in {"SEAT", "SEATS"} else 24
         priced: list[dict[str, Any]] = []
-        for opt in options[:8]:
+        for opt in options[:opt_limit]:
             pricing = opt.get("pricing") or opt.get("price") or {}
             if isinstance(pricing, (int, float)):
-                display = {"total": pricing}
-            else:
+                display = {"total": pricing, "amount": pricing}
+            elif isinstance(pricing, dict):
                 display = pricing.get("display") or pricing
+            else:
+                display = {}
+            if not isinstance(display, dict):
+                display = {}
+            price_val = display.get("total")
+            if price_val is None:
+                price_val = display.get("amount")
+
+            category = str(opt.get("category") or gtype or "other").lower()
+            meta = opt.get("metadata") if isinstance(opt.get("metadata"), dict) else {}
+            seat_meta = meta.get("seat") if isinstance(meta.get("seat"), dict) else None
+            bag_meta = meta.get("baggage") if isinstance(meta.get("baggage"), dict) else None
+
+            # Skip known-unavailable seats
+            if seat_meta and seat_meta.get("available") is False:
+                continue
+
+            if seat_meta and not gtype.startswith("SEAT"):
+                gtype = "SEAT"
+            elif bag_meta and gtype not in {"BAGGAGE", "BAG", "BAGS"}:
+                gtype = "BAGGAGE"
+            elif category in {"seat", "seats"}:
+                gtype = "SEAT"
+            elif category in {"baggage", "bag", "bags"}:
+                gtype = "BAGGAGE"
+            elif category in {"meal", "meals"}:
+                gtype = "MEAL"
+            elif category in {"insurance", "insurances"}:
+                gtype = "INSURANCE"
+
+            name = opt.get("name") or opt.get("description") or opt.get("code")
+            if seat_meta and seat_meta.get("seatNumber"):
+                name = name or f"Seat {seat_meta.get('seatNumber')}"
+
             priced.append(
                 {
                     "service_id": opt.get("serviceId") or opt.get("id"),
-                    "name": opt.get("name") or opt.get("description") or opt.get("code"),
-                    "price": display.get("total") if isinstance(display, dict) else display,
-                    "currency": display.get("currency") if isinstance(display, dict) else None,
-                    "segment_key": group.get("segmentKey") or opt.get("segmentKey"),
+                    "name": name,
+                    "price": price_val,
+                    "currency": display.get("currency"),
+                    "segment_key": (
+                        group.get("segmentKey")
+                        or opt.get("segmentKey")
+                        or (seat_meta.get("segmentKey") if seat_meta else None)
+                    ),
                     "passenger_index": opt.get("passengerIndex", 0),
+                    "category": category,
+                    "seat": seat_meta,
+                    "baggage": bag_meta,
+                    "available": True
+                    if not seat_meta
+                    else bool(seat_meta.get("available", True)),
                 }
             )
 
+        if not priced:
+            continue
+
         groups.append(
             {
-                "type": group.get("type") or group.get("category") or "OTHER",
-                "name": group.get("name") or group.get("title") or group.get("type"),
+                "type": gtype,
+                "name": group.get("name") or group.get("title") or gtype,
                 "segment_key": group.get("segmentKey"),
                 "options": priced,
                 "option_count": len(options),
@@ -802,8 +859,13 @@ def summarize_attachable_services(services_attachable: Any) -> dict[str, Any]:
         "available": bool(groups),
         "service_types": types,
         "groups": groups,
+        # Official LiteAPI ancillaries today; others only if supplier sends them.
+        "supports_insurance": "INSURANCE" in types,
+        "supports_meals": "MEAL" in types,
+        "supports_seats": any(t.startswith("SEAT") for t in types),
+        "supports_baggage": any(t.startswith("BAG") for t in types),
     }
-    summary["choices"] = flatten_service_choices(summary)
+    summary["choices"] = flatten_service_choices(summary, limit=80)
     summary["user_prompt"] = services_question_prompt(summary)
     summary["llm_instruction"] = (
         "Read user_prompt and reply to the user in simple language. "
@@ -849,8 +911,11 @@ def services_question_prompt(services: dict[str, Any]) -> str:
 
     type_labels = {
         "SEAT": "Seat selection",
+        "SEATS": "Seat selection",
         "BAGGAGE": "Extra baggage",
+        "BAG": "Extra baggage",
         "MEAL": "Meals",
+        "INSURANCE": "Travel insurance",
         "OTHER": "Other add-ons",
     }
 

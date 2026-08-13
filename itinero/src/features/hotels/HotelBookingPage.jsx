@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { PageLayout } from "@/components/layout";
 import BookingStepper from './components/BookingStepper';
-import HotelRoomCard from './components/HotelRoomCard';
+import HotelRoomTypeCard, { groupRoomsByType } from './components/HotelRoomTypeCard';
 import HotelBookingSummary from './components/HotelBookingSummary';
 import { Modal } from '@/components/ui/Modal';
 import CustomDatePicker from '@/components/ui/DatePicker/CustomDatePicker';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { hotelService } from './services/hotelService';
+import { useCurrency } from '@/context/CurrencyContext';
+import { LoadingState } from '@/components/shared';
+import { dedupeRoomOffers } from './utils/roomGrouping';
 import styles from './HotelBookingPage.module.css';
 
 const CustomModalDateInput = React.forwardRef(({ value, onClick, isOpen }, ref) => (
@@ -42,7 +45,7 @@ export default function HotelBookingPage() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const base = import.meta.env.BASE_URL;
+  const { currency } = useCurrency();
 
   const initialHotel = location.state?.hotel || null;
 
@@ -75,19 +78,36 @@ export default function HotelBookingPage() {
       check_out: toYmd(checkOut),
       guests: adults + children,
       rooms: roomsCount,
-      currency: 'INR',
+      currency,
     });
     const list = Array.isArray(res.rooms) ? res.rooms : [];
-    const withImages = list.map((r) => ({
-      ...r,
-      image: r.image || `${base}hotel_room.png`,
-      taxes: Number(r.taxes) || 0,
-      price: Number(r.price) || 0,
-    }));
-    setRooms(withImages);
+    const withImages = list.map((r) => {
+      const images = [];
+      const seen = new Set();
+      const push = (u) => {
+        const s = String(u || "").trim();
+        if (!s || seen.has(s)) return;
+        if (/hotel_room\.png|no[-_]?image/i.test(s)) return;
+        seen.add(s);
+        images.push(s.startsWith("//") ? `https:${s}` : s);
+      };
+      for (const u of r.images || []) push(u);
+      push(r.image);
+      return {
+        ...r,
+        images,
+        image: images[0] || "",
+        taxes: Number(r.taxes) || 0,
+        price: Number(r.price) || 0,
+      };
+    });
+    const deduped = dedupeRoomOffers(withImages);
+    setRooms(deduped);
     if (res.hotel) setHotelMeta((prev) => ({ ...prev, ...res.hotel }));
-    if (withImages.length) {
-      setSelectedRoomId(withImages[0].id);
+    const grouped = groupRoomsByType(deduped);
+    if (grouped.length) {
+      const firstRate = grouped[0]?.rates?.[0] || deduped[0];
+      setSelectedRoomId(firstRate.id);
     } else {
       setSelectedRoomId(null);
       setError(res.message || 'No live room rates for these dates.');
@@ -98,7 +118,23 @@ export default function HotelBookingPage() {
   useEffect(() => {
     loadRates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, toYmd(checkIn), toYmd(checkOut), adults, children, roomsCount]);
+  }, [id, toYmd(checkIn), toYmd(checkOut), adults, children, roomsCount, currency]);
+
+  const roomTypes = useMemo(() => groupRoomsByType(rooms), [rooms]);
+
+  const hotelImages = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+    const push = (u) => {
+      const s = String(u || "").trim();
+      if (!s || seen.has(s)) return;
+      seen.add(s);
+      list.push(s.startsWith("//") ? `https:${s}` : s);
+    };
+    for (const u of hotelMeta?.images || []) push(u);
+    push(hotelMeta?.image);
+    return list;
+  }, [hotelMeta]);
 
   const selectedRoom = useMemo(
     () => rooms.find((r) => r.id === selectedRoomId) || rooms[0],
@@ -111,7 +147,12 @@ export default function HotelBookingPage() {
   const summaryData = selectedRoom
     ? {
         hotelName: hotelMeta?.name || 'Hotel',
-        hotelImage: selectedRoom.image || hotelMeta?.image || `${base}hotel_room.png`,
+        hotelImage:
+          (Array.isArray(selectedRoom.images) && selectedRoom.images[0]) ||
+          selectedRoom.image ||
+          hotelMeta?.image ||
+          (Array.isArray(hotelMeta?.images) ? hotelMeta.images[0] : "") ||
+          "",
         location: hotelMeta?.location || '',
         checkIn: {
           date: checkIn.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -133,7 +174,10 @@ export default function HotelBookingPage() {
       }
     : {
         hotelName: hotelMeta?.name || 'Hotel',
-        hotelImage: hotelMeta?.image || `${base}hotel_room.png`,
+        hotelImage:
+          hotelMeta?.image ||
+          (Array.isArray(hotelMeta?.images) ? hotelMeta.images[0] : "") ||
+          "",
         location: hotelMeta?.location || '',
         checkIn: { date: '', day: '' },
         checkOut: { date: '', day: '' },
@@ -162,12 +206,13 @@ export default function HotelBookingPage() {
     setRoomsCount(modalRooms);
     setAdults(modalAdults);
     setChildren(modalChildren);
-    setSearchParams({
+    const next = {
       checkIn: toYmd(modalCheckIn),
       checkOut: toYmd(modalCheckOut),
       guests: String(modalAdults + modalChildren),
       rooms: String(modalRooms),
-    });
+    };
+    setSearchParams(next);
     setIsConfigOpen(false);
   };
 
@@ -189,8 +234,8 @@ export default function HotelBookingPage() {
   const formatModalDate = (date) =>
     date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  return (
-    <PageLayout>
+  const bookingBody = (
+    <>
       <div className={styles.pageContainer}>
         <div className={styles.stepperWrapper}>
           <BookingStepper currentStep={currentStep} />
@@ -199,18 +244,24 @@ export default function HotelBookingPage() {
         <div className={styles.mainLayout}>
           <div className={styles.roomsList}>
             {loading && (
-              <p style={{ padding: 24, color: '#6b635c' }}>Loading live LiteAPI room rates…</p>
+              <LoadingState
+                title="Loading room rates"
+                message="Fetching live rates for your dates…"
+                skeleton="room"
+                count={3}
+              />
             )}
             {!loading && error && (
               <p style={{ padding: 24, color: '#b45309' }}>{error}</p>
             )}
             {!loading &&
-              rooms.map((room) => (
-                <HotelRoomCard
-                  key={room.id}
-                  room={room}
-                  onSelect={() => handleSelectRoom(room.id)}
-                  isSelected={room.id === selectedRoomId}
+              roomTypes.map((roomType) => (
+                <HotelRoomTypeCard
+                  key={roomType.key}
+                  roomType={roomType}
+                  selectedRateId={selectedRoomId}
+                  onSelectRate={handleSelectRoom}
+                  hotelImages={hotelImages}
                 />
               ))}
           </div>
@@ -294,7 +345,7 @@ export default function HotelBookingPage() {
 
           <p className="text-sm text-gray-500">
             Preview: {formatModalDate(modalCheckIn)} → {formatModalDate(modalCheckOut)}. Confirming
-            reloads live rates from LiteAPI.
+            reloads live rates.
           </p>
 
           <button
@@ -306,6 +357,8 @@ export default function HotelBookingPage() {
           </button>
         </div>
       </Modal>
-    </PageLayout>
+    </>
   );
+
+  return <PageLayout>{bookingBody}</PageLayout>;
 }

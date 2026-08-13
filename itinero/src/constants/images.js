@@ -6,10 +6,10 @@
 
 // ─── Navbar ──────────────────────────────────────────────
 export const NAVBAR_IMAGES = {
-  logo: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/n26u4vy4_expires_30_days.png",
-  logoText: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/mh84kt3c_expires_30_days.png",
+  logo: `${import.meta.env.BASE_URL}itinero-logo.png`,
+  logoText: `${import.meta.env.BASE_URL}itinero-logo.png`,
   notificationIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/s618wp3m_expires_30_days.png",
-  veroAvatar: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/mm4rva6g_expires_30_days.png",
+  veroAvatar: `${import.meta.env.BASE_URL}vero-chatbot.png`,
   veroArrow: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/revwr0ue_expires_30_days.png",
   menuIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2p827aa0_expires_30_days.png",
 };

@@ -9,7 +9,7 @@ const CABINS = [
 ];
 
 /**
- * Modal widgets for missing trip slots — driven by supervisor ui_prompts.
+ * Modal widgets for missing trip slots - driven by supervisor ui_prompts.
  */
 export default function ClarificationWidgets({
   prompts,

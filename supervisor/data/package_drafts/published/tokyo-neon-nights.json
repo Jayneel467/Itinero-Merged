@@ -1,0 +1,224 @@
+{
+  "id": "pkg-tokyo-neon-nights",
+  "slug": "tokyo-neon-nights",
+  "title": "Tokyo Neon Nights",
+  "tagline": "Neon nights, quiet shrines, endless bowls.",
+  "overview": "5-day plan based in Tokyo. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "food"
+  ],
+  "region": "international",
+  "markets": [
+    "*"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Tokyo"
+  ],
+  "recommendedDurationDays": [
+    5,
+    7
+  ],
+  "minDurationDays": 4,
+  "durationDays": 5,
+  "durationNights": 4,
+  "destinations": [
+    "Tokyo"
+  ],
+  "flight": {
+    "gatewayAirport": "NRT",
+    "gatewayCity": "Tokyo"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Neighbourhood ramen",
+    "Shrine morning",
+    "Skyline view"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Sep",
+    "Oct"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": true,
+  "currency": "JPY",
+  "stay": {
+    "city": "Tokyo",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Tokyo",
+      "description": "Arrive Tokyo in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Tokyo icons",
+      "description": "Tokyo icons in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Deep dive day",
+      "description": "Deep dive day in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Free day",
+      "description": "Free day in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Museum or viewpoint",
+        "Cafe stop"
+      ]
+    },
+    {
+      "day": 5,
+      "title": "Depart",
+      "description": "Depart in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Tokyo",
+      "description": "Arrive Tokyo in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Tokyo icons",
+      "description": "Tokyo icons in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Deep dive day",
+      "description": "Deep dive day in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Free day",
+      "description": "Free day in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Museum or viewpoint",
+        "Cafe stop"
+      ]
+    },
+    {
+      "day": 5,
+      "title": "Depart",
+      "description": "Depart in Tokyo.",
+      "stayCity": "Tokyo",
+      "anchors": [
+        "Tokyo"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "GLOBAL",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

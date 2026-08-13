@@ -1,0 +1,199 @@
+{
+  "id": "pkg-edinburgh-castle-break",
+  "slug": "edinburgh-castle-break",
+  "title": "Edinburgh Castle Break",
+  "tagline": "Castle views, festival energy, highland day trips.",
+  "overview": "4-day plan based in Edinburgh. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "culture",
+    "hills"
+  ],
+  "region": "domestic",
+  "markets": [
+    "GB"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Edinburgh"
+  ],
+  "recommendedDurationDays": [
+    4,
+    6
+  ],
+  "minDurationDays": 3,
+  "durationDays": 4,
+  "durationNights": 3,
+  "destinations": [
+    "Edinburgh"
+  ],
+  "flight": {
+    "gatewayAirport": "EDI",
+    "gatewayCity": "Edinburgh"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Edinburgh walk",
+    "Local food",
+    "Easy pacing"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Sep",
+    "Oct"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": true,
+  "currency": "GBP",
+  "stay": {
+    "city": "Edinburgh",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Edinburgh",
+      "description": "Arrive Edinburgh in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Edinburgh highlights",
+      "description": "Edinburgh highlights in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Edinburgh",
+      "description": "Arrive Edinburgh in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Edinburgh highlights",
+      "description": "Edinburgh highlights in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Edinburgh.",
+      "stayCity": "Edinburgh",
+      "anchors": [
+        "Edinburgh"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "GB",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

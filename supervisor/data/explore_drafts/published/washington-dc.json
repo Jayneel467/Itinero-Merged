@@ -1,0 +1,38 @@
+{
+  "id": "washington-dc",
+  "slug": "washington-dc",
+  "city": "Washington, D.C.",
+  "country": "USA",
+  "continent": "americas",
+  "iata": "DCA",
+  "themes": [
+    "city",
+    "culture",
+    "family"
+  ],
+  "imageId": "photo-1501466044931-62695aada8ed",
+  "blurb": "Monuments, museums, and cherry-blossom springs.",
+  "trendingScore": 83,
+  "minTripDays": 3,
+  "lat": 38.85,
+  "lng": -77.04,
+  "markets": [
+    "US",
+    "*"
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "US",
+    "authoredAt": "2026-08-12T16:42:39Z",
+    "author": "explore_factory.author.seed",
+    "checkedAt": "2026-08-12T16:42:39Z",
+    "checker": "explore_factory.checker",
+    "checkIssues": [],
+    "reverifiedAt": "2026-08-12T16:42:39Z",
+    "reverifier": "explore_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

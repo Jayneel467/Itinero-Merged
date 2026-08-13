@@ -8,13 +8,15 @@ import {
   WhyChoose,
   Testimonials,
   TravelLinks,
+  ExploreVibes,
+  ReadyTrips,
 } from "./components";
 import "./HomePage.css";
 
 /**
- * Home page — assembles all sections in the correct order.
+ * Home page - assembles all sections in the correct order.
  * Uses PageLayout for consistent Navbar/Footer wrapping.
- * NO wrapper gap/padding — each section carries its own mb-[...] from Figma.
+ * NO wrapper gap/padding - each section carries its own mb-[...] from Figma.
  */
 export default function HomePage() {
   return (
@@ -28,8 +30,14 @@ export default function HomePage() {
       {/* Trending Destinations */}
       <TrendingDestinations />
 
+      {/* Mood tiles → Explore */}
+      <ExploreVibes />
+
       {/* Flight Deals */}
       <FlightDeals />
+
+      {/* Ready-made packages carousel */}
+      <ReadyTrips />
 
       {/* AI Travel Buddy Promo (Your Journey, Our Priority) */}
       <AiTravelBuddy />

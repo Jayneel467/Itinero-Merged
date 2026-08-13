@@ -1,6 +1,6 @@
 /**
  * Intent-aware rotating status copy while /api/chat is in flight.
- * Tasteful, short — not spammy.
+ * Tasteful, short - not spammy.
  */
 
 const PLACE_RE =
@@ -9,11 +9,13 @@ const PLACE_RE =
 const WEATHER_RE =
   /\b(weather|forecast|temperature|rain|raining|humidity|climate|radar|storm|sunny|cloudy)\b/i;
 const FLIGHT_RE =
-  /\b(flight|flights|fare|fares|airline|airlines|airport|fly|flying|depart|departure|ticket|tickets)\b|^\s*[A-Za-z .'-]+\s+to\s+[A-Za-z .'-]+/i;
+  /\b(flight|flights|fare|fares|airline|airlines|airport|fly|flying|depart|departure|ticket|tickets|udaan|tikit)\b|ફ્લાઇટ|વિમાન|उड़ान|फ्लाइट|^\s*[A-Za-z .'-]+\s+to\s+[A-Za-z .'-]+/i;
+const HOTEL_RE =
+  /\b(hotel|hotels|stay|stays|resort|resorts|accommodation|room|rooms|check[- ]?in)\b|હોટલ|होटल/i;
 const FOOD_RE =
-  /\b(food|restaurant|restaurants|eat|eating|dining|cafe|cafes|cuisine|lunch|dinner|brunch|menu)\b/i;
+  /\b(food|restaurant|restaurants|eat|eating|dining|cafe|cafes|cuisine|lunch|dinner|brunch|menu)\b|ખાવાનું|खाना/i;
 const ITINERARY_RE =
-  /\b(itinerary|plan|trip|days?|weekend|vacation|holiday|visit|explore|sightseeing|things\s+to\s+do)\b/i;
+  /\b(itinerary|plan|trip|days?|weekend|vacation|holiday|visit|explore|sightseeing|things\s+to\s+do)\b|યોજના|यात्रा/i;
 const HAS_DATE_RE =
   /\b(\d{1,2})\s*(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b|\b\d{4}-\d{2}-\d{2}\b|\b(tomorrow|today|next\s+week|this\s+weekend)\b|\b\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?\b/i;
 const ROUTE_RE = /\b[A-Za-z][A-Za-z .'-]{1,24}\s+to\s+[A-Za-z][A-Za-z .'-]{1,24}\b/i;
@@ -39,6 +41,7 @@ export function inferStatusIntent(message) {
   const text = String(message || "").trim();
   if (!text) return "general";
   if (WEATHER_RE.test(text)) return "weather";
+  if (HOTEL_RE.test(text)) return "hotels";
   if (FOOD_RE.test(text)) return "food";
   if (FLIGHT_RE.test(text)) return "flights";
   if (ITINERARY_RE.test(text)) return "itinerary";
@@ -86,9 +89,20 @@ function flightLines() {
 function clarificationLines() {
   return [
     "Checking what I still need…",
-    "Almost — just need a couple details…",
+    "Almost - just need a couple details…",
     "Opening the trip checklist…",
     "Gathering the missing pieces…",
+  ];
+}
+
+function hotelLines(place) {
+  const where = place ? ` in ${place}` : "";
+  return [
+    `Pulling stays${where}…`,
+    "Checking live hotel rates…",
+    "Sorting rooms by value…",
+    "Opening the hotel desk…",
+    "Finding a solid base for the trip…",
   ];
 }
 
@@ -118,7 +132,7 @@ function generalLines() {
   return [
     "Thinking this through…",
     "Opening my travel notebook…",
-    "One sec — Vero's on it…",
+    "One sec - Vero's on it…",
     "Connecting a few dots…",
     "Brewing a useful answer…",
   ];
@@ -142,6 +156,9 @@ export function getStatusLines(message, options = {}) {
     case "flights":
       lines = flightLines();
       break;
+    case "hotels":
+      lines = hotelLines(place);
+      break;
     case "food":
       lines = foodLines(place);
       break;
@@ -152,4 +169,34 @@ export function getStatusLines(message, options = {}) {
       lines = generalLines();
   }
   return lines.filter(Boolean);
+}
+
+/** Rotating voice-overlay status (Gujarati / Hindi / English). */
+export function getVoiceStatusLines(message, lang) {
+  const tag = String(lang || "").toLowerCase();
+  const gu = tag.startsWith("gu");
+  const hi = tag.startsWith("hi");
+  const intent = inferStatusIntent(message);
+  if (gu) {
+    if (intent === "flights") {
+      return ["ફ્લાઇટ શોધી રહી છું…", "ભાવ લાઇન કરી રહી છું…", "એરલાઇન સાથે વાત…"];
+    }
+    if (intent === "hotels") {
+      return ["હોટલ જોઈ રહી છું…", "રેટ ચેક કરી રહી છું…", "સારી સ્ટે શોધી રહી છું…"];
+    }
+    if (intent === "itinerary") {
+      return ["યોજના ગોઠવી રહી છું…", "દિવસો ગોઠવી રહી છું…"];
+    }
+    return ["વેરો વિચારે છે…", "થોડી રાહ જુઓ…", "જોડી રહી છું…"];
+  }
+  if (hi) {
+    if (intent === "flights") {
+      return ["फ्लाइट ढूंढ रही हूँ…", "किराया देख रही हूँ…", "एयरलाइन से बात…"];
+    }
+    if (intent === "hotels") {
+      return ["होटल देख रही हूँ…", "रेट चेक कर रही हूँ…"];
+    }
+    return ["वेरो सोच रही है…", "एक पल…", "जोड़ रही हूँ…"];
+  }
+  return getStatusLines(message, { forceSearch: intent === "flights" });
 }

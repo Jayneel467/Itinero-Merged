@@ -35,10 +35,10 @@ NODE_STATUS: dict[str, str] = {
     "trip_detail_collection": "live",
     "missing_field_checker": "live",
     "travel_agent_flights": "live_if_configured",  # LiteAPI
-    "travel_agent_train": "stub",
-    "travel_agent_bus": "stub",
-    "hotel_agent": "stub",  # LiteAPI hotels not wired yet — honest empty
-    "visa_checker_agent": "future_v1_1",
+    "travel_agent_train": "live_if_configured",  # Vero search_trains / IRCTC handoff
+    "travel_agent_bus": "live_if_configured",  # Vero search_buses
+    "hotel_agent": "live_if_configured",  # LiteAPI structured hotel search/book
+    "visa_checker_agent": "live_if_configured",  # Vero check_visa
     "research_dispatch": "live",
     "research_join": "live",
     "present_options": "live",
@@ -969,7 +969,7 @@ async def research_dispatch(
         )
 
     def websearch_sync() -> BranchResult:
-        reply, _path, _routed, missing = websearch_fn(
+        reply, _path, _routed, missing, *_rest = websearch_fn(
             (
                 f"Brief travel safety / POI / news notes for a trip "
                 f"{slots.origin} to {slots.destination} around {slots.depart_date}. "

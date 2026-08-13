@@ -136,8 +136,8 @@ export default function HotelsPage() {
           <div className="mt-6 rounded-[20px] border border-[#FFE1CB] bg-[#FEFAF4] p-5">
             <p className="font-bold text-navy">Selected: {selected.name}</p>
             <p className="mt-1 text-[13px] text-muted">
-              Hotel checkout is a stub — same pattern as flights for later
-              LiteAPI / hotel_research_agent wiring.
+              Hotel checkout is a stub - wire to supervisor `/api/hotels/*` when
+              this Next.js shell is promoted.
             </p>
           </div>
         )}

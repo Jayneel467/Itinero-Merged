@@ -6,7 +6,7 @@ type AuthControlsProps = {
   compact?: boolean;
 };
 
-/** Demo stub — Clerk temporarily disabled so local testing works. */
+/** Demo stub - Clerk temporarily disabled so local testing works. */
 export function AuthControls({ compact = false }: AuthControlsProps) {
   return (
     <Link

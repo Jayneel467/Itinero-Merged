@@ -33,6 +33,9 @@
 .sidebar {
   width: 400px;
   flex-shrink: 0;
+  position: sticky;
+  top: 88px;
+  align-self: flex-start;
 }
 
 @media (max-width: 1024px) {

@@ -321,7 +321,7 @@ export default function ManualBookClient() {
                 Book flights
               </h1>
               <p className="mt-1 text-[14px] text-white/70">
-                Forms only — synced to the same LiteAPI session as AI booking.
+                Forms only - synced to the same LiteAPI session as AI booking.
               </p>
             </div>
             <div className="p-6 md:p-8">
@@ -604,7 +604,7 @@ export default function ManualBookClient() {
                 k="Amount"
                 v={inr(selected.price * adults, selected.currency)}
               />
-              <Row k="Session" v={sessionId || "—"} />
+              <Row k="Session" v={sessionId || "-"} />
             </dl>
             <button
               type="button"
@@ -630,7 +630,7 @@ export default function ManualBookClient() {
             <h2 className="text-[22px] font-black text-navy">Payment</h2>
             <p className="mt-2 text-[14px] text-muted">
               LiteAPI Payment SDK path (`LITEAPI_USE_PAYMENT_SDK=true`). Card UI
-              mounts when LiteAPI returns a publishable key on prebook — we never
+              mounts when LiteAPI returns a publishable key on prebook - we never
               store card data in this app.
             </p>
             <div className="mt-4 rounded-[16px] bg-white p-4 text-[14px]">
@@ -647,7 +647,7 @@ export default function ManualBookClient() {
                 v={
                   prebookInfo?.publishable_key
                     ? `${String(prebookInfo.publishable_key).slice(0, 8)}…`
-                    : "Not returned yet — complete in sandbox / enable SDK keys"
+                    : "Not returned yet - complete in sandbox / enable SDK keys"
                 }
               />
             </div>

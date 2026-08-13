@@ -1,7 +1,9 @@
 """Business logic layer for flight operations."""
 
 import asyncio
+import re
 from typing import Any
+from collections import defaultdict
 
 from flight_agent.config import Settings, get_settings
 from flight_agent.exceptions import LiteAPIError, ValidationError
@@ -23,6 +25,99 @@ from flight_agent.models.liteapi import (
 from flight_agent.providers.liteapi_provider import LiteAPIProvider
 
 logger = get_logger(__name__)
+
+
+def _money_amount(value: Any) -> Any:
+    """Pull a numeric amount from LiteAPI money / pricing.display shapes."""
+    if value is None or isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    if isinstance(value, dict):
+        for key in ("amount", "total", "value"):
+            if value.get(key) is not None:
+                return _money_amount(value.get(key))
+        display = value.get("display") or value.get("pricing")
+        if isinstance(display, dict):
+            return _money_amount(display.get("amount") if "amount" in display else display)
+        pricing = value.get("pricing")
+        if isinstance(pricing, dict):
+            return _money_amount(pricing.get("display") or pricing)
+    return None
+
+
+def _money_currency(value: Any, fallback: Any = None) -> Any:
+    if isinstance(value, dict):
+        for key in ("currency", "currencyCode"):
+            if value.get(key):
+                return value.get(key)
+        display = value.get("display")
+        if isinstance(display, dict) and display.get("currency"):
+            return display.get("currency")
+        pricing = value.get("pricing")
+        if isinstance(pricing, dict):
+            return _money_currency(pricing.get("display") or pricing, fallback)
+    return fallback
+
+
+def _extract_cancel_payload(raw: Any) -> dict[str, Any]:
+    """Normalize LiteAPI cancel + pre-cancel quote envelopes into a flat dict.
+
+    POST /cancellations → flat cancellation_fee / refund_amount.
+    GET /cancellations  → nested refund / penalty (+ isRefundable, isVoidable).
+    """
+    if not isinstance(raw, dict):
+        return {}
+    payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+    if isinstance(raw.get("data"), list) and raw["data"] and isinstance(raw["data"][0], dict):
+        first = raw["data"][0]
+        payload = first.get("cancellation") or first.get("quote") or first
+    if not isinstance(payload, dict):
+        return {}
+    vouchers = payload.get("vouchers") or payload.get("voucher") or []
+    if isinstance(vouchers, dict):
+        vouchers = [vouchers]
+    if not isinstance(vouchers, list):
+        vouchers = []
+
+    fee = payload.get("cancellation_fee")
+    if fee is None:
+        fee = payload.get("cancellationFee")
+    if fee is None:
+        fee = _money_amount(payload.get("penalty") or payload.get("penalties"))
+
+    refund = payload.get("refund_amount")
+    if refund is None:
+        refund = payload.get("refundAmount")
+    if refund is None:
+        refund = _money_amount(payload.get("refund"))
+
+    currency = (
+        payload.get("currency")
+        or _money_currency(payload.get("refund"))
+        or _money_currency(payload.get("penalty"))
+    )
+
+    return {
+        "status": payload.get("status"),
+        "cancellation_fee": fee,
+        "refund_amount": refund,
+        "currency": currency,
+        "destination": payload.get("destination") or payload.get("refund_destination"),
+        "vouchers": vouchers,
+        "http_status": raw.get("http_status"),
+        "cancel_intent_at": payload.get("cancelIntentAt") or payload.get("cancel_intent_at"),
+        "is_refundable": payload.get("isRefundable")
+        if isinstance(payload.get("isRefundable"), bool)
+        else payload.get("is_refundable"),
+        "is_voidable": payload.get("isVoidable")
+        if isinstance(payload.get("isVoidable"), bool)
+        else payload.get("is_voidable"),
+        "confidence": payload.get("confidence"),
+    }
 
 # Common city names to IATA codes (avoids an extra LiteAPI lookup when possible)
 CITY_IATA: dict[str, str] = {
@@ -70,16 +165,460 @@ KNOWN_IATA: frozenset[str] = frozenset(
     {
         "BOM", "DEL", "BLR", "MAA", "CCU", "HYD", "PNQ", "GOI", "AMD", "COK",
         "JAI", "LKO", "GAU", "IXC", "BBI", "TRV", "VNS", "PAT", "IDR", "NAG",
-        "STV", "SXR", "ATQ", "DXB", "AUH", "SHJ", "DOH", "JFK", "EWR", "LGA",
+        "STV", "GOX", "SXR", "ATQ", "DXB", "AUH", "SHJ", "DOH", "JFK", "EWR", "LGA",
         "LAX", "SFO", "ORD", "LHR", "LGW", "CDG", "AMS", "FRA", "SIN", "BKK",
         "HKG", "NRT", "HND", "ICN", "KUL", "SYD", "MEL", "IST", "FCO", "MAD",
         "BCN", "MIA", "SEA", "BOS", "DFW", "DEN", "ATL", "YYZ", "YVR",
     }
 )
 
-# Return the full result set (sorted cheapest-first) so the UI can page/filter
-# client-side. Kept as a generous safety cap rather than a small display limit.
-MAX_OFFERS_RETURNED = 250
+# Return a broad result set (sorted cheapest-first) so the UI can page/filter
+# client-side. Cap is a safety limit — diversify so one airline can't wipe others.
+MAX_OFFERS_RETURNED = 80
+
+# Prefer these carriers when seeding diversity (India domestic especially).
+# LiteAPI often floods results with Air India fare-family variants and buries LCCs.
+# Match on IATA marketing code OR canonical display name.
+_AIRLINE_PRIORITY_CODES = (
+    "6E",  # IndiGo
+    "QP",  # Akasa
+    "SG",  # SpiceJet
+    "IX",  # Air India Express
+    "UK",  # Vistara
+    "AI",  # Air India
+    "9I",  # Alliance Air
+)
+
+_AIRLINE_CODE_NAMES: dict[str, str] = {
+    "6E": "IndiGo",
+    "QP": "Akasa Air",
+    "SG": "SpiceJet",
+    "IX": "Air India Express",
+    "AI": "Air India",
+    "UK": "Vistara",
+    "9I": "Alliance Air",
+    "S5": "Star Air",
+    "OG": "Flybig",
+    "2T": "TruJet",
+    "G8": "Go First",
+    "I5": "AirAsia India",
+    "EK": "Emirates",
+    "EY": "Etihad Airways",
+    "QR": "Qatar Airways",
+    "SQ": "Singapore Airlines",
+    "TG": "Thai Airways",
+    "BA": "British Airways",
+    "LH": "Lufthansa",
+    "AF": "Air France",
+    "KL": "KLM",
+    "TK": "Turkish Airlines",
+    "CX": "Cathay Pacific",
+    "MH": "Malaysia Airlines",
+    "UL": "SriLankan Airlines",
+    "WY": "Oman Air",
+    "FZ": "flydubai",
+    "XY": "flynas",
+    "J9": "Jazeera Airways",
+    "G9": "Air Arabia",
+}
+
+_AIRLINE_NAME_ALIASES: tuple[tuple[str, str], ...] = (
+    ("indigo", "IndiGo"),
+    ("akasa air", "Akasa Air"),
+    ("akasa", "Akasa Air"),
+    ("spice jet", "SpiceJet"),
+    ("spicejet", "SpiceJet"),
+    ("air india express", "Air India Express"),
+    ("airindia express", "Air India Express"),
+    ("vistara", "Vistara"),
+    ("air india", "Air India"),
+    ("alliance air", "Alliance Air"),
+    ("go first", "Go First"),
+    ("goair", "Go First"),
+)
+
+
+def _normalize_airline_code(raw: Any) -> str:
+    s = str(raw or "").strip().upper()
+    if len(s) == 2 and s.isalnum():
+        return s
+    m = re.match(r"^([A-Z0-9]{2})\b", s)
+    return m.group(1) if m else ""
+
+
+def _canonicalize_airline(name: Any, code: Any = None) -> tuple[str, str]:
+    """Return (display_name, iata_code) with stable identity across LiteAPI shapes."""
+    c = _normalize_airline_code(code) or _normalize_airline_code(name)
+    if c and c in _AIRLINE_CODE_NAMES:
+        return _AIRLINE_CODE_NAMES[c], c
+
+    n = str(name or "").strip()
+    if not n:
+        return (c or "Airline"), c
+
+    key = re.sub(r"\s+", " ", n.lower())
+    for alias, canon in _AIRLINE_NAME_ALIASES:
+        if key == alias or key.startswith(alias + " "):
+            # Prefer express before plain Air India when matching substrings
+            return canon, c or next(
+                (code for code, nm in _AIRLINE_CODE_NAMES.items() if nm == canon),
+                "",
+            )
+    # Exact alias contains (e.g. "Indigo Airlines")
+    for alias, canon in _AIRLINE_NAME_ALIASES:
+        if alias in key:
+            return canon, c or next(
+                (code for code, nm in _AIRLINE_CODE_NAMES.items() if nm == canon),
+                "",
+            )
+    return n, c
+
+
+def _outbound_segs(offer: dict[str, Any]) -> list[dict[str, Any]]:
+    segs = list(offer.get("segments_summary") or [])
+    outbound = [s for s in segs if str(s.get("direction") or "").upper() != "INBOUND"]
+    return outbound or segs
+
+
+_FAKE_AIRLINE_RE = re.compile(
+    r"nuit[eé]e|nuitee|\bsandbox\b|test\s*air|dummy\s*air|fake\s*air|mock\s*air",
+    re.I,
+)
+_FAKE_AIRLINE_CODES = frozenset({"ND"})
+
+
+def _is_fake_airline(name: Any = None, code: Any = None, flight_number: Any = None) -> bool:
+    n = str(name or "")
+    c = str(code or "").strip().upper()
+    fn = str(flight_number or "").strip().upper().replace(" ", "")
+    if _FAKE_AIRLINE_RE.search(n):
+        return True
+    if c in _FAKE_AIRLINE_CODES:
+        return True
+    if fn.startswith("ND"):
+        return True
+    return False
+
+
+def _offer_airline_name(offer: dict[str, Any]) -> str:
+    segs = _outbound_segs(offer)
+    if segs:
+        name, _code = _canonicalize_airline(
+            segs[0].get("airline") or segs[0].get("operating_airline"),
+            segs[0].get("airline_code"),
+        )
+        return name
+    return "Airline"
+
+
+def _schedule_fingerprint(offer: dict[str, Any]) -> str:
+    """One key per marketed flight schedule (same plane/times; fares may differ)."""
+    segs = _outbound_segs(offer)
+    if not segs:
+        return str(offer.get("offer_id") or id(offer))
+    first, last = segs[0], segs[-1]
+    code = _normalize_airline_code(
+        first.get("airline_code") or first.get("airline")
+    ) or str(first.get("airline") or "").upper()
+    return "|".join(
+        [
+            code,
+            str(first.get("flight_number") or "").upper(),
+            str(first.get("departure") or "")[:16],
+            str(last.get("arrival") or "")[:16],
+            str(len(segs)),
+        ]
+    )
+
+
+# Cap fare rows per schedule so Air India branded-fare floods don't explode the UI.
+_MAX_FARES_PER_SCHEDULE = 8
+
+
+def _coerce_seats_remaining(value: Any) -> int | None:
+    """Only pass through a real positive seat count from LiteAPI — never invent."""
+    if value is None or value is False:
+        return None
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    if n <= 0:
+        return None
+    # Guard against junk sentinels
+    if n > 500:
+        return None
+    return n
+
+
+def _extract_seats_remaining(offer: dict[str, Any], fare: dict[str, Any] | None = None) -> int | None:
+    """Read seatsRemaining from LiteAPI fare / segmentFares only."""
+    fare = fare or (offer.get("fare") or {})
+    direct = _coerce_seats_remaining(
+        fare.get("seatsRemaining")
+        if isinstance(fare, dict)
+        else None
+    )
+    if direct is not None:
+        return direct
+
+    # Per-segment scarcity — use the tightest (min) real value
+    mins: list[int] = []
+    for sf in offer.get("segmentFares") or []:
+        if not isinstance(sf, dict):
+            continue
+        n = _coerce_seats_remaining(sf.get("seatsRemaining"))
+        if n is not None:
+            mins.append(n)
+    if mins:
+        return min(mins)
+    return None
+
+
+def _coerce_policy_flag(value: Any) -> bool | None:
+    """Strict policy flag — never treat nonempty dicts/strings as True."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, dict):
+        for key in (
+            "allowed",
+            "refundable",
+            "changeable",
+            "isRefundable",
+            "isChangeable",
+            "permitted",
+            "possible",
+            "eligible",
+        ):
+            if key in value and value.get(key) is not None:
+                nested = _coerce_policy_flag(value.get(key))
+                if nested is not None:
+                    return nested
+        tag = value.get("refundableTag") or value.get("tag") or value.get("code")
+        if tag is not None:
+            return _coerce_policy_flag(tag)
+        return None
+    if isinstance(value, str):
+        tag = value.strip().upper().replace(" ", "_").replace("-", "_")
+        if not tag:
+            return None
+        if tag in {
+            "TRUE",
+            "YES",
+            "Y",
+            "1",
+            "REF",
+            "RFN",
+            "RFNC",
+            "REFUNDABLE",
+            "CHANGEABLE",
+            "ALLOWED",
+            "PERMITTED",
+        }:
+            return True
+        if tag in {
+            "FALSE",
+            "NO",
+            "N",
+            "0",
+            "NRF",
+            "NRFN",
+            "NONREF",
+            "NON_REFUNDABLE",
+            "NONREFUNDABLE",
+            "NON_CHANGEABLE",
+            "NONCHANGEABLE",
+            "NOT_ALLOWED",
+            "FORBIDDEN",
+        }:
+            return False
+        return None
+    return None
+
+
+def _summary_policy_hints(lines: list[str]) -> tuple[bool | None, bool | None]:
+    """Read refund/change hints from LiteAPI summary messages (danger wins)."""
+    refund: bool | None = None
+    change: bool | None = None
+    for raw in lines:
+        msg = str(raw or "").strip().lower()
+        if not msg:
+            continue
+        if any(
+            needle in msg
+            for needle in (
+                "non-refundable",
+                "non refundable",
+                "not refundable",
+                "no refund",
+            )
+        ):
+            refund = False
+        elif refund is not False and (
+            msg == "refundable"
+            or msg.startswith("refundable ")
+            or "fully refundable" in msg
+            or "free cancellation" in msg
+        ):
+            refund = True
+        if any(
+            needle in msg
+            for needle in (
+                "non-changeable",
+                "non changeable",
+                "not changeable",
+                "changes not allowed",
+                "change not allowed",
+                "no changes",
+            )
+        ):
+            change = False
+        elif change is not False and (
+            "changes allowed" in msg
+            or "changes permitted" in msg
+            or msg == "changeable"
+            or "free changes" in msg
+        ):
+            change = True
+    return refund, change
+
+
+def _extract_fare_terms(offer: dict[str, Any]) -> dict[str, Any]:
+    """Pass through LiteAPI fare terms when present — no invented policies."""
+    terms = offer.get("terms") or {}
+    if not isinstance(terms, dict):
+        return {}
+    out: dict[str, Any] = {}
+
+    lines: list[str] = []
+    summary = terms.get("summary")
+    if isinstance(summary, list) and summary:
+        for item in summary[:8]:
+            if isinstance(item, dict):
+                text = item.get("message") or item.get("text") or item.get("label")
+                if text and str(text).strip():
+                    lines.append(str(text).strip())
+            elif isinstance(item, str) and item.strip():
+                lines.append(item.strip())
+        if lines:
+            out["summary"] = lines
+
+    refundable = _coerce_policy_flag(terms.get("refundable"))
+    changeable = _coerce_policy_flag(terms.get("changeable"))
+    hint_refund, hint_change = _summary_policy_hints(lines)
+
+    # Explicit summary danger/warning beats a loose True from the boolean field
+    if hint_refund is False:
+        refundable = False
+    elif refundable is None and hint_refund is True:
+        refundable = True
+    if hint_change is False:
+        changeable = False
+    elif changeable is None and hint_change is True:
+        changeable = True
+
+    if refundable is not None:
+        out["refundable"] = refundable
+    if changeable is not None:
+        out["changeable"] = changeable
+
+    if terms.get("hasRefundFee") is True:
+        out["has_refund_fee"] = True
+    if terms.get("hasChangeFee") is True:
+        out["has_change_fee"] = True
+    return out
+
+
+def _fare_option_snapshot(offer: dict[str, Any]) -> dict[str, Any]:
+    """Slim fare row attached to a schedule card (hotel rate analogue)."""
+    return {
+        "offer_id": offer.get("offer_id"),
+        # Never invent a family name — omit / null when LiteAPI didn't send one
+        "fare_family": offer.get("fare_family") or None,
+        "cabin_class": offer.get("cabin_class"),
+        "total_price": offer.get("total_price"),
+        "currency": offer.get("currency"),
+        "price_base": offer.get("price_base"),
+        "price_taxes": offer.get("price_taxes"),
+        "price_fees": offer.get("price_fees"),
+        "baggage": offer.get("baggage"),
+        "baggage_detail": offer.get("baggage_detail"),
+        "amenities": offer.get("amenities") or [],
+        "seats_remaining": _coerce_seats_remaining(offer.get("seats_remaining")),
+        "refundable": offer.get("refundable"),
+        "changeable": offer.get("changeable"),
+        "has_refund_fee": offer.get("has_refund_fee"),
+        "has_change_fee": offer.get("has_change_fee"),
+        "terms_summary": offer.get("terms_summary"),
+    }
+
+
+def _fare_family_key(offer: dict[str, Any]) -> str:
+    family = str(offer.get("fare_family") or "").strip().lower()
+    cabin = str(offer.get("cabin_class") or "").strip().lower()
+    bag = str(offer.get("baggage") or "").strip().lower()
+    # Distinct bookable products — same family+cabin+bag collapses to cheapest.
+    return f"{family}|{cabin}|{bag}" or str(offer.get("offer_id") or id(offer))
+
+
+def _group_fares_by_schedule(
+    priced_offers: list[tuple[float, dict[str, Any]]],
+) -> list[tuple[float, dict[str, Any]]]:
+    """One card per schedule, with stacked fare_options (like hotel room rates).
+
+    Keeps every distinct fare family for the same flight times, but collapses
+    identical branded-fare clones to the cheapest. Primary offer = cheapest.
+    """
+    groups: dict[str, list[tuple[float, dict[str, Any]]]] = defaultdict(list)
+    for price, offer in priced_offers:
+        groups[_schedule_fingerprint(offer)].append((price, offer))
+
+    out: list[tuple[float, dict[str, Any]]] = []
+    for _key, items in groups.items():
+        items.sort(key=lambda item: item[0])
+        # Collapse identical fare products → cheapest
+        by_product: dict[str, tuple[float, dict[str, Any]]] = {}
+        for price, offer in items:
+            pk = _fare_family_key(offer)
+            prev = by_product.get(pk)
+            if prev is None or price < prev[0]:
+                by_product[pk] = (price, offer)
+        unique = sorted(by_product.values(), key=lambda item: item[0])
+        unique = unique[:_MAX_FARES_PER_SCHEDULE]
+
+        primary_price, primary = unique[0]
+        # Shallow-copy so we don't mutate shared refs across groups
+        primary = dict(primary)
+        primary["fare_options"] = [_fare_option_snapshot(o) for _p, o in unique]
+        primary["fare_options_count"] = len(unique)
+        out.append((primary_price, primary))
+
+    out.sort(key=lambda item: item[0])
+    return out
+
+
+# Back-compat alias used by older call sites / tests
+def _dedupe_cheapest_by_schedule(
+    priced_offers: list[tuple[float, dict[str, Any]]],
+) -> list[tuple[float, dict[str, Any]]]:
+    return _group_fares_by_schedule(priced_offers)
+
+
+def _airline_priority_key(name: str) -> tuple[int, float, str]:
+    n = str(name or "").strip()
+    canon, code = _canonicalize_airline(n, None)
+    if code and code in _AIRLINE_PRIORITY_CODES:
+        return (0, _AIRLINE_PRIORITY_CODES.index(code), canon.lower())
+    key = canon.lower()
+    for idx, pcode in enumerate(_AIRLINE_PRIORITY_CODES):
+        pname = _AIRLINE_CODE_NAMES.get(pcode, "").lower()
+        if pname and (key == pname or pname in key):
+            return (0, idx, key)
+    return (1, 999, key)
 
 
 class FlightService:
@@ -155,6 +694,9 @@ class FlightService:
         offer_id: str,
         passengers: list[PassengerSlot],
         contact: ContactSlot,
+        *,
+        voucher_code: str | None = None,
+        use_payment_sdk: bool | None = None,
     ) -> dict[str, Any]:
         """Create a prebook session with passenger and contact details."""
         prebook_passengers = [
@@ -181,12 +723,19 @@ class FlightService:
             phoneNumber=contact.phone_number,
             middleName=contact.middle_name,
         )
+        code = (voucher_code or "").strip() or None
+        sdk = (
+            self._settings.liteapi_use_payment_sdk
+            if use_payment_sdk is None
+            else bool(use_payment_sdk)
+        )
         request = PrebookRequest(
             offerId=offer_id,
             contact=prebook_contact,
             passengers=prebook_passengers,
-            usePaymentSdk=self._settings.liteapi_use_payment_sdk,
-            includeCreditBalance=not self._settings.liteapi_use_payment_sdk,
+            usePaymentSdk=sdk,
+            includeCreditBalance=not sdk,
+            voucherCode=code,
         )
 
         logger.info("flight_prebook", offer_id=offer_id[:32], passengers=len(passengers))
@@ -210,8 +759,9 @@ class FlightService:
         *,
         transaction_id: str | None = None,
         payment_method: str | None = None,
+        payment_token: str | None = None,
     ) -> dict[str, Any]:
-        """Complete booking using Payment SDK transaction ID or sandbox credit line."""
+        """Complete booking via Stripe, agency credit, or whitelabel THIRD_PARTY JWT."""
         if payment_method:
             method = payment_method
         elif transaction_id:
@@ -231,9 +781,18 @@ class FlightService:
             raise ValidationError(
                 "transaction_id is required when completing booking with Payment SDK (TRANSACTION_ID)"
             )
+        if method == PaymentMethod.THIRD_PARTY.value and not (payment_token or "").strip():
+            raise ValidationError(
+                "payment_token is required when completing booking with THIRD_PARTY (whitelabel/CMI)"
+            )
 
         try:
-            return await self._complete_with_payment(prebook_id, method, transaction_id)
+            return await self._complete_with_payment(
+                prebook_id,
+                method,
+                transaction_id,
+                payment_token=payment_token,
+            )
         except LiteAPIError as exc:
             if (
                 method == PaymentMethod.CREDIT.value
@@ -245,6 +804,7 @@ class FlightService:
                     prebook_id,
                     PaymentMethod.TRANSACTION_ID.value,
                     transaction_id,
+                    payment_token=payment_token,
                 )
             raise
 
@@ -253,10 +813,13 @@ class FlightService:
         prebook_id: str,
         method: str,
         transaction_id: str | None,
+        *,
+        payment_token: str | None = None,
     ) -> dict[str, Any]:
         payment = BookingPayment(
             method=PaymentMethod(method),
             transactionId=transaction_id,
+            token=(payment_token or None),
         )
         request = CompleteBookingRequest(prebookId=prebook_id, payment=payment)
         logger.info("flight_complete_booking", prebook_id=prebook_id, method=method)
@@ -283,22 +846,114 @@ class FlightService:
         )
         return self._normalize_booking_list(raw)
 
+    async def get_cancellation_quote(self, booking_id: str) -> dict[str, Any]:
+        """Preview LiteAPI cancel fee/refund without committing."""
+        booking = await self.get_booking(booking_id)
+        if not booking.get("found"):
+            return {
+                "ok": False,
+                "found": False,
+                "booking_id": booking_id,
+                "message": "Booking not found.",
+            }
+        if booking.get("cancel_intent_at") and "CANCEL" not in str(booking.get("status") or "").upper():
+            return {
+                "ok": True,
+                "found": True,
+                "booking_id": booking_id,
+                "status": booking.get("status"),
+                "cancel_intent_at": booking.get("cancel_intent_at"),
+                "pending": True,
+                "message": (
+                    "Cancellation already in progress with the airline. "
+                    "Connect will flip to CANCELLED when they confirm."
+                ),
+            }
+        try:
+            raw = await self._provider.get_cancellation_quote(booking_id)
+        except LiteAPIError as exc:
+            if int(exc.status_code or 0) == 409:
+                return {
+                    "ok": True,
+                    "found": True,
+                    "booking_id": booking_id,
+                    "status": booking.get("status"),
+                    "cancel_intent_at": booking.get("cancel_intent_at"),
+                    "pending": True,
+                    "message": (
+                        "Cancellation already in progress with the airline. "
+                        "Connect will flip to CANCELLED when they confirm."
+                    ),
+                }
+            return {
+                "ok": False,
+                "found": True,
+                "booking_id": booking_id,
+                "status": booking.get("status"),
+                "message": str(exc)[:240] or "Could not load cancellation quote.",
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "found": True,
+                "booking_id": booking_id,
+                "status": booking.get("status"),
+                "message": str(exc)[:240] or "Could not load cancellation quote.",
+            }
+        quote = _extract_cancel_payload(raw)
+        refund = quote.get("refund_amount")
+        fee = quote.get("cancellation_fee")
+        dest = quote.get("destination") or "original_payment"
+        lines = [
+            "LiteAPI cancel quote (estimate — final refund set when cancel completes).",
+        ]
+        if quote.get("is_voidable") is True:
+            lines.append("Within void window (isVoidable).")
+        if quote.get("is_refundable") is True:
+            lines.append("Marked refundable by supplier.")
+        elif quote.get("is_refundable") is False:
+            lines.append("Marked non-refundable — penalty may apply.")
+        if quote.get("confidence"):
+            lines.append(f"Quote confidence: {quote['confidence']}.")
+        return {
+            "ok": True,
+            "found": True,
+            "booking_id": booking_id,
+            "status": quote.get("status") or booking.get("status"),
+            "cancellation_fee": fee,
+            "refund_amount": refund,
+            "currency": quote.get("currency") or booking.get("currency"),
+            "destination": dest,
+            "vouchers": quote.get("vouchers") or [],
+            "is_refundable": quote.get("is_refundable"),
+            "is_voidable": quote.get("is_voidable"),
+            "confidence": quote.get("confidence"),
+            "pending": False,
+            "message": " ".join(lines),
+        }
+
     async def get_booking_status(self, booking_id: str) -> dict[str, Any]:
         """Retrieve booking and extract status-focused summary."""
         booking = await self.get_booking(booking_id)
+        status = str(booking.get("status") or "")
+        pending = "CANCEL" not in status.upper() and bool(
+            booking.get("cancel_intent_at") or booking.get("provider_cancel_status")
+        )
         return {
             "booking_id": booking.get("booking_id"),
             "status": booking.get("status"),
             "payment_status": booking.get("payment_status"),
             "airline_pnr": booking.get("airline_pnr"),
             "booking_ref": booking.get("booking_ref"),
+            "cancel_intent_at": booking.get("cancel_intent_at"),
+            "provider_cancel_status": booking.get("provider_cancel_status"),
+            "pending": pending,
         }
 
     async def cancel_booking(self, booking_id: str) -> dict[str, Any]:
         """
-        Cancel a flight booking via LiteAPI PUT /flights/bookings/{bookingId}.
-
-        Re-fetches the booking afterwards so the agent can report the real status.
+        Cancel via LiteAPI POST /flights/bookings/{id}/cancellations
+        (legacy PUT fallback). Re-fetches booking afterwards.
         """
         before = await self.get_booking(booking_id)
         if not before.get("found"):
@@ -323,44 +978,123 @@ class FlightService:
             }
 
         logger.info("flight_cancel_booking", booking_id=booking_id)
-        raw = await self._provider.cancel_booking(booking_id)
-        after = await self.get_booking(booking_id)
-        status = str(after.get("status") or prior_status)
-        cancelled = "CANCEL" in status.upper()
-        refund = None
-        fee = None
-        currency = None
-        if isinstance(raw, dict):
-            payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
-            if isinstance(payload, dict):
-                refund = payload.get("refund_amount") or payload.get("refundAmount")
-                fee = payload.get("cancellation_fee") or payload.get("cancellationFee")
-                currency = payload.get("currency")
-                if payload.get("status"):
-                    status = str(payload.get("status"))
-                    cancelled = "CANCEL" in status.upper() or cancelled
+        quote: dict[str, Any] = {}
+        http_status = 0
+        # Already awaiting airline confirmation — don't re-POST (LiteAPI 409)
+        if before.get("cancel_intent_at") and "CANCEL" not in prior_status.upper():
+            quote = {
+                "http_status": 202,
+                "status": prior_status,
+                "cancel_intent_at": before.get("cancel_intent_at"),
+            }
+            http_status = 202
+            after = before
+        else:
+            try:
+                raw = await self._provider.cancel_booking(booking_id)
+                quote = _extract_cancel_payload(raw)
+                http_status = int(quote.get("http_status") or 0)
+            except LiteAPIError as exc:
+                # 409 conflict: cancellation already in progress
+                if int(exc.status_code or 0) == 409:
+                    after = await self.get_booking(booking_id)
+                    quote = {
+                        "http_status": 202,
+                        "status": after.get("status") or prior_status,
+                        "cancel_intent_at": after.get("cancel_intent_at")
+                        or before.get("cancel_intent_at"),
+                    }
+                    http_status = 202
+                else:
+                    raise
+            else:
+                after = await self.get_booking(booking_id)
+
+        # LiteAPI 202 = accepted, airline still confirming. Poll briefly so Connect
+        # can flip to CANCELLED before we return when sandbox finalizes quickly.
+        status = str(after.get("status") or quote.get("status") or prior_status)
+        if http_status == 202 or (
+            "CANCEL" not in status.upper()
+            and (quote.get("cancel_intent_at") or after.get("cancel_intent_at"))
+        ):
+            for attempt in range(8):
+                await asyncio.sleep(1.5 if attempt < 4 else 2.5)
+                after = await self.get_booking(booking_id)
+                status = str(after.get("status") or status)
+                if "CANCEL" in status.upper():
+                    http_status = 200
+                    break
+
+        status = str(after.get("status") or quote.get("status") or prior_status)
+        pending = "CANCEL" not in status.upper() and (
+            http_status == 202
+            or bool(
+                quote.get("cancel_intent_at")
+                or after.get("cancel_intent_at")
+                or after.get("provider_cancel_status")
+            )
+        )
+        cancelled = (not pending) and "CANCEL" in status.upper()
+        refund = quote.get("refund_amount")
+        fee = quote.get("cancellation_fee")
+        currency = quote.get("currency") or after.get("currency") or before.get("currency")
+        destination = quote.get("destination")
+        vouchers = quote.get("vouchers") or []
+
+        # Prefer amounts from the cancel POST body once finalized
+        if cancelled:
+            if refund is None:
+                refund = quote.get("refund_amount")
+            if fee is None:
+                fee = quote.get("cancellation_fee")
+        destination = destination or quote.get("destination") or "original_payment"
+        status_u = status.upper()
+        with_charges = "CANCELLED_WITH_CHARGES" in status_u or (
+            cancelled and fee is not None and float(fee or 0) > 0
+        )
+
+        if pending:
+            message = (
+                "Cancel requested — LiteAPI accepted it (HTTP 202). "
+                "Status stays CONFIRMED on Connect until the airline finalizes; "
+                "refund is issued automatically to the original payment once CANCELLED."
+            )
+        elif with_charges:
+            message = (
+                "Booking cancelled with charges (CANCELLED_WITH_CHARGES). "
+                "LiteAPI credits any remaining refund_amount to the original payment source."
+            )
+        elif cancelled:
+            message = (
+                "Booking cancelled (CANCELLED). "
+                "LiteAPI refunds to the original payment / wallet automatically."
+            )
+        else:
+            message = (
+                "Cancellation request was sent. The booking still shows as "
+                f"{status or 'confirmed'} — keep your airline PNR handy."
+            )
 
         return {
             "cancelled": cancelled,
+            "pending": pending,
             "found": True,
             "booking_id": booking_id,
             "status": status,
             "prior_status": prior_status,
             "airline_pnr": after.get("airline_pnr") or before.get("airline_pnr"),
             "booking_ref": after.get("booking_ref") or before.get("booking_ref"),
+            "cancel_intent_at": after.get("cancel_intent_at") or quote.get("cancel_intent_at"),
+            "provider_cancel_status": after.get("provider_cancel_status"),
             "refund_amount": refund,
             "cancellation_fee": fee,
             "currency": currency,
+            "destination": destination,
+            "vouchers": vouchers,
+            "http_status": http_status or quote.get("http_status"),
             "segments_summary": after.get("segments_summary") or before.get("segments_summary"),
-            "message": (
-                "Booking cancelled successfully."
-                if cancelled
-                else (
-                    "Cancellation request was sent. The booking still shows as "
-                    f"{status or 'confirmed'} — keep your airline PNR handy and "
-                    "contact the airline if needed."
-                )
-            ),
+            "liteapi_auto_refund": True,
+            "message": message,
         }
 
     async def resolve_airport_code(self, location: str) -> str:
@@ -452,7 +1186,15 @@ class FlightService:
                         for s in segments
                         if str(s.get("direction") or "").upper() != "INBOUND"
                     ] or list(segments)
+                    first_seg = (seg_summary or outbound_segs or [{}])[0] or {}
+                    if _is_fake_airline(
+                        first_seg.get("airline") or first_seg.get("operating_airline"),
+                        first_seg.get("airline_code"),
+                        first_seg.get("flight_number"),
+                    ):
+                        continue
                     baggage = self._summarize_baggage(offer)
+                    terms = _extract_fare_terms(offer)
                     offers.append(
                         (
                             sort_price,
@@ -465,10 +1207,14 @@ class FlightService:
                                 "price_fees": display.get("fees"),
                                 "cabin_class": self._extract_cabin_class(offer, journey),
                                 "fare_family": fare.get("fareFamily") or fare.get("family"),
-                                "seats_remaining": fare.get("seatsRemaining"),
-                                "is_cheapest": offer.get("offerId")
-                                == (cheapest or {}).get("offerId")
-                                or journey.get("isCheapest"),
+                                "seats_remaining": _extract_seats_remaining(offer, fare),
+                                "refundable": terms.get("refundable"),
+                                "changeable": terms.get("changeable"),
+                                "has_refund_fee": terms.get("has_refund_fee"),
+                                "has_change_fee": terms.get("has_change_fee"),
+                                "terms_summary": terms.get("summary"),
+                                # Set after global sort — journey.isCheapest was marking every offer
+                                "is_cheapest": False,
                                 "expiration": offer.get("expiration"),
                                 "segments_summary": seg_summary,
                                 "stops": max(0, len(outbound_segs) - 1) if outbound_segs else None,
@@ -485,15 +1231,93 @@ class FlightService:
                     )
 
         offers.sort(key=lambda item: item[0])
-        trimmed = [item[1] for item in offers[:MAX_OFFERS_RETURNED]]
+        # One schedule card + stacked fare_options (hotel room rates pattern).
+        # Collapses identical fare clones; keeps distinct families (Saver/Flex/…).
+        offers = _group_fares_by_schedule(offers)
+        trimmed = self._select_diverse_offers(offers, MAX_OFFERS_RETURNED)
         for idx, offer in enumerate(trimmed, start=1):
             offer["index"] = idx
+            offer["is_cheapest"] = idx == 1
 
         return {
             "total_offers": len(offers),
             "offers": trimmed,
             "raw_count": len(raw.get("data") or []),
         }
+
+    @staticmethod
+    def _select_diverse_offers(
+        priced_offers: list[tuple[float, dict[str, Any]]],
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Keep cheap fares, but don't let one airline wipe out every other carrier.
+
+        LiteAPI often returns hundreds of fare variants from a single marketing
+        carrier. After schedule-dedupe we still seed IndiGo/Akasa/etc. early so
+        domestic LCC options aren't buried under full-service fare walls.
+        """
+        if not priced_offers:
+            return []
+
+        by_airline: dict[str, list[tuple[float, dict[str, Any]]]] = defaultdict(list)
+        for price, offer in priced_offers:
+            by_airline[_offer_airline_name(offer)].append((price, offer))
+
+        airline_order = sorted(
+            by_airline.keys(),
+            key=lambda name: (
+                _airline_priority_key(name)[0],
+                _airline_priority_key(name)[1],
+                by_airline[name][0][0] if by_airline[name] else float("inf"),
+            ),
+        )
+
+        # Always rotate airlines into the top of the list (even under the cap).
+        if len(priced_offers) <= limit:
+            if len(by_airline) <= 1:
+                return [item[1] for item in priced_offers]
+            out: list[dict[str, Any]] = []
+            queues = [list(by_airline[n]) for n in airline_order]
+            added = True
+            while added:
+                added = False
+                for q in queues:
+                    if q:
+                        out.append(q.pop(0)[1])
+                        added = True
+            return out
+
+        chosen: list[dict[str, Any]] = []
+        chosen_ids: set[str] = set()
+        # Guarantee every carrier a solid seed before filling cheapest-first.
+        per_airline = max(8, min(50, limit // max(len(airline_order), 1)))
+
+        for depth in range(per_airline):
+            for name in airline_order:
+                if len(chosen) >= limit:
+                    break
+                bucket = by_airline[name]
+                if depth >= len(bucket):
+                    continue
+                offer = bucket[depth][1]
+                oid = str(offer.get("offer_id") or id(offer))
+                if oid in chosen_ids:
+                    continue
+                chosen_ids.add(oid)
+                chosen.append(offer)
+            if len(chosen) >= limit:
+                break
+
+        for _price, offer in priced_offers:
+            if len(chosen) >= limit:
+                break
+            oid = str(offer.get("offer_id") or id(offer))
+            if oid in chosen_ids:
+                continue
+            chosen_ids.add(oid)
+            chosen.append(offer)
+
+        return chosen
 
     def _normalize_verify_result(
         self,
@@ -652,6 +1476,9 @@ class FlightService:
             "booking_id": booking.get("bookingId"),
             "status": booking.get("status"),
             "payment_status": booking.get("paymentStatus"),
+            "cancel_intent_at": booking.get("cancelIntentAt") or booking.get("cancel_intent_at"),
+            "provider_cancel_status": booking.get("providerCancelStatus")
+            or booking.get("provider_cancel_status"),
             "airline_pnr": self._extract_airline_pnr(booking),
             "booking_ref": booking.get("bookingRef"),
             "timestamp": booking.get("timestamp"),
@@ -961,16 +1788,46 @@ class FlightService:
                     "to_name": seg.get("destinationName"),
                     "departure": seg.get("departureTime"),
                     "arrival": seg.get("arrivalTime"),
-                    "airline": carrier.get("marketingName") or carrier.get("marketingCode"),
-                    "airline_code": carrier.get("marketingCode"),
+                    "airline": _canonicalize_airline(
+                        carrier.get("marketingName") or carrier.get("marketingCode"),
+                        carrier.get("marketingCode"),
+                    )[0],
+                    "airline_code": _normalize_airline_code(carrier.get("marketingCode"))
+                    or carrier.get("marketingCode"),
                     "operating_airline": carrier.get("operatingName"),
                     "logo": carrier.get("marketingLogo") or carrier.get("operatingLogo"),
-                    "flight_number": flight.get("marketingNumber"),
+                    "flight_number": FlightService._format_flight_number(
+                        carrier.get("marketingCode"),
+                        flight.get("marketingNumber") or flight.get("operatingNumber"),
+                    ),
                     "duration_minutes": duration.get("minutes"),
                     "direction": seg.get("direction"),
                 }
             )
         return summary
+
+    @staticmethod
+    def _format_flight_number(code: Any, number: Any) -> str | None:
+        """Return '6E 2324' style label from LiteAPI marketing code + number."""
+        c = _normalize_airline_code(code) or str(code or "").strip().upper()
+        if c and len(c) > 2:
+            c = ""
+        n = str(number or "").strip().upper().replace("FLIGHT ", "")
+        if not n and not c:
+            return None
+        # Already "6E2324" / "6E 2324" — airline code must start with a letter
+        # (avoid "5958" → "59 58").
+        embedded = re.match(r"^([A-Z][A-Z0-9])\s*[-–]?\s*(\d{1,5}[A-Z]?)$", n)
+        if embedded:
+            return f"{embedded.group(1)} {embedded.group(2)}"
+        digits = re.match(r"^(\d{1,5}[A-Z]?)$", n)
+        if digits and c:
+            return f"{c} {digits.group(1)}"
+        if digits:
+            return digits.group(1)
+        if c and n and not n.startswith(c):
+            return f"{c} {n}"
+        return n or c or None
 
     @staticmethod
     def _summarize_baggage(offer: dict[str, Any]) -> dict[str, Any]:
@@ -998,10 +1855,16 @@ class FlightService:
         parts: list[str] = []
         if cabin_kg is not None:
             parts.append(f"Cabin {cabin_kg:g}kg")
+        elif cabin_pieces is not None:
+            parts.append(f"Cabin {cabin_pieces} PC" if cabin_pieces != 1 else "Cabin 1 PC")
         elif bag.get("hasCarryOnBag"):
             parts.append("Cabin included")
         if checked_kg is not None:
             parts.append(f"Checked {checked_kg:g}kg")
+        elif checked_pieces is not None:
+            parts.append(
+                f"Checked {checked_pieces} PC" if checked_pieces != 1 else "Checked 1 PC"
+            )
         elif bag.get("hasCheckedBag"):
             parts.append("Checked included")
 

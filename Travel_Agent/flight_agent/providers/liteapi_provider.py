@@ -37,8 +37,19 @@ class LiteAPIProvider:
         self._api_key = self._settings.resolved_liteapi_api_key
         read_timeout = self._settings.liteapi_timeout_seconds
         self._timeout = httpx.Timeout(read_timeout, connect=5.0, write=10.0, pool=3.0)
+        self._search_timeout = httpx.Timeout(
+            max(read_timeout, float(getattr(self._settings, "liteapi_search_timeout_seconds", 90.0) or 90.0)),
+            connect=5.0,
+            write=10.0,
+            pool=3.0,
+        )
         self._max_retries = max(0, self._settings.liteapi_max_retries)
-        self._client_key = f"{self._base_url}|{self._api_key[:12]}"
+        # Include timeout so calendar (short) and search (long) don't share one client.
+        self._client_key = f"{self._base_url}|{self._api_key[:12]}|t{read_timeout}"
+        self._search_client_key = (
+            f"{self._base_url}|{self._api_key[:12]}|search"
+            f"|t{self._search_timeout.read}"
+        )
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -48,15 +59,17 @@ class LiteAPIProvider:
             "Accept-Encoding": "gzip, deflate",
         }
 
-    def _get_client(self) -> httpx.Client:
-        client = _SYNC_CLIENTS.get(self._client_key)
+    def _get_client(self, *, search: bool = False) -> httpx.Client:
+        key = self._search_client_key if search else self._client_key
+        timeout = self._search_timeout if search else self._timeout
+        client = _SYNC_CLIENTS.get(key)
         if client is None or client.is_closed:
             client = httpx.Client(
-                timeout=self._timeout,
+                timeout=timeout,
                 follow_redirects=True,
                 limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
             )
-            _SYNC_CLIENTS[self._client_key] = client
+            _SYNC_CLIENTS[key] = client
         return client
 
     async def warm_up(self) -> None:
@@ -76,6 +89,8 @@ class LiteAPIProvider:
         params: dict[str, Any] | None = None,
         retries: int | None = None,
         idempotent: bool = True,
+        search: bool = False,
+        return_status: bool = False,
     ) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
         if not self._api_key:
@@ -85,7 +100,8 @@ class LiteAPIProvider:
         if not idempotent:
             max_attempts = 1
 
-        client = self._get_client()
+        client = self._get_client(search=search)
+        read_limit = self._search_timeout.read if search else self._timeout.read
         last_exc: Exception | None = None
 
         for attempt in range(max_attempts):
@@ -107,6 +123,7 @@ class LiteAPIProvider:
                     status=response.status_code,
                     seconds=elapsed,
                     attempt=attempt + 1,
+                    search=search,
                 )
                 if (
                     response.status_code in _RETRYABLE_STATUS
@@ -122,10 +139,13 @@ class LiteAPIProvider:
                     )
                     await asyncio.sleep(delay)
                     continue
-                return self._parse_response(response, path)
+                parsed = self._parse_response(response, path)
+                if return_status and isinstance(parsed, dict):
+                    return {**parsed, "http_status": response.status_code}
+                return parsed
             except httpx.TimeoutException as exc:
                 last_exc = exc
-                logger.warning("liteapi_timeout", path=path, attempt=attempt + 1)
+                logger.warning("liteapi_timeout", path=path, attempt=attempt + 1, search=search)
                 if attempt < max_attempts - 1 and idempotent:
                     await asyncio.sleep(min(2 ** attempt * 0.4, 4.0))
                     continue
@@ -141,7 +161,7 @@ class LiteAPIProvider:
                 ) from exc
 
         raise LiteAPIError(
-            f"LiteAPI request timed out after {self._timeout.read}s",
+            f"LiteAPI request timed out after {read_limit}s",
             details={"path": path},
         ) from last_exc
 
@@ -193,7 +213,18 @@ class LiteAPIProvider:
 
     async def search_flights(self, request: FlightSearchRequest) -> dict[str, Any]:
         payload = request.model_dump(by_alias=True, exclude_none=True)
-        return await self._request("POST", "/flights/rates", json_body=payload, idempotent=True)
+        # Never constrain maxStops — connecting itineraries must be returned.
+        # LiteAPI: omit maxStops (or -1) = any number of stops.
+        filters = payload.get("filters")
+        if isinstance(filters, dict):
+            filters = {k: v for k, v in filters.items() if k != "maxStops"}
+            if filters:
+                payload["filters"] = filters
+            else:
+                payload.pop("filters", None)
+        return await self._request(
+            "POST", "/flights/rates", json_body=payload, idempotent=True, search=True
+        )
 
     async def verify_offer(self, request: VerifyOfferRequest) -> dict[str, Any]:
         payload = request.model_dump(by_alias=True)
@@ -241,10 +272,32 @@ class LiteAPIProvider:
             params["lastName"] = last_name
         return await self._request("GET", "/flights/bookings", params=params or None, idempotent=True)
 
-    async def cancel_booking(self, booking_id: str) -> dict[str, Any]:
+    async def get_cancellation_quote(self, booking_id: str) -> dict[str, Any]:
+        """GET /flights/bookings/{id}/cancellations — preview fee/refund, no commit."""
         return await self._request(
-            "PUT", f"/flights/bookings/{booking_id}", idempotent=False
+            "GET",
+            f"/flights/bookings/{booking_id}/cancellations",
+            idempotent=True,
         )
+
+    async def cancel_booking(self, booking_id: str) -> dict[str, Any]:
+        """POST /flights/bookings/{id}/cancellations. Falls back to legacy PUT."""
+        try:
+            return await self._request(
+                "POST",
+                f"/flights/bookings/{booking_id}/cancellations",
+                idempotent=False,
+                return_status=True,
+            )
+        except LiteAPIError as exc:
+            if exc.status_code not in (404, 405, 501):
+                raise
+            return await self._request(
+                "PUT",
+                f"/flights/bookings/{booking_id}",
+                idempotent=False,
+                return_status=True,
+            )
 
     async def search_airports(self, query: str) -> dict[str, Any]:
         return await self._request(

@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- SEO -->
-    <title>Itinero — Discover More Everywhere | Flights, Hotels & AI Travel</title>
+    <title>Itinero - Discover More Everywhere | Flights, Hotels & AI Travel</title>
     <meta name="description" content="Plan your perfect trip with Itinero. Book flights, hotels, and travel packages with AI-powered assistance. Discover trending destinations and unbeatable deals." />
     <meta name="keywords" content="travel, flights, hotels, booking, AI travel, Itinero, vacation, deals" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Itinero — Discover More Everywhere" />
+    <meta property="og:title" content="Itinero - Discover More Everywhere" />
     <meta property="og:description" content="Book flights, hotels, and travel packages with AI-powered assistance." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Itinero" />
@@ -19,6 +19,21 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Prevent theme flash before React hydrates (matches useLocalStorage "theme") -->
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("theme");
+          var theme = raw ? JSON.parse(raw) : "light";
+          if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+            document.documentElement.dataset.theme = "dark";
+            document.documentElement.style.colorScheme = "dark";
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

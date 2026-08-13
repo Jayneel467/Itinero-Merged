@@ -1,0 +1,225 @@
+{
+  "id": "pkg-california-coast-sampler",
+  "slug": "california-coast-sampler",
+  "title": "California Coast Sampler",
+  "tagline": "LA energy, Pacific light, one easy west-coast loop.",
+  "overview": "5-day plan based in Los Angeles. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "beach",
+    "roadtrip"
+  ],
+  "region": "domestic",
+  "markets": [
+    "US"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Los Angeles"
+  ],
+  "recommendedDurationDays": [
+    5,
+    7
+  ],
+  "minDurationDays": 4,
+  "durationDays": 5,
+  "durationNights": 4,
+  "destinations": [
+    "Los Angeles"
+  ],
+  "flight": {
+    "gatewayAirport": "LAX",
+    "gatewayCity": "Los Angeles"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Los Angeles walk",
+    "Local food",
+    "Easy pacing"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Sep",
+    "Oct"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": false,
+  "currency": "USD",
+  "stay": {
+    "city": "Los Angeles",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Los Angeles",
+      "description": "Arrive Los Angeles in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Los Angeles icons",
+      "description": "Los Angeles icons in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Deep dive day",
+      "description": "Deep dive day in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Free day",
+      "description": "Free day in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Museum or viewpoint",
+        "Cafe stop"
+      ]
+    },
+    {
+      "day": 5,
+      "title": "Depart",
+      "description": "Depart in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Los Angeles",
+      "description": "Arrive Los Angeles in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Los Angeles icons",
+      "description": "Los Angeles icons in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Deep dive day",
+      "description": "Deep dive day in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Free day",
+      "description": "Free day in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Museum or viewpoint",
+        "Cafe stop"
+      ]
+    },
+    {
+      "day": 5,
+      "title": "Depart",
+      "description": "Depart in Los Angeles.",
+      "stayCity": "Los Angeles",
+      "anchors": [
+        "Los Angeles"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "US",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

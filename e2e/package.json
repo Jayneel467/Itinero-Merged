@@ -1,0 +1,16 @@
+{
+  "name": "itinero-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "test": "playwright test",
+    "test:itinero": "playwright test --project=itinero",
+    "test:itinero-web": "playwright test --project=itinero-web",
+    "test:ui": "playwright test --project=ui",
+    "report": "playwright show-report reports/playwright",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0"
+  }
+}

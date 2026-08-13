@@ -1,192 +1,552 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Check, Plane, Calendar, MapPin, Printer, Download, ChevronRight, Share2, Star } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Download, Share2, Ban, Mail } from "lucide-react";
 import { PageLayout } from "@/components/layout";
+import { useCurrency } from "@/context/CurrencyContext";
+import { useVeroUi } from "@/context/VeroUiContext";
+import { describeAirport, findAirportByCode } from "@/constants/airports";
+import { downloadBookingConfirmationPdf } from "@/features/booking/utils/bookingConfirmationPdf";
+import { sendBookingEmail } from "@/features/booking/services/paymentService";
+import { tripService } from "@/features/trips/tripService";
+import { isSupplierBookingId, pickSupplierBookingId } from "@/features/trips/utils/supplierBooking";
+import {
+  cancelFlightWithQuote,
+  refundPatchFromResult,
+  formatCancelResultMessage,
+} from "@/features/trips/utils/cancelFlow";
+import { likelyTerminal } from "@/features/vero/utils/airlineFacts";
+import AirlineMark from "./components/AirlineMark";
+import {
+  inferAirlineCode,
+  canonicalizeAirlineName,
+} from "./utils/airlineIdentity";
+import {
+  resolveFlightConfirmation,
+  confirmationToPdfBooking,
+  formatFlightClock,
+  formatFlightDate,
+  pickDisplayBookingRef,
+} from "./utils/flightCheckout";
+import { isKlookEnabled, klookHref } from "@/services/klookAffiliate";
+import styles from "./FlightBookingSuccessPage.module.css";
+
+function stopsLabel(stops) {
+  if (stops == null || stops === "" || stops === "-") return "Direct";
+  if (typeof stops === "number") return stops === 0 ? "Direct" : `${stops} stop${stops === 1 ? "" : "s"}`;
+  const s = String(stops).toLowerCase();
+  if (s === "0" || s.includes("non") || s.includes("direct")) return "Direct";
+  return String(stops);
+}
 
 export default function FlightBookingSuccessPage() {
+  const { state } = useLocation();
   const navigate = useNavigate();
+  const { formatMoney } = useCurrency();
+  const { openVero } = useVeroUi();
+  const veroSrc = `${import.meta.env.BASE_URL}vero-chatbot.png`;
+  const logoSrc = `${import.meta.env.BASE_URL}itinero-logo.png`;
+  const confirmation = useMemo(() => resolveFlightConfirmation(state), [state]);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState("");
+  const [cancelErr, setCancelErr] = useState("");
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
+  const [resendErr, setResendErr] = useState("");
+  const [cancelled, setCancelled] = useState(
+    String(confirmation?.liteapi?.status || confirmation?.status || "").toLowerCase().includes("cancel")
+  );
+
+  const flight = confirmation?.flight || null;
+  const travelers = Array.isArray(confirmation?.travelers) ? confirmation.travelers : [];
+  const contact = confirmation?.contact || {};
+  const paymentId = confirmation?.paymentId || null;
+  const bookingRef = pickDisplayBookingRef(
+    confirmation?.liteapi?.airline_pnr,
+    confirmation?.liteapi?.booking_ref,
+    confirmation?.bookingRef,
+    confirmation?.supplierBookingId,
+    confirmation?.liteapi?.booking_id,
+    paymentId ? `ITN-${String(paymentId).replace(/^pay_/i, "").slice(-6).toUpperCase()}` : null
+  );
+  const supplierBookingId = pickSupplierBookingId(
+    confirmation?.supplierBookingId,
+    confirmation?.liteapi?.booking_id,
+    confirmation?.liteapi?.id,
+    confirmation?.bookingRef
+  );
+  const amount = Number(confirmation?.amount) || Number(flight?.price) || 0;
+  const currency = confirmation?.currency || flight?.currencyCode || flight?.currency || "INR";
+  const paid = Boolean(paymentId);
+
+  useEffect(() => {
+    if (!confirmation?.flight) return;
+    try {
+      tripService.recordPaidFlight({
+        ...confirmation,
+        supplierBookingId: pickSupplierBookingId(
+          confirmation.supplierBookingId,
+          confirmation.liteapi?.booking_id,
+          confirmation.liteapi?.id,
+          confirmation.bookingRef
+        ),
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [confirmation]);
+
+  const recap = useMemo(() => {
+    if (!flight) return null;
+    const airlineName = canonicalizeAirlineName(
+      flight.airline?.name || (typeof flight.airline === "string" ? flight.airline : ""),
+      flight.airline?.code
+    );
+    const flightNo = flight.flightNumber || flight.flight_number || "";
+    const origin = String(flight.departure?.airport || flight.origin || "").toUpperCase();
+    const dest = String(flight.arrival?.airport || flight.destination || "").toUpperCase();
+    const originMeta = findAirportByCode(origin);
+    const destMeta = findAirportByCode(dest);
+    const originInfo = describeAirport(origin);
+    const destInfo = describeAirport(dest);
+    const airlineCode = inferAirlineCode(airlineName, flightNo, flight.airline?.code);
+    return {
+      airlineName,
+      airlineCode,
+      logo: flight.airline?.logo || flight.logo || "",
+      flightNo,
+      origin,
+      dest,
+      originCity: originMeta?.city || originInfo.city || origin,
+      destCity: destMeta?.city || destInfo.city || dest,
+      originName: originMeta?.name || originInfo.name || origin,
+      destName: destMeta?.name || destInfo.name || dest,
+      originInfo,
+      destInfo,
+      depTerm: likelyTerminal(airlineCode, origin),
+      arrTerm: likelyTerminal(airlineCode, dest),
+      depTime: formatFlightClock(
+        flight.departure?.time || flight.departureAt || flight.departure_at
+      ),
+      arrTime: formatFlightClock(
+        flight.arrival?.time || flight.arrivalAt || flight.arrival_at
+      ),
+      depDate: formatFlightDate(
+        flight.departure?.date || flight.departureAt || flight.departure_at
+      ),
+      duration: flight.duration || "-",
+      stops: stopsLabel(flight.stops),
+      cabin: flight.cabin || flight.fare_family || "Economy",
+    };
+  }, [flight]);
+
+  if (!flight || !recap) {
+    return (
+      <PageLayout>
+        <div className={styles.page}>
+          <div className={styles.empty}>
+            <p>No booking to show. Complete passenger details and card payment first - we don’t invent tickets.</p>
+            <button type="button" className={styles.navPrimary} onClick={() => navigate("/flights")}>
+              Back to flights
+            </button>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  const amountLabel = formatMoney(amount);
+  const barcodeId = String(bookingRef || paymentId || recap.flightNo || "ITINERO")
+    .replace(/[^A-Z0-9]/gi, "")
+    .toUpperCase();
+  const issuedAt = confirmation?.paidAt || confirmation?.savedAt;
+  const issuedLabel = new Date(issuedAt || Date.now()).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  async function handleSavePdf() {
+    setPdfError("");
+    setPdfBusy(true);
+    try {
+      await downloadBookingConfirmationPdf(confirmationToPdfBooking(confirmation, recap));
+    } catch (err) {
+      setPdfError(err?.message || "Could not generate PDF.");
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
+  async function handleResendEmail() {
+    const mail = String(contact.email || "").trim();
+    if (!mail || !paymentId) {
+      setResendErr("Add a contact email on passenger details to receive confirmation.");
+      return;
+    }
+    setResendBusy(true);
+    setResendErr("");
+    setResendMsg("");
+    try {
+      const paxNames = travelers
+        .map((p) => {
+          const n = [p.firstName || p.first_name, p.lastName || p.last_name]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+          return n || String(p.name || "").trim();
+        })
+        .filter(Boolean);
+      const depRaw = flight.departure?.time || flight.departureAt || flight.departure_at;
+      const arrRaw = flight.arrival?.time || flight.arrivalAt || flight.arrival_at;
+      const travelDate = String(
+        flight.departure?.date || flight.departureAt || flight.departure_at || ""
+      ).slice(0, 10);
+      const res = await sendBookingEmail({
+        kind: "flight",
+        payment_id: paymentId,
+        email: mail,
+        route: recap ? `${recap.origin} → ${recap.dest}` : undefined,
+        amount: amount || undefined,
+        currency,
+        booking_ref: bookingRef || undefined,
+        pending: !isSupplierBookingId(supplierBookingId),
+        airline: recap.airlineName,
+        flight_number: recap.flightNo || undefined,
+        depart_at: depRaw || undefined,
+        arrive_at: arrRaw || undefined,
+        travel_date: /^\d{4}-\d{2}-\d{2}$/.test(travelDate) ? travelDate : undefined,
+        origin: recap.origin || undefined,
+        destination: recap.dest || undefined,
+        duration: recap.duration !== "-" ? recap.duration : undefined,
+        cabin: recap.cabin,
+        stops: recap.stops,
+        passengers: paxNames.length ? paxNames : undefined,
+        phone: contact.phone
+          ? `+${contact.phone_country_code || contact.phoneCountryCode || "91"} ${contact.phone}`
+          : undefined,
+      });
+      if (!res?.ok) throw new Error(res?.error || res?.message || "Could not send email.");
+      setResendMsg(`Confirmation sent to ${mail}. Check spam if it doesn't arrive in a minute.`);
+    } catch (err) {
+      setResendErr(err?.message || "Could not send email.");
+    } finally {
+      setResendBusy(false);
+    }
+  }
+
+  async function handleCancel() {
+    setCancelBusy(true);
+    setCancelErr("");
+    setCancelMsg("");
+    try {
+      let res;
+      const paymentProvider = confirmation?.paymentProvider || "stripe";
+      if (isSupplierBookingId(supplierBookingId)) {
+        res = await cancelFlightWithQuote({
+          bookingId: supplierBookingId,
+          paymentId,
+          expectedAmount: amount || null,
+          paymentProvider,
+        });
+      } else if (paymentId && String(paymentId).startsWith("pay_")) {
+        setCancelErr(
+          "This looks like a legacy payment without a supplier ticket. Contact support with your booking reference for a refund."
+        );
+        return;
+      } else {
+        setCancelErr("No supplier ticket id on this confirmation - cannot cancel with LiteAPI.");
+        return;
+      }
+      if (res?.aborted) return;
+      if (!res?.ok) throw new Error(res?.error || res?.message || "Cancel failed.");
+      const patch = refundPatchFromResult(res);
+      tripService.markFlightCancelled({
+        bookingId: supplierBookingId,
+        refund: patch,
+      });
+      // Pending airline confirm ≠ fully cancelled on Connect yet
+      setCancelled(!patch.cancelPending);
+      setCancelMsg(formatCancelResultMessage(res) || "Flight cancelled.");
+    } catch (err) {
+      setCancelErr(err?.message || "Cancel failed.");
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
+  function handleShare() {
+    const text = [
+      `Itinero ${paid ? "booking" : "itinerary"} ${bookingRef || ""}`.trim(),
+      `${recap.airlineName} ${recap.flightNo}`.trim(),
+      `${recap.origin} → ${recap.dest}`,
+      amount ? amountLabel : "",
+      paymentId ? `Paid ${paymentId}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    if (navigator.share) {
+      navigator.share({ title: "Itinero booking", text }).catch(() => {});
+      return;
+    }
+    navigator.clipboard?.writeText(text);
+  }
+
+  const paxLine = travelers.length
+    ? travelers
+        .slice(0, 2)
+        .map((t, i) =>
+          `${i + 1}. ${[t.firstName, t.lastName].filter(Boolean).join(" ") || "Passenger"} | ${t.type || "adult"}${
+            t.dob ? ` | ${t.dob}` : ""
+          }`
+        )
+        .join("\n")
+    : "Lead passenger on file";
 
   return (
     <PageLayout>
-      {/* Premium Gradient Background */}
-      <div className="min-h-screen bg-gray-50 pb-[100px] relative overflow-hidden font-sans">
-        
-        {/* Dynamic Background Elements */}
-        <div className="absolute top-0 left-0 w-full h-[450px] bg-[#001439] rounded-b-[40px] md:rounded-b-[80px] z-0 overflow-hidden">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[150%] bg-gradient-to-tr from-[#F97211]/20 to-transparent blur-[120px] rounded-full mix-blend-screen pointer-events-none"></div>
-          <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[100%] bg-gradient-to-bl from-[#0052CC]/30 to-transparent blur-[100px] rounded-full mix-blend-screen pointer-events-none"></div>
-          
-          {/* Subtle Grid Pattern */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_#ffffff_1px,_transparent_1px)] [background-size:24px_24px]"></div>
-        </div>
-
-        <div className="max-w-[850px] mx-auto px-4 pt-16 relative z-10">
-          
-          {/* Success Banner */}
-          <div className="text-center mb-12 animate-in slide-in-from-top-10 fade-in duration-700">
-            <div className="relative inline-block mb-6">
-              <div className="absolute inset-0 bg-[#089C2F] blur-[20px] opacity-40 rounded-full animate-pulse"></div>
-              <div className="w-24 h-24 bg-gradient-to-tr from-[#089C2F] to-[#22c55e] rounded-full flex items-center justify-center relative z-10 shadow-2xl border-4 border-white/20">
-                <Check className="w-12 h-12 text-white stroke-[3]" />
+      <div className={styles.page}>
+        <div className={styles.sheet}>
+          <div className={styles.ticket} id="itinero-eticket">
+            <div className={styles.head}>
+              <img src={logoSrc} alt="Itinero" className={styles.wordmark} />
+              <div className={styles.headRight}>
+                <p className={styles.headTitle}>CONFIRMED E-TICKET</p>
+                <p className={styles.headMeta}>Passenger itinerary · Show at check-in</p>
+                <p className={styles.headMeta}>Issued {issuedLabel}</p>
               </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">Booking Confirmed!</h1>
-            <p className="text-white/80 text-lg md:text-xl font-medium max-w-2xl mx-auto">
-              Your epic journey awaits. We've sent the e-ticket to your email.
-            </p>
-          </div>
 
-          {/* Premium Boarding Pass Card */}
-          <div className="relative animate-in slide-in-from-bottom-16 fade-in duration-1000 delay-200">
-            {/* Top Shine Effect */}
-            <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-white/50 to-transparent z-20"></div>
+            {!paid ? (
+              <div className={styles.warn}>Payment not captured yet. Save PDF still works for this itinerary.</div>
+            ) : null}
 
-            <div className="bg-white rounded-[24px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden relative">
-              
-              {/* Header Section */}
-              <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-6 md:p-8 flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[#F97211]/10 rounded-[12px] flex items-center justify-center">
-                    <Plane className="w-6 h-6 text-[#F97211]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Booking Reference</p>
-                    <div className="text-2xl font-black text-[#001439] tracking-widest">X8Y2M9</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="inline-flex items-center gap-1.5 bg-[#089C2F]/10 text-[#089C2F] px-4 py-2 rounded-full text-sm font-bold">
-                    <div className="w-2 h-2 bg-[#089C2F] rounded-full animate-pulse"></div>
-                    Confirmed
+            <section className={styles.airlineCard}>
+              <div className={styles.airlineBlock}>
+                <AirlineMark
+                  name={recap.airlineName}
+                  code={recap.airlineCode}
+                  logo={recap.logo}
+                  flightNumber={recap.flightNo}
+                  size={40}
+                />
+                <div>
+                  <div className={styles.airlineName}>{recap.airlineName}</div>
+                  <div className={styles.flightNo}>
+                    {[recap.flightNo || recap.airlineCode, recap.cabin, recap.stops].filter(Boolean).join(" | ")}
                   </div>
                 </div>
               </div>
+              <img src={logoSrc} alt="itinero" className={styles.airlineBrand} />
+            </section>
 
-              {/* Main Flight Info Section */}
-              <div className="p-6 md:p-10 relative">
-                {/* Background Watermark */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                  <Plane size={300} className="-rotate-45" />
-                </div>
-
-                <div className="flex flex-col md:flex-row justify-between items-center relative z-10 gap-8">
-                  
-                  {/* Origin */}
-                  <div className="text-center md:text-left w-full md:w-1/3">
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Departure</p>
-                    <h2 className="text-5xl md:text-6xl font-black text-[#001439] tracking-tighter mb-2">LHR</h2>
-                    <p className="text-lg font-bold text-gray-800">London Heathrow</p>
-                    <div className="mt-4 inline-block bg-gray-50 rounded-[12px] px-4 py-2 border border-gray-100">
-                      <p className="text-xs text-gray-500 font-semibold mb-0.5">09:30 AM</p>
-                      <p className="text-sm font-bold text-[#001439]">14 Sep, Tue</p>
-                    </div>
-                  </div>
-
-                  {/* Flight Path Animation */}
-                  <div className="w-full md:w-1/3 flex flex-col items-center">
-                    <div className="bg-[#F97211]/10 text-[#F97211] px-3 py-1 rounded-full text-xs font-bold mb-4">6h 45m</div>
-                    <div className="w-full flex items-center relative">
-                      <div className="w-3 h-3 rounded-full border-2 border-[#001439] bg-white z-10"></div>
-                      <div className="flex-1 h-[2px] bg-gradient-to-r from-[#001439] via-[#F97211] to-[#001439] relative overflow-hidden">
-                         <div className="absolute inset-0 bg-white/50 w-full animate-[slideRight_2s_ease-in-out_infinite]"></div>
-                      </div>
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 z-10">
-                        <Plane className="w-6 h-6 text-[#F97211] drop-shadow-md" />
-                      </div>
-                      <div className="w-3 h-3 rounded-full border-2 border-[#001439] bg-[#001439] z-10"></div>
-                    </div>
-                    <div className="text-xs font-bold text-gray-400 mt-4 uppercase tracking-widest">Non-stop</div>
-                  </div>
-
-                  {/* Destination */}
-                  <div className="text-center md:text-right w-full md:w-1/3">
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Arrival</p>
-                    <h2 className="text-5xl md:text-6xl font-black text-[#001439] tracking-tighter mb-2">DXB</h2>
-                    <p className="text-lg font-bold text-gray-800">Dubai Intl</p>
-                    <div className="mt-4 inline-block bg-gray-50 rounded-[12px] px-4 py-2 border border-gray-100">
-                      <p className="text-xs text-gray-500 font-semibold mb-0.5">07:15 PM</p>
-                      <p className="text-sm font-bold text-[#001439]">14 Sep, Tue</p>
-                    </div>
-                  </div>
-
-                </div>
+            <div className={styles.refBar}>
+              <div>
+                <div className={styles.refLabel}>Booking reference</div>
+                <div className={styles.pnr}>{bookingRef || "-"}</div>
               </div>
-
-              {/* Tear-off Separator line */}
-              <div className="relative flex items-center">
-                <div className="absolute -left-4 w-8 h-8 bg-gray-50 rounded-full shadow-inner border-r border-gray-200"></div>
-                <div className="w-full border-t-[3px] border-dashed border-gray-200"></div>
-                <div className="absolute -right-4 w-8 h-8 bg-gray-50 rounded-full shadow-inner border-l border-gray-200"></div>
-              </div>
-
-              {/* Details & Barcode Section */}
-              <div className="bg-white p-6 md:p-10 flex flex-col md:flex-row justify-between items-center gap-8">
-                
-                <div className="w-full md:w-2/3 grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4">
-                  <div>
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Airline</p>
-                    <p className="text-sm font-black text-[#001439]">Emirates</p>
-                    <p className="text-xs font-semibold text-gray-500">EK 203</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Class</p>
-                    <p className="text-sm font-black text-[#001439]">Economy</p>
-                    <p className="text-xs font-semibold text-gray-500">Seat 12A</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Passengers</p>
-                    <p className="text-sm font-black text-[#001439]">2 Adults</p>
-                    <p className="text-xs font-semibold text-gray-500">1 Child</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Terminal</p>
-                    <p className="text-sm font-black text-[#001439]">Term 3</p>
-                    <p className="text-xs font-semibold text-gray-500">Gate 42</p>
-                  </div>
-                </div>
-
-                {/* Fake Barcode */}
-                <div className="w-full md:w-1/3 flex flex-col items-center border-t md:border-t-0 md:border-l border-gray-100 pt-6 md:pt-0 md:pl-8">
-                  <div className="h-16 w-full max-w-[200px] bg-[repeating-linear-gradient(to_right,#001439_0,#001439_2px,transparent_2px,transparent_4px,#001439_4px,#001439_5px,transparent_5px,transparent_8px,#001439_8px,#001439_12px,transparent_12px,transparent_14px)] opacity-80"></div>
-                  <p className="text-[10px] tracking-[0.3em] font-mono mt-2 text-gray-500">2938475610293</p>
-                </div>
-              </div>
-              
-              {/* Action Footer */}
-              <div className="bg-[#F0F7FF] p-6 flex flex-wrap gap-4 justify-center md:justify-between items-center border-t border-blue-100">
-                <div className="flex items-center gap-2 text-[#0052CC] font-semibold text-sm">
-                  <Star size={18} className="fill-[#0052CC]" />
-                  You earned 120 Itinero Points
-                </div>
-                <div className="flex gap-3">
-                  <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-[12px] text-sm font-bold text-[#001439] hover:bg-gray-50 hover:shadow-sm transition-all">
-                    <Share2 size={16} /> Share
-                  </button>
-                  <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-[12px] text-sm font-bold text-[#001439] hover:bg-gray-50 hover:shadow-sm transition-all">
-                    <Download size={16} /> Save PDF
-                  </button>
-                </div>
-              </div>
-
+              <span className={`${styles.badge} ${cancelled ? styles.badgeCancelled : paid ? "" : styles.badgePending}`}>
+                {cancelled ? "CANCELLED" : paid ? "PAID" : "PENDING"}
+              </span>
+              <div className={styles.refDate}>{recap.depDate || issuedLabel.split(",")[0]}</div>
             </div>
+
+            <div className={styles.route}>
+              <div>
+                <p className={styles.kicker}>Depart</p>
+                <div className={styles.time}>{recap.depTime}</div>
+                <div className={styles.iata}>{recap.origin || "-"}</div>
+                <div className={styles.city}>{recap.originCity}</div>
+                <div className={styles.aptName}>{recap.originName}</div>
+              </div>
+              <div className={styles.mid}>
+                <div className={styles.dur}>{recap.duration}</div>
+                <div className={styles.path} aria-hidden>
+                  <span className={styles.dot} />
+                </div>
+                <div className={styles.stops}>{recap.stops}</div>
+              </div>
+              <div className={styles.right}>
+                <p className={styles.kicker}>Arrive</p>
+                <div className={styles.time}>{recap.arrTime}</div>
+                <div className={styles.iata}>{recap.dest || "-"}</div>
+                <div className={styles.city}>{recap.destCity}</div>
+                <div className={styles.aptName}>{recap.destName}</div>
+              </div>
+            </div>
+
+            <div className={styles.grid2}>
+              <div className={styles.airportCell}>
+                <p className={styles.kicker}>Departure airport</p>
+                <div className={styles.cellTitle}>{recap.originInfo.fullName}</div>
+                <div className={styles.cellSub}>{recap.originInfo.location || recap.originCity}</div>
+                {recap.originInfo.terminals || recap.depTerm ? (
+                  <div className={styles.cellTerm}>
+                    {recap.originInfo.terminals ? `Terminals: ${recap.originInfo.terminals}` : `Terminal ${recap.depTerm}`}
+                    {recap.depTerm ? `\nUsual for this airline: ${recap.depTerm}` : ""}
+                  </div>
+                ) : null}
+                {recap.originInfo.tip ? <p className={styles.tip}>{recap.originInfo.tip}</p> : null}
+              </div>
+              <div className={styles.airportCell}>
+                <p className={styles.kicker}>Arrival airport</p>
+                <div className={styles.cellTitle}>{recap.destInfo.fullName}</div>
+                <div className={styles.cellSub}>{recap.destInfo.location || recap.destCity}</div>
+                {recap.destInfo.terminals || recap.arrTerm ? (
+                  <div className={styles.cellTerm}>
+                    {recap.destInfo.terminals ? `Terminals: ${recap.destInfo.terminals}` : `Terminal ${recap.arrTerm}`}
+                    {recap.arrTerm ? `\nUsual for this airline: ${recap.arrTerm}` : ""}
+                  </div>
+                ) : null}
+                {recap.destInfo.tip ? <p className={styles.tip}>{recap.destInfo.tip}</p> : null}
+              </div>
+            </div>
+
+            <div className={styles.paxCard}>
+              <div>
+                <p className={styles.kicker}>Passenger(s)</p>
+                <div className={styles.paxLine}>{paxLine}</div>
+              </div>
+              <div>
+                <p className={styles.kicker}>Contact</p>
+                <div className={styles.paxLine}>{contact.email || "-"}</div>
+                <div className={styles.cellSub}>{contact.phone ? `+91 ${contact.phone}` : "-"}</div>
+              </div>
+            </div>
+
+            <div className={styles.payRow}>
+              <div className={styles.paid}>
+                <div className={styles.paidLabel}>Amount paid</div>
+                <div className={styles.paidAmt}>{amount ? amountLabel : "-"}</div>
+                <div className={styles.paidVia}>
+                  {paymentId ? `Stripe ${paymentId}` : paid ? "Stripe / LiteAPI" : "Not captured"}
+                </div>
+              </div>
+              <div className={styles.barcodeWrap}>
+                <div className={styles.barcode} aria-hidden />
+                <div className={styles.barcodeNum}>{bookingRef || barcodeId}</div>
+              </div>
+            </div>
+
+            <div className={styles.veroHelp}>
+              <img src={veroSrc} alt="" className={styles.veroFace} />
+              <div className={styles.veroCopy}>
+                <h3>Need help? Ask Vero</h3>
+                <p>Open Itinero and tap Vero for terminals, baggage, or a hotel near arrival.</p>
+              </div>
+              <button
+                type="button"
+                className={styles.veroBtn}
+                onClick={() =>
+                  openVero(
+                    `I booked ${recap.airlineName} ${recap.flightNo || ""} ${recap.origin} to ${recap.dest} (${bookingRef || "this PNR"}). Help me with terminals, baggage, and getting into ${recap.destCity || recap.dest}.`
+                  )
+                }
+              >
+                Ask Vero
+              </button>
+            </div>
+
+            {isKlookEnabled() ? (
+              <div className={styles.klookExtras}>
+                <p className={styles.klookTitle}>Need a ride or a car in {recap.destCity}?</p>
+                <p className={styles.klookHint}>
+                  Checkout on Klook. We may earn a referral if you book.
+                </p>
+                <div className={styles.klookRow}>
+                  <a
+                    className={styles.klookBtn}
+                    href={klookHref("transfers", { city: recap.destCity, iata: recap.dest })}
+                    target="_blank"
+                    rel="sponsored noopener noreferrer"
+                  >
+                    Airport transfer
+                  </a>
+                  <a
+                    className={styles.klookBtnGhost}
+                    href={klookHref("cars", { city: recap.destCity, iata: recap.dest })}
+                    target="_blank"
+                    rel="sponsored noopener noreferrer"
+                  >
+                    Rent a car
+                  </a>
+                  <a
+                    className={styles.klookBtnGhost}
+                    href={klookHref("activities", { city: recap.destCity, iata: recap.dest })}
+                    target="_blank"
+                    rel="sponsored noopener noreferrer"
+                  >
+                    Things to do
+                  </a>
+                </div>
+              </div>
+            ) : null}
+
+            {cancelMsg ? <p className={styles.cancelOk}>{cancelMsg}</p> : null}
+            {cancelErr ? <p className={styles.pdfErr}>{cancelErr}</p> : null}
+            {resendMsg ? <p className={styles.cancelOk}>{resendMsg}</p> : null}
+            {resendErr ? <p className={styles.pdfErr}>{resendErr}</p> : null}
+            {pdfError ? <p className={styles.pdfErr}>{pdfError}</p> : null}
+
+            <footer className={styles.foot}>
+              <p>Issued by Itinero. Gate numbers appear on airport screens - we never invent them.</p>
+              <strong>itinero + Vero</strong>
+            </footer>
           </div>
 
-          {/* Bottom Navigation */}
-          <div className="mt-12 flex flex-col sm:flex-row gap-4 justify-center animate-in slide-in-from-bottom-10 fade-in duration-1000 delay-300">
-            <button 
-              onClick={() => navigate('/')}
-              className="px-8 py-4 bg-white border-2 border-[#001439] text-[#001439] rounded-[12px] font-bold hover:bg-gray-50 transition-all flex items-center justify-center group"
-            >
-              Back to Home
+          <div className={styles.btns}>
+            {(isSupplierBookingId(supplierBookingId) || paymentId) && !cancelled ? (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnCancel}`}
+                onClick={handleCancel}
+                disabled={cancelBusy}
+              >
+                <Ban size={15} /> {cancelBusy ? "Cancelling…" : "Cancel booking"}
+              </button>
+            ) : null}
+            <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={handleShare}>
+              <Share2 size={15} /> Share
             </button>
-            <button 
-              onClick={() => navigate('/flights')}
-              className="px-8 py-4 bg-[#F97211] text-white rounded-[12px] font-bold shadow-[0_10px_20px_-10px_rgba(249,114,17,0.5)] hover:bg-[#e0650e] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
+            {paid && contact.email ? (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={handleResendEmail}
+                disabled={resendBusy}
+              >
+                <Mail size={15} /> {resendBusy ? "Sending…" : "Email confirmation"}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnPdf}`}
+              onClick={handleSavePdf}
+              disabled={pdfBusy}
             >
-              Book Another Flight <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              <Download size={15} /> {pdfBusy ? "Preparing PDF…" : "Save PDF"}
             </button>
           </div>
 
+          <div className={styles.navRow}>
+            {!paid ? (
+              <button type="button" className={styles.navPrimary} onClick={() => navigate("/flights/payment")}>
+                Continue to payment
+              </button>
+            ) : null}
+            <button type="button" className={styles.navGhost} onClick={() => navigate("/trips")}>
+              My Trips
+            </button>
+            <button type="button" className={styles.navGhost} onClick={() => navigate("/")}>
+              Back to home
+            </button>
+            <button type="button" className={styles.navPrimary} onClick={() => navigate("/flights")}>
+              Book another flight
+            </button>
+          </div>
         </div>
       </div>
     </PageLayout>

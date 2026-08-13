@@ -470,7 +470,7 @@ export default function FlightOverviewPage() {
                <div className={styles.trustItem}>
                  <div className={styles.trustIcon}><HelpCircle size={16} color="#8B5CF6"/></div>
                  <div className={styles.trustTitle}>Support</div>
-                 <div className={styles.trustSub}>24/7</div>
+                 <div className={styles.trustSub}>Help centre</div>
                </div>
             </div>
 

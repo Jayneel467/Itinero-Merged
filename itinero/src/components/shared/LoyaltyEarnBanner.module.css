@@ -1,0 +1,51 @@
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(249, 114, 17, 0.28);
+  background: linear-gradient(135deg, rgba(249, 114, 17, 0.08), rgba(249, 114, 17, 0.03));
+  color: var(--color-navy, #001438);
+}
+
+.banner svg {
+  flex-shrink: 0;
+  color: var(--color-primary, #f97211);
+  margin-top: 1px;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.copy strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-muted, #637588);
+}
+
+.compact {
+  padding: 10px 12px;
+}
+
+.compact .copy strong {
+  font-size: 13px;
+}
+
+.loading {
+  opacity: 0.75;
+}
+
+.loading span {
+  font-size: 13px;
+  color: var(--color-text-muted, #637588);
+}

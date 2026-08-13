@@ -3,8 +3,11 @@ import { useNavigate } from "react-router-dom";
 import LoginModal from "./components/LoginModal";
 import "./LoginPage.css";
 
+const LOGO = `${import.meta.env.BASE_URL}itinero-logo.png`;
+const VERO = `${import.meta.env.BASE_URL}vero-chatbot.png`;
+
 /**
- * Login page — opens the existing auth modal as a dedicated route.
+ * Dedicated /login route - branded stage + auth modal.
  */
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -22,19 +25,27 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <h1>Welcome Back</h1>
-        <p className="auth-card__subtitle">
-          Sign in with your phone or Google to continue booking.
+      <div className="auth-page__glow auth-page__glow--a" aria-hidden />
+      <div className="auth-page__glow auth-page__glow--b" aria-hidden />
+
+      <div className="auth-page__stage">
+        <div className="auth-page__logo-wrap">
+          <img src={LOGO} alt="itinero" className="auth-page__logo" />
+        </div>
+        <img src={VERO} alt="" className="auth-page__vero" draggable={false} />
+        <p className="auth-page__kicker">Your trip starts here</p>
+        <h1 className="auth-page__title">
+          Welcome back to <em>itinero.</em>
+        </h1>
+        <p className="auth-page__copy">
+          Sign in with Google or a one-time email code - save trips, alerts, and deals with Vero.
         </p>
-        <button
-          type="button"
-          className="auth-card__cta"
-          onClick={() => setIsOpen(true)}
-        >
-          Continue to Sign In
+        <button type="button" className="auth-page__cta" onClick={() => setIsOpen(true)}>
+          Continue to sign in
         </button>
+        <p className="auth-page__foot">Google · Email code · No password</p>
       </div>
+
       <LoginModal
         isOpen={isOpen}
         onClose={handleClose}

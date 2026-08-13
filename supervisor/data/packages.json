@@ -1,0 +1,6744 @@
+[
+  {
+    "id": "pkg-chardham-yatra",
+    "slug": "chardham-yatra",
+    "aliases": [
+      "pkg-chardham-under-10k",
+      "chardham-under-10k"
+    ],
+    "title": "Chardham Yatra",
+    "tagline": "Four dhams, one sacred circuit — only when the calendar allows it.",
+    "overview": "Yamunotri, Gangotri, Kedarnath, and Badrinath from Haridwar. This is a route template, not a squeezed brochure. A reliable full circuit needs 9–12 days; six days is a two-dham trip.",
+    "theme": "pilgrimage",
+    "themes": [
+      "pilgrimage",
+      "hills",
+      "trekking"
+    ],
+    "region": "domestic",
+    "productType": "curated_template",
+    "travelStyle": "pilgrimage",
+    "requiredAnchors": [
+      "Yamunotri",
+      "Gangotri",
+      "Kedarnath",
+      "Badrinath"
+    ],
+    "routeConcept": [
+      "Haridwar",
+      "Yamunotri",
+      "Gangotri",
+      "Kedarnath",
+      "Badrinath",
+      "Haridwar"
+    ],
+    "recommendedDurationDays": [
+      9,
+      12
+    ],
+    "minDurationDays": 9,
+    "durationDays": 10,
+    "durationNights": 9,
+    "destinations": [
+      "Haridwar",
+      "Yamunotri",
+      "Gangotri",
+      "Kedarnath",
+      "Badrinath"
+    ],
+    "flight": {
+      "gatewayAirport": "DED",
+      "gatewayCity": "Dehradun"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "All four dhams when duration allows",
+      "Altitude-aware pacing — no Gangotri+Guptkashi squeeze",
+      "Kedarnath as a dedicated darshan day, not an attempt"
+    ],
+    "inclusions": [
+      "Validated day-by-day circuit for your dates",
+      "Live hotel stays for each base town",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights and trains to Dehradun / Haridwar",
+      "Temple special darshan fees",
+      "Helicopter tickets",
+      "Shared taxis and meals (shown as estimates)",
+      "Personal expenses and tips"
+    ],
+    "idealMonths": [
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Challenging",
+    "groupSizeHint": "Couples & small families",
+    "featured": false,
+    "stay": {
+      "city": "Haridwar",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "fallbackPlans": [
+      {
+        "id": "do_dham",
+        "title": "Yamunotri + Gangotri",
+        "anchors": [
+          "Yamunotri",
+          "Gangotri"
+        ],
+        "minDays": 5,
+        "maxDays": 7,
+        "recommendedDays": 6
+      }
+    ],
+    "groundEstimates": {
+      "currency": "INR",
+      "transfersPerPerson": [
+        9000,
+        16000
+      ],
+      "mealsPerPerson": [
+        4500,
+        8000
+      ],
+      "darshanPerPerson": [
+        0,
+        2500
+      ],
+      "notes": [
+        "Shared taxis / tempo travellers — estimate, not a live transfer booking",
+        "Kedarnath helicopter not included unless added",
+        "Special darshan not included"
+      ]
+    },
+    "knowBeforeYouGo": [
+      {
+        "id": "id",
+        "title": "Government ID",
+        "body": "Carry a government photo ID for hotels and yatra registration. Indian travelers do not need immigration documents for this domestic trip."
+      },
+      {
+        "id": "altitude",
+        "title": "Altitude",
+        "body": "Kedarnath and Badrinath sit above 3,000m. Plan rest after darshan days."
+      },
+      {
+        "id": "roads",
+        "title": "Road conditions",
+        "body": "Hill roads close for landslides and weather. Keep buffers. Gangotri darshan plus a Guptkashi transfer on the same day is not reliable."
+      },
+      {
+        "id": "season",
+        "title": "Temple opening season",
+        "body": "Char Dham temples follow a seasonal opening calendar. Confirm dates for your window before you travel."
+      },
+      {
+        "id": "weather",
+        "title": "Weather",
+        "body": "Afternoons can turn wet; nights are cold even in summer. Kedarnath is weather-dependent."
+      },
+      {
+        "id": "trek",
+        "title": "Trekking intensity",
+        "body": "The Kedarnath trek is steep. Helicopter is optional, waitlisted, and not assumed."
+      },
+      {
+        "id": "registration",
+        "title": "Registration",
+        "body": "Some stretches require biometric / online yatra registration before hill transfers."
+      },
+      {
+        "id": "heli",
+        "title": "Helicopter",
+        "body": "Kedarnath heli inventory is limited and cancels often. Not included unless you add it."
+      },
+      {
+        "id": "kit",
+        "title": "Warm clothing",
+        "body": "Layers, rain shell, sturdy shoes. Nights at Barkot, Guptkashi, and Joshimath drop quickly."
+      },
+      {
+        "id": "mobile",
+        "title": "Mobile connectivity",
+        "body": "Coverage is patchy above Uttarkashi and around Kedarnath. Download offline maps."
+      },
+      {
+        "id": "emergency",
+        "title": "Emergency facilities",
+        "body": "Medical posts on the yatra routes are basic. Serious issues mean descend toward Guptkashi, Joshimath, or Dehradun."
+      }
+    ],
+    "itinerary": [],
+    "currency": "INR",
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 80,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-kedarnath-express",
+    "slug": "kedarnath-express",
+    "title": "Kedarnath Express",
+    "tagline": "A focused mountain pilgrimage with room to breathe.",
+    "theme": "pilgrimage",
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 3,
+    "durationDays": 4,
+    "destinations": [
+      "Haridwar",
+      "Guptkashi",
+      "Kedarnath"
+    ],
+    "flight": {
+      "gatewayAirport": "DED",
+      "gatewayCity": "Dehradun"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Short 4-day Kedarnath focus",
+      "Base stay near Guptkashi",
+      "Clear trek / heli decision points"
+    ],
+    "inclusions": [
+      "Curated Kedarnath itinerary",
+      "Live hotels for Haridwar (1N) + Guptkashi (2N)",
+      "Package confirmation with day plan"
+    ],
+    "exclusions": [
+      "Helicopter tickets",
+      "Pony / palki charges",
+      "Flights to Dehradun / Haridwar"
+    ],
+    "idealMonths": [
+      "May",
+      "Jun",
+      "Sep"
+    ],
+    "difficulty": "Challenging",
+    "groupSizeHint": "Fit travellers",
+    "goodToKnow": [
+      "Start early on darshan day.",
+      "Weather can close the trail — keep flexible plans."
+    ],
+    "featured": true,
+    "stay": {
+      "city": "Haridwar",
+      "minStars": 3,
+      "note": "Multi-city: Haridwar (1N) + Guptkashi (2N) from itinerary"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Haridwar arrival",
+        "description": "Settle in, temple evening, prepare for the drive.",
+        "stayCity": "Haridwar"
+      },
+      {
+        "day": 2,
+        "title": "Drive to Guptkashi",
+        "description": "Hill transfer and rest at base for Kedarnath.",
+        "stayCity": "Guptkashi"
+      },
+      {
+        "day": 3,
+        "title": "Kedarnath darshan",
+        "description": "Trek or heli window for darshan; overnight back at base.",
+        "stayCity": "Guptkashi"
+      },
+      {
+        "day": 4,
+        "title": "Return to plains",
+        "description": "Descend toward Haridwar / Dehradun for onward travel.",
+        "stayCity": "Haridwar"
+      }
+    ],
+    "themes": [
+      "pilgrimage",
+      "hills",
+      "hiking"
+    ],
+    "overview": "A focused mountain pilgrimage with room to breathe.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      4,
+      4
+    ],
+    "minDurationDays": 3,
+    "requiredAnchors": [
+      "Kedarnath"
+    ],
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-varanasi-weekend",
+    "slug": "varanasi-weekend",
+    "title": "Varanasi Sacred Weekend",
+    "tagline": "Ghats, aarti, and slow mornings by the Ganga.",
+    "theme": "pilgrimage",
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 2,
+    "durationDays": 3,
+    "destinations": [
+      "Varanasi"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1561359313-0639aad49c0c?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1561359313-0639aad49c0c?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Sunrise boat on the Ganga",
+      "Evening Ganga Aarti",
+      "Compact 3-day plan"
+    ],
+    "inclusions": [
+      "Curated Varanasi itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Boat fees",
+      "Flights / trains",
+      "Guide fees"
+    ],
+    "idealMonths": [
+      "Oct",
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Anyone",
+    "goodToKnow": [
+      "Dress modestly near temples.",
+      "Keep valuables close in old city lanes."
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Varanasi",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & evening aarti",
+        "description": "Check in near the ghats. Sunset walk and Dashashwamedh Aarti.",
+        "stayCity": "Varanasi"
+      },
+      {
+        "day": 2,
+        "title": "Sunrise boat & temples",
+        "description": "Dawn boat ride, Kashi Vishwanath corridor, Banaras lanes.",
+        "stayCity": "Varanasi"
+      },
+      {
+        "day": 3,
+        "title": "Sarnath & depart",
+        "description": "Morning Sarnath, then checkout and onward travel.",
+        "stayCity": "Varanasi"
+      }
+    ],
+    "themes": [
+      "pilgrimage",
+      "culture",
+      "city"
+    ],
+    "overview": "Ghats, aarti, and slow mornings by the Ganga.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      3,
+      3
+    ],
+    "minDurationDays": 3,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-goa-long-weekend",
+    "slug": "goa-long-weekend",
+    "title": "Goa Long Weekend",
+    "tagline": "Beach mornings, soft nights, zero overplanning.",
+    "overview": "A four-day North Goa escape built around one solid stay, a proper beach loop, and one slower Old Goa morning — without stuffing every hour. You get a curated day plan from Itinero; the hotel is quoted and booked live for your dates.",
+    "theme": "beach",
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 3,
+    "durationDays": 4,
+    "destinations": [
+      "North Goa",
+      "Old Goa"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "North Goa beach stretch at your pace",
+      "Old Goa churches half-day",
+      "Sunset shack dinner built into Day 1",
+      "Live hotel stay you can swap before booking"
+    ],
+    "inclusions": [
+      "Day-by-day Goa itinerary curated by Itinero",
+      "3-night live hotel stay for your selected dates",
+      "Suggested beach / Old Goa pacing (no forced group tours)",
+      "Hotel swap before you pay",
+      "Booking confirmation with itinerary snapshot"
+    ],
+    "exclusions": [
+      "Flights and airport transfers",
+      "Scooter, cab, or bike hire",
+      "Meals not listed on your hotel rate",
+      "Water sports, boat trips, and entry tickets",
+      "Travel insurance"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Friends & couples (2–4)",
+    "goodToKnow": [
+      "From-price is a marketing floor for the package lane — live hotel totals change with dates, occupancy, and hotel choice.",
+      "Christmas / NYE weekends sell out early; book the stay as soon as dates are firm.",
+      "Keep one afternoon empty — Goa works better with slack than a packed checklist.",
+      "Best weather window is roughly November–March; monsoon months are greener but wetter."
+    ],
+    "featured": true,
+    "stay": {
+      "city": "Goa",
+      "areaHint": "Prefer Calangute / Candolim / Baga belt for this itinerary",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & beach settle-in",
+        "description": "Land in Goa, transfer to your stay, and keep the first afternoon light. Unpack, swim if the pool or beach is calling, then walk to a nearby shack for sunset and seafood — no agenda beyond arriving properly.",
+        "activities": [
+          "Airport / station arrival and check-in",
+          "Pool or beach time near the stay",
+          "Sunset at a beach shack"
+        ],
+        "meals": "Dinner on your own",
+        "stayCity": "North Goa"
+      },
+      {
+        "day": 2,
+        "title": "North Goa beach loop",
+        "description": "Classic North Goa stretch — Baga, Calangute, and Anjuna — at whatever pace you want. Morning swim, late breakfast, beach hopping by scooter or cab, optional water sports, and an easy evening back near your hotel.",
+        "activities": [
+          "Morning swim / beach walk",
+          "Baga → Calangute stretch",
+          "Anjuna / Vagator lookout stop",
+          "Optional water sports (pay locally)"
+        ],
+        "meals": "Breakfast (if included in hotel rate)",
+        "stayCity": "North Goa"
+      },
+      {
+        "day": 3,
+        "title": "Old Goa morning, soft beach evening",
+        "description": "Swap the beach for heritage in the morning: Basilica of Bom Jesus and Sé Cathedral in Old Goa, maybe a quick Fontainhas walk if you still have energy. Afternoon returns to a quieter beach pocket — no FOMO, just shade and sea.",
+        "activities": [
+          "Old Goa churches (Bom Jesus + Sé Cathedral)",
+          "Optional Fontainhas / Panjim stroll",
+          "Quiet beach evening near the stay"
+        ],
+        "meals": "Breakfast (if included in hotel rate)",
+        "stayCity": "North Goa"
+      },
+      {
+        "day": 4,
+        "title": "Brunch & depart",
+        "description": "Slow morning — brunch near the hotel if checkout allows, last beach walk, then transfer to the airport or station. Buffer time matters in Goa traffic; leave earlier than you think.",
+        "activities": [
+          "Brunch / late checkout if available",
+          "Transfer to airport or railway station"
+        ],
+        "meals": "Brunch on your own",
+        "stayCity": "North Goa"
+      }
+    ],
+    "themes": [
+      "beach",
+      "family",
+      "food"
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      4,
+      4
+    ],
+    "minDurationDays": 3,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-andaman-escape",
+    "slug": "andaman-escape",
+    "title": "Andaman Island Escape",
+    "tagline": "Clear water, ferry hops, and unhurried island days.",
+    "theme": "beach",
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 5,
+    "durationDays": 6,
+    "destinations": [
+      "Port Blair",
+      "Havelock"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Port Blair + Havelock split",
+      "Beach + light snorkel window",
+      "Ferry-aware day plan"
+    ],
+    "inclusions": [
+      "Curated Andaman itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights to Port Blair",
+      "Ferry tickets",
+      "Scuba certifications"
+    ],
+    "idealMonths": [
+      "Oct",
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & families",
+    "goodToKnow": [
+      "Book ferries early in peak season.",
+      "Carry cash for smaller island vendors."
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Port Blair",
+      "minStars": 3
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Port Blair arrival",
+        "description": "Cellular Jail light & sound if timing works; rest.",
+        "stayCity": "Port Blair"
+      },
+      {
+        "day": 2,
+        "title": "Ferry to Havelock",
+        "description": "Transfer to Havelock; Radhanagar sunset.",
+        "stayCity": "Havelock"
+      },
+      {
+        "day": 3,
+        "title": "Havelock beaches",
+        "description": "Elephant Beach / snorkel window; slow evening.",
+        "stayCity": "Havelock"
+      },
+      {
+        "day": 4,
+        "title": "Island free day",
+        "description": "Optional kayak or pure beach idle.",
+        "stayCity": "Havelock"
+      },
+      {
+        "day": 5,
+        "title": "Return Port Blair",
+        "description": "Ferry back; Corbyn’s Cove or local market.",
+        "stayCity": "Port Blair"
+      },
+      {
+        "day": 6,
+        "title": "Depart",
+        "description": "Airport transfer buffer and fly out.",
+        "stayCity": "Port Blair"
+      }
+    ],
+    "themes": [
+      "beach",
+      "islands",
+      "wildlife"
+    ],
+    "overview": "Clear water, ferry hops, and unhurried island days.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      6,
+      6
+    ],
+    "minDurationDays": 5,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-manali-hills",
+    "slug": "manali-hills",
+    "title": "Manali Hill Reset",
+    "tagline": "Pine air, café mornings, and one proper adventure day.",
+    "theme": "hills",
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 3,
+    "durationDays": 4,
+    "destinations": [
+      "Manali"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1605649487212-47bdab064df7?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1605649487212-47bdab064df7?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Old Manali evenings",
+      "Solang / Rohtang window",
+      "Café + forest walks"
+    ],
+    "inclusions": [
+      "Curated Manali itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Adventure activity tickets",
+      "Rohtang permits",
+      "Flights / buses"
+    ],
+    "idealMonths": [
+      "Mar",
+      "Apr",
+      "May",
+      "Oct",
+      "Nov",
+      "Dec"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Friends & couples",
+    "goodToKnow": [
+      "Rohtang access depends on permits and season.",
+      "Pack a rain jacket even in summer."
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Manali",
+      "minStars": 3
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Manali",
+        "description": "Check in, Mall Road stroll, early night.",
+        "stayCity": "Manali"
+      },
+      {
+        "day": 2,
+        "title": "Solang valley day",
+        "description": "Adventure window or viewpoint walks.",
+        "stayCity": "Manali"
+      },
+      {
+        "day": 3,
+        "title": "Old Manali soft day",
+        "description": "Cafés, Hadimba, riverside idle.",
+        "stayCity": "Manali"
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Checkout and return transfer.",
+        "stayCity": "Manali"
+      }
+    ],
+    "themes": [
+      "hills",
+      "hiking",
+      "adventure",
+      "roadtrip"
+    ],
+    "overview": "Pine air, café mornings, and one proper adventure day.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      4,
+      4
+    ],
+    "minDurationDays": 3,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-kashmir-valley",
+    "slug": "kashmir-valley",
+    "title": "Kashmir Valley Classic",
+    "tagline": "Dal Lake mornings and mountain quiet.",
+    "theme": "hills",
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 4,
+    "durationDays": 5,
+    "destinations": [
+      "Srinagar",
+      "Gulmarg",
+      "Pahalgam"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1566836610593-72a649ea71b5?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1566836610593-72a649ea71b5?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Shikara on Dal",
+      "Gulmarg day",
+      "Pahalgam valleys"
+    ],
+    "inclusions": [
+      "Curated Kashmir itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights to Srinagar",
+      "Gondola tickets",
+      "Shikara fees"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Families & couples",
+    "goodToKnow": [
+      "Check local advisories before travel.",
+      "Nights can be cold even in spring."
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Srinagar",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Srinagar & Dal Lake",
+        "description": "Arrive, Mughal gardens, evening shikara.",
+        "stayCity": "Srinagar"
+      },
+      {
+        "day": 2,
+        "title": "Gulmarg day trip",
+        "description": "Meadows and gondola window.",
+        "stayCity": "Srinagar"
+      },
+      {
+        "day": 3,
+        "title": "Pahalgam",
+        "description": "Transfer to Pahalgam; Betaab / Aru valleys.",
+        "stayCity": "Pahalgam"
+      },
+      {
+        "day": 4,
+        "title": "Valley soft day",
+        "description": "Local walks and café time.",
+        "stayCity": "Pahalgam"
+      },
+      {
+        "day": 5,
+        "title": "Return & depart",
+        "description": "Drive to Srinagar airport.",
+        "stayCity": "Srinagar"
+      }
+    ],
+    "themes": [
+      "hills",
+      "honeymoon",
+      "ski",
+      "family"
+    ],
+    "overview": "Dal Lake mornings and mountain quiet.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      5,
+      5
+    ],
+    "minDurationDays": 4,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-udaipur-honeymoon",
+    "slug": "udaipur-honeymoon",
+    "title": "Udaipur Lake Honeymoon",
+    "tagline": "Palaces, lakeside evenings, and unhurried romance.",
+    "theme": "honeymoon",
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 3,
+    "durationDays": 4,
+    "destinations": [
+      "Udaipur"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "City Palace & old town",
+      "Lake Pichola evening",
+      "One spa / slow morning"
+    ],
+    "inclusions": [
+      "Curated honeymoon itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights",
+      "Boat tickets",
+      "Spa treatments"
+    ],
+    "idealMonths": [
+      "Oct",
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples",
+    "goodToKnow": [
+      "Book lakeside stays early for weekends.",
+      "Sunset boat slots fill fast."
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Udaipur",
+      "minStars": 4,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive lakeside",
+        "description": "Check in, sunset at the lake, quiet dinner.",
+        "stayCity": "Udaipur"
+      },
+      {
+        "day": 2,
+        "title": "Palaces & old city",
+        "description": "City Palace, bazaars, café rooftops.",
+        "stayCity": "Udaipur"
+      },
+      {
+        "day": 3,
+        "title": "Boat & slow day",
+        "description": "Lake Pichola boat, spa window, free evening.",
+        "stayCity": "Udaipur"
+      },
+      {
+        "day": 4,
+        "title": "Brunch & depart",
+        "description": "Leisurely checkout and onward travel.",
+        "stayCity": "Udaipur"
+      }
+    ],
+    "themes": [
+      "honeymoon",
+      "culture",
+      "city"
+    ],
+    "overview": "Palaces, lakeside evenings, and unhurried romance.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      4,
+      4
+    ],
+    "minDurationDays": 3,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-maldives-overwater",
+    "slug": "maldives-overwater",
+    "title": "Maldives Overwater Escape",
+    "tagline": "Turquoise lagoon days — itinerary + island stay.",
+    "theme": "honeymoon",
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 4,
+    "durationDays": 5,
+    "destinations": [
+      "Malé",
+      "South Male Atoll"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Resort-paced island days",
+      "Snorkel window",
+      "Couples-first rhythm"
+    ],
+    "inclusions": [
+      "Curated Maldives stay plan",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "International flights",
+      "Seaplane / speedboat transfers",
+      "Visa if applicable"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples",
+    "goodToKnow": [
+      "Flights are separate in this version — we book the stay + plan.",
+      "Transfer type depends on resort location."
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Malé",
+      "minStars": 4
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & transfer",
+        "description": "Land in Malé, resort transfer, sunset settle-in.",
+        "stayCity": "Malé"
+      },
+      {
+        "day": 2,
+        "title": "Lagoon day",
+        "description": "Beach, pool, optional snorkel.",
+        "stayCity": "Malé"
+      },
+      {
+        "day": 3,
+        "title": "Couples free day",
+        "description": "Spa window or sandbank outing if offered.",
+        "stayCity": "Malé"
+      },
+      {
+        "day": 4,
+        "title": "Island soft day",
+        "description": "Long breakfast, photos, early night.",
+        "stayCity": "Malé"
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Transfer back to Malé airport.",
+        "stayCity": "Malé"
+      }
+    ],
+    "themes": [
+      "honeymoon",
+      "islands",
+      "luxury",
+      "beach"
+    ],
+    "overview": "Turquoise lagoon days — itinerary + island stay.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      5,
+      5
+    ],
+    "minDurationDays": 4,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-dubai-city-lights",
+    "slug": "dubai-city-lights",
+    "title": "Dubai City Lights",
+    "tagline": "Skyline nights, desert dusk, and marina mornings.",
+    "theme": "city",
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 4,
+    "durationDays": 5,
+    "destinations": [
+      "Dubai"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1518684079-3c830dcef090?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Downtown & fountain evening",
+      "Desert safari window",
+      "Marina / JBR soft morning"
+    ],
+    "inclusions": [
+      "Curated Dubai city itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "International flights",
+      "Desert safari tickets",
+      "Attraction entry fees"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Families & couples",
+    "goodToKnow": [
+      "Flights sold separately in v1.",
+      "Fridays are busy downtown — book timed entries."
+    ],
+    "featured": true,
+    "stay": {
+      "city": "Dubai",
+      "minStars": 4,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Dubai",
+        "description": "Check in, Marina walk or quiet recovery evening.",
+        "stayCity": "Dubai"
+      },
+      {
+        "day": 2,
+        "title": "Downtown icons",
+        "description": "Burj / fountain district and Dubai Mall time.",
+        "stayCity": "Dubai"
+      },
+      {
+        "day": 3,
+        "title": "Desert evening",
+        "description": "Day at leisure; optional desert safari at dusk.",
+        "stayCity": "Dubai"
+      },
+      {
+        "day": 4,
+        "title": "Old Dubai & beaches",
+        "description": "Creek / souks morning, JBR afternoon.",
+        "stayCity": "Dubai"
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Checkout and airport buffer.",
+        "stayCity": "Dubai"
+      }
+    ],
+    "themes": [
+      "city",
+      "luxury",
+      "adventure",
+      "family"
+    ],
+    "overview": "Skyline nights, desert dusk, and marina mornings.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      5,
+      5
+    ],
+    "minDurationDays": 4,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-singapore-family",
+    "slug": "singapore-family",
+    "title": "Singapore Family Circuit",
+    "tagline": "Gardens, gardens, and one proper island day.",
+    "theme": "city",
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 4,
+    "durationDays": 5,
+    "destinations": [
+      "Singapore"
+    ],
+    "coverImage": "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1565967511849-76a60a69cff7?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Gardens by the Bay",
+      "Sentosa half-day",
+      "Family-paced evenings"
+    ],
+    "inclusions": [
+      "Curated Singapore itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "International flights",
+      "Attraction tickets",
+      "Universal / Sentosa add-ons"
+    ],
+    "idealMonths": [
+      "Feb",
+      "Mar",
+      "Apr",
+      "Sep",
+      "Oct",
+      "Nov"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Families",
+    "goodToKnow": [
+      "MRT is easier than taxis for most tourist hops.",
+      "Book Gardens light show slots if visiting peak nights."
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Singapore",
+      "minStars": 4
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & Marina Bay",
+        "description": "Land, check in, and keep day one light. Stretch legs on the Marina Bay waterfront — Merlion, Helix Bridge, and the bay lights after dark — then an early night so the kids (and you) reset.",
+        "activities": [
+          "Hotel check-in and settle",
+          "Merlion Park waterfront walk",
+          "Marina Bay Sands promenade at dusk"
+        ],
+        "optionalActivities": [
+          "Helix Bridge night photo stop"
+        ],
+        "meals": [
+          "Hotel breakfast if early arrival",
+          "Dinner near Lau Pa Sat or bayfront"
+        ],
+        "pace": "easy",
+        "stayCity": "Singapore"
+      },
+      {
+        "day": 2,
+        "title": "Gardens & bayfront",
+        "description": "Full Gardens by the Bay morning — Cloud Forest and Flower Dome at a family pace — then free afternoon near the bay. Evening is for the Supertree Grove light show; book a timed slot on peak nights.",
+        "activities": [
+          "Gardens by the Bay — Cloud Forest",
+          "Flower Dome walk-through",
+          "Supertree Grove evening light show"
+        ],
+        "optionalActivities": [
+          "Marina Bay Sands SkyPark (tickets on site)"
+        ],
+        "meals": [
+          "Hotel breakfast",
+          "Lunch near Gardens / Marina Bay",
+          "Easy dinner near the hotel"
+        ],
+        "pace": "moderate",
+        "stayCity": "Singapore"
+      },
+      {
+        "day": 3,
+        "title": "Sentosa",
+        "description": "Island day without packing every ride. Cross by boardwalk or cable car, plant yourselves on Siloso Beach, then pick one paid attraction the family actually wants — Universal, SEA Aquarium, or Adventure Cove.",
+        "activities": [
+          "Sentosa boardwalk or cable car crossing",
+          "Siloso Beach swim / sand time",
+          "One Sentosa attraction of choice"
+        ],
+        "optionalActivities": [
+          "Wings of Time evening show"
+        ],
+        "meals": [
+          "Hotel breakfast",
+          "Beach / Sentosa lunch",
+          "Dinner back in town"
+        ],
+        "pace": "moderate",
+        "stayCity": "Singapore"
+      },
+      {
+        "day": 4,
+        "title": "Neighbourhoods",
+        "description": "A soft culture-and-food loop: Chinatown hawker streets, Little India color, then Orchard only if anyone still wants air-conditioned browsing. Leave gaps — Singapore rewards wandering more than checklist tourism.",
+        "activities": [
+          "Chinatown streets and temples",
+          "Little India stroll",
+          "Orchard Road soft shop (optional)"
+        ],
+        "optionalActivities": [
+          "Bugis Street / Haji Lane detour"
+        ],
+        "meals": [
+          "Hotel breakfast",
+          "Maxwell Food Centre or Chinatown hawker lunch",
+          "Dinner of choice — chilli crab if you want the classic"
+        ],
+        "pace": "moderate",
+        "stayCity": "Singapore"
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Slow checkout morning, last pastry or cafe stop, then buffer time to Changi. Leave earlier than you think — security and the jewel detour both eat the clock.",
+        "activities": [
+          "Hotel checkout",
+          "Transfer to Changi Airport"
+        ],
+        "optionalActivities": [
+          "Jewel Changi waterfall stop if timing allows"
+        ],
+        "meals": [
+          "Hotel breakfast",
+          "Airport snack / meal"
+        ],
+        "pace": "easy",
+        "stayCity": "Singapore"
+      }
+    ],
+    "themes": [
+      "family",
+      "city",
+      "food",
+      "luxury"
+    ],
+    "overview": "Gardens, gardens, and one proper island day.",
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      5,
+      5
+    ],
+    "minDurationDays": 4,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 100,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-kenya-safari",
+    "slug": "kenya-safari-classic",
+    "title": "Kenya Safari Classic",
+    "tagline": "Nairobi hub into Maasai Mara dawn drives.",
+    "theme": "safari",
+    "themes": [
+      "safari",
+      "wildlife",
+      "adventure"
+    ],
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 5,
+    "durationDays": 6,
+    "destinations": [
+      "Nairobi",
+      "Maasai Mara"
+    ],
+    "flight": {
+      "gatewayAirport": "NBO",
+      "gatewayCity": "Nairobi"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Nairobi National Park or Giraffe Centre day",
+      "Mara game drives at dawn and dusk",
+      "Yellow fever + malaria briefing on the package page"
+    ],
+    "inclusions": [
+      "Curated 6-day safari itinerary",
+      "Live hotel / lodge stay for selected dates",
+      "Package confirmation with day plan"
+    ],
+    "exclusions": [
+      "International flights to NBO",
+      "Park fees and bush flights",
+      "Malaria tablets and yellow-fever vaccine",
+      "Tips for driver-guide"
+    ],
+    "idealMonths": [
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Jan",
+      "Feb"
+    ],
+    "difficulty": "Easy–moderate",
+    "groupSizeHint": "Couples & small groups",
+    "goodToKnow": [
+      "Yellow fever is recommended even on a Nairobi + Mara trip. Carry the card.",
+      "Malaria prophylaxis is usually advised for parks, not just Nairobi city.",
+      "Kenya eTA / e-visa before you fly — do not assume visa on arrival.",
+      "Wilson Airport (WIL) is used for many Mara hops, not only NBO."
+    ],
+    "packing": [
+      "Neutral safari clothes + fleece for dawn",
+      "DEET, sunscreen, binoculars",
+      "Type G adaptor",
+      "Yellow-fever card + passport copies"
+    ],
+    "documents": [
+      "Passport (6 months)",
+      "Kenya eTA / e-visa",
+      "Yellow fever certificate if you have it",
+      "Travel insurance with evacuation"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Nairobi",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Nairobi",
+        "description": "Land NBO, hotel transfer, easy city evening.",
+        "meals": "Dinner",
+        "stayCity": "Nairobi",
+        "activities": [
+          "Immigration + eTA printout ready",
+          "Optional Giraffe Centre if you land early"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Nairobi wildlife day",
+        "description": "Nairobi National Park or Karen Blixen + craft market.",
+        "meals": "Breakfast",
+        "stayCity": "Nairobi"
+      },
+      {
+        "day": 3,
+        "title": "To the Mara",
+        "description": "Road or bush hop to Maasai Mara. Afternoon game drive.",
+        "meals": "Breakfast",
+        "stayCity": "Maasai Mara"
+      },
+      {
+        "day": 4,
+        "title": "Full safari day",
+        "description": "Dawn and dusk drives. Big-cat and migration window in season.",
+        "meals": "Breakfast",
+        "stayCity": "Maasai Mara"
+      },
+      {
+        "day": 5,
+        "title": "Mara morning + return",
+        "description": "Last drive, transfer back toward Nairobi.",
+        "meals": "Breakfast",
+        "stayCity": "Nairobi"
+      },
+      {
+        "day": 6,
+        "title": "Depart",
+        "description": "Buffer morning, fly out of NBO.",
+        "meals": "Breakfast",
+        "stayCity": "Nairobi"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      6,
+      6
+    ],
+    "minDurationDays": 5,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-bali-wellness",
+    "slug": "bali-wellness-reset",
+    "title": "Bali Wellness Reset",
+    "tagline": "Ubud temples, rice terraces, and unhurried spa days.",
+    "theme": "wellness",
+    "themes": [
+      "wellness",
+      "beach",
+      "islands",
+      "honeymoon"
+    ],
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 5,
+    "durationDays": 6,
+    "destinations": [
+      "Ubud",
+      "Bali"
+    ],
+    "flight": {
+      "gatewayAirport": "DPS",
+      "gatewayCity": "Bali"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1537996194471-e667a5d8f3e0?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1537996194471-e667a5d8f3e0?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Ubud rice terraces",
+      "Temple etiquette day",
+      "Spa / yoga window"
+    ],
+    "inclusions": [
+      "Curated Bali itinerary",
+      "Live villa or hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights to DPS",
+      "Scooter hire",
+      "Temple donations"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & solo reset",
+    "goodToKnow": [
+      "e-VOA before you fly is smoother than airport queues.",
+      "Nyepi closes the island — don't fly that day.",
+      "Dengue is real in wet season — DEET at dusk."
+    ],
+    "packing": [
+      "Sarong for temples",
+      "Reef-safe sunscreen",
+      "Mosquito repellent"
+    ],
+    "documents": [
+      "Passport 6 months",
+      "e-VOA / VOA",
+      "Return ticket"
+    ],
+    "featured": true,
+    "stay": {
+      "city": "Ubud",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Ubud",
+        "description": "Transfer from DPS, settle, evening walk.",
+        "meals": "Dinner",
+        "stayCity": "Ubud"
+      },
+      {
+        "day": 2,
+        "title": "Rice terraces & temples",
+        "description": "Tegalalang + a temple with sarong.",
+        "meals": "Breakfast",
+        "stayCity": "Ubud"
+      },
+      {
+        "day": 3,
+        "title": "Wellness day",
+        "description": "Yoga or spa morning, café-hopping afternoon.",
+        "meals": "Breakfast",
+        "stayCity": "Ubud"
+      },
+      {
+        "day": 4,
+        "title": "South coast window",
+        "description": "Uluwatu or beach club day trip.",
+        "meals": "Breakfast",
+        "stayCity": "Ubud"
+      },
+      {
+        "day": 5,
+        "title": "Free Ubud",
+        "description": "Markets, coffee, slow.",
+        "meals": "Breakfast",
+        "stayCity": "Ubud"
+      },
+      {
+        "day": 6,
+        "title": "Depart DPS",
+        "description": "Buffer for traffic to the airport.",
+        "meals": "Breakfast",
+        "stayCity": "Ubud"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      6,
+      6
+    ],
+    "minDurationDays": 5,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-leh-high-desert",
+    "slug": "leh-high-desert",
+    "title": "Leh High Desert",
+    "tagline": "Monasteries, high passes, and 48 hours to acclimatise.",
+    "theme": "trekking",
+    "themes": [
+      "trekking",
+      "hiking",
+      "adventure",
+      "hills",
+      "roadtrip"
+    ],
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 5,
+    "durationDays": 6,
+    "destinations": [
+      "Leh",
+      "Nubra",
+      "Pangong"
+    ],
+    "flight": {
+      "gatewayAirport": "IXL",
+      "gatewayCity": "Leh"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Acclimatise day 1–2",
+      "Nubra or Pangong window",
+      "Inner Line Permit handled by operator"
+    ],
+    "inclusions": [
+      "Curated Ladakh itinerary",
+      "Live Leh stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights to IXL",
+      "ILP fees",
+      "Oxygen / Diamox (doctor only)"
+    ],
+    "idealMonths": [
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep"
+    ],
+    "difficulty": "Moderate (altitude)",
+    "groupSizeHint": "Adventurous couples & friends",
+    "goodToKnow": [
+      "Leh is ~3,500 m. Rest 48 hours after flying in. No Khardung La on day 1.",
+      "Flights are weather-prone — keep a buffer day.",
+      "Diamox only if a doctor prescribes it."
+    ],
+    "packing": [
+      "Layers + down",
+      "SPF + sunglasses",
+      "Diamox only if prescribed"
+    ],
+    "documents": [
+      "Photo ID",
+      "Inner Line Permit (operator usually arranges)"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Leh",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & rest",
+        "description": "No exertion. Hydrate. Monastery viewpoint only if you feel good.",
+        "meals": "Dinner",
+        "stayCity": "Leh"
+      },
+      {
+        "day": 2,
+        "title": "Still acclimatising",
+        "description": "Shanti Stupa / local market. Early night.",
+        "meals": "Breakfast",
+        "stayCity": "Leh"
+      },
+      {
+        "day": 3,
+        "title": "Nubra or Pangong window",
+        "description": "Only if you feel well. ILP day.",
+        "meals": "Breakfast",
+        "stayCity": "Leh"
+      },
+      {
+        "day": 4,
+        "title": "Monastery circuit",
+        "description": "Hemis / Thiksey / Shey at an easy pace.",
+        "meals": "Breakfast",
+        "stayCity": "Leh"
+      },
+      {
+        "day": 5,
+        "title": "Free Leh",
+        "description": "Buffer for weather or a second valley.",
+        "meals": "Breakfast",
+        "stayCity": "Leh"
+      },
+      {
+        "day": 6,
+        "title": "Depart IXL",
+        "description": "Morning flight out.",
+        "meals": "Breakfast",
+        "stayCity": "Leh"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      6,
+      6
+    ],
+    "minDurationDays": 5,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-rishikesh-ganges",
+    "slug": "rishikesh-ganges",
+    "title": "Rishikesh Ganges Escape",
+    "tagline": "Yoga mornings, Ganga aarti, optional rafting.",
+    "theme": "adventure",
+    "themes": [
+      "adventure",
+      "wellness",
+      "pilgrimage",
+      "hiking"
+    ],
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 3,
+    "durationDays": 4,
+    "destinations": [
+      "Rishikesh"
+    ],
+    "flight": {
+      "gatewayAirport": "DED",
+      "gatewayCity": "Dehradun"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Lakshman Jhula / aarti",
+      "Optional rafting",
+      "Ashram or café wellness"
+    ],
+    "inclusions": [
+      "Curated Rishikesh itinerary",
+      "Live stay for selected dates"
+    ],
+    "exclusions": [
+      "Rafting fees",
+      "Trains / flights to DED or Haridwar"
+    ],
+    "idealMonths": [
+      "Oct",
+      "Nov",
+      "Feb",
+      "Mar"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Friends, couples, solo",
+    "goodToKnow": [
+      "Some ashrams are dry / quiet after 9pm.",
+      "Ganga is cold — rafting is seasonal."
+    ],
+    "packing": [
+      "Quick-dry layers",
+      "Temple-modest clothes",
+      "Water shoes if rafting"
+    ],
+    "documents": [
+      "Photo ID"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Rishikesh",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & aarti",
+        "description": "Check in, evening Ganga aarti.",
+        "meals": "Dinner",
+        "stayCity": "Rishikesh"
+      },
+      {
+        "day": 2,
+        "title": "Yoga or rafting",
+        "description": "Morning wellness or seasonal rafting.",
+        "meals": "Breakfast",
+        "stayCity": "Rishikesh"
+      },
+      {
+        "day": 3,
+        "title": "Beatles / cafés / hike",
+        "description": "Easy trail or café hop.",
+        "meals": "Breakfast",
+        "stayCity": "Rishikesh"
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Transfer to DED or Haridwar.",
+        "meals": "Breakfast",
+        "stayCity": "Rishikesh"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      4,
+      4
+    ],
+    "minDurationDays": 3,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-tokyo-food-city",
+    "slug": "tokyo-food-city",
+    "title": "Tokyo Food & Neon",
+    "tagline": "Neighbourhoods, bowls, and quiet shrines between the neon.",
+    "theme": "food",
+    "themes": [
+      "food",
+      "city",
+      "culture"
+    ],
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 5,
+    "durationDays": 6,
+    "destinations": [
+      "Tokyo"
+    ],
+    "flight": {
+      "gatewayAirport": "NRT",
+      "gatewayCity": "Tokyo"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "IC card day one",
+      "Tsukiji / outer market",
+      "Asakusa + Shinjuku nights"
+    ],
+    "inclusions": [
+      "Curated Tokyo itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights",
+      "JR Pass",
+      "Restaurant bookings"
+    ],
+    "idealMonths": [
+      "Mar",
+      "Apr",
+      "May",
+      "Oct",
+      "Nov"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Food-first travellers",
+    "goodToKnow": [
+      "Indian passports need a Japan visa in advance — no VOA.",
+      "Tap water is safe. Cash still useful at tiny restaurants.",
+      "No tipping."
+    ],
+    "packing": [
+      "Broken-in walking shoes",
+      "Type A adaptor",
+      "Light layers"
+    ],
+    "documents": [
+      "Passport",
+      "Japan visa",
+      "Hotel list for landing card"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Tokyo",
+      "minStars": 3,
+      "boardHint": "None"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & IC card",
+        "description": "NRT/HND to city, Suica, easy neighbourhood dinner.",
+        "meals": "Dinner",
+        "stayCity": "Tokyo"
+      },
+      {
+        "day": 2,
+        "title": "Asakusa & old Tokyo",
+        "description": "Senso-ji, river, slow lunch.",
+        "meals": "Breakfast",
+        "stayCity": "Tokyo"
+      },
+      {
+        "day": 3,
+        "title": "Markets & bowls",
+        "description": "Outer market + a neighbourhood ramen crawl.",
+        "meals": "Breakfast",
+        "stayCity": "Tokyo"
+      },
+      {
+        "day": 4,
+        "title": "Shibuya / Shinjuku night",
+        "description": "Crossing, views, izakaya.",
+        "meals": "Breakfast",
+        "stayCity": "Tokyo"
+      },
+      {
+        "day": 5,
+        "title": "Free Tokyo",
+        "description": "TeamLab / day trip or more food.",
+        "meals": "Breakfast",
+        "stayCity": "Tokyo"
+      },
+      {
+        "day": 6,
+        "title": "Depart",
+        "description": "Airport express buffer.",
+        "meals": "Breakfast",
+        "stayCity": "Tokyo"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      6,
+      6
+    ],
+    "minDurationDays": 5,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-bangkok-eats",
+    "slug": "bangkok-street-eats",
+    "title": "Bangkok Street Eats",
+    "tagline": "Temples by day, street food after dark.",
+    "theme": "food",
+    "themes": [
+      "food",
+      "city",
+      "backpacking",
+      "culture"
+    ],
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 4,
+    "durationDays": 5,
+    "destinations": [
+      "Bangkok"
+    ],
+    "flight": {
+      "gatewayAirport": "BKK",
+      "gatewayCity": "Bangkok"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Grand Palace modest dress",
+      "Chinatown dinner",
+      "BTS/MRT hop"
+    ],
+    "inclusions": [
+      "Curated Bangkok itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights",
+      "Temple tickets",
+      "Tuk-tuk without a price"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Friends & food travellers",
+    "goodToKnow": [
+      "Check current Indian visa-exempt days before you fly.",
+      "Dengue in rainy season — DEET at dusk.",
+      "Don't touch temple monkeys."
+    ],
+    "packing": [
+      "Temple cover-up",
+      "DEET",
+      "Light clothes"
+    ],
+    "documents": [
+      "Passport 6 months",
+      "Return ticket",
+      "TDAC if required"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Bangkok",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & night market",
+        "description": "BKK/DMK to city, easy dinner.",
+        "meals": "Dinner",
+        "stayCity": "Bangkok"
+      },
+      {
+        "day": 2,
+        "title": "Old town temples",
+        "description": "Grand Palace / Wat Arun modest dress.",
+        "meals": "Breakfast",
+        "stayCity": "Bangkok"
+      },
+      {
+        "day": 3,
+        "title": "Chinatown & river",
+        "description": "Street food crawl after dark.",
+        "meals": "Breakfast",
+        "stayCity": "Bangkok"
+      },
+      {
+        "day": 4,
+        "title": "Malls or floating market",
+        "description": "Your pace.",
+        "meals": "Breakfast",
+        "stayCity": "Bangkok"
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Airport buffer.",
+        "meals": "Breakfast",
+        "stayCity": "Bangkok"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      5,
+      5
+    ],
+    "minDurationDays": 4,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-jaipur-culture",
+    "slug": "jaipur-pink-city",
+    "title": "Jaipur Pink City",
+    "tagline": "Palaces, bazaars, and a slow Rajasthan start.",
+    "theme": "culture",
+    "themes": [
+      "culture",
+      "city",
+      "family",
+      "food"
+    ],
+    "region": "domestic",
+    "currency": "INR",
+    "durationNights": 3,
+    "durationDays": 4,
+    "destinations": [
+      "Jaipur"
+    ],
+    "flight": {
+      "gatewayAirport": "JAI",
+      "gatewayCity": "Jaipur"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Amber Fort",
+      "City Palace / Hawa Mahal",
+      "Bazaar evening"
+    ],
+    "inclusions": [
+      "Curated Jaipur itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights / trains",
+      "Monument tickets",
+      "Guide fees"
+    ],
+    "idealMonths": [
+      "Oct",
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Families & first-timers",
+    "goodToKnow": [
+      "Summers are brutal — this package shines Oct–Feb.",
+      "Carry ID for monuments."
+    ],
+    "packing": [
+      "Modest layers for forts",
+      "Comfortable walking shoes",
+      "Sunscreen"
+    ],
+    "documents": [
+      "Photo ID"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Jaipur",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive & bazaar",
+        "description": "Check in, evening Johari / Bapu bazaar.",
+        "meals": "Dinner",
+        "stayCity": "Jaipur"
+      },
+      {
+        "day": 2,
+        "title": "Amber & palaces",
+        "description": "Amber Fort + City Palace loop.",
+        "meals": "Breakfast",
+        "stayCity": "Jaipur"
+      },
+      {
+        "day": 3,
+        "title": "Soft Jaipur",
+        "description": "Hawa Mahal photo stop, café, optional Nahargarh sunset.",
+        "meals": "Breakfast",
+        "stayCity": "Jaipur"
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "JAI or railway.",
+        "meals": "Breakfast",
+        "stayCity": "Jaipur"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      4,
+      4
+    ],
+    "minDurationDays": 3,
+    "markets": [
+      "IN"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-zanzibar-spice",
+    "slug": "zanzibar-spice-island",
+    "title": "Zanzibar Spice Island",
+    "tagline": "Stone Town lanes into Nungwi beach days.",
+    "theme": "islands",
+    "themes": [
+      "islands",
+      "beach",
+      "honeymoon",
+      "culture"
+    ],
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 5,
+    "durationDays": 6,
+    "destinations": [
+      "Zanzibar",
+      "Stone Town"
+    ],
+    "flight": {
+      "gatewayAirport": "ZNZ",
+      "gatewayCity": "Zanzibar"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1586861635166-cdafcbd82566?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1586861635166-cdafcbd82566?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Stone Town + spice tour",
+      "North beach days",
+      "Yellow fever + malaria on the brief"
+    ],
+    "inclusions": [
+      "Curated Zanzibar itinerary",
+      "Live stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights",
+      "Tanzania visa / e-visa",
+      "Malaria tablets"
+    ],
+    "idealMonths": [
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & honeymoon",
+    "goodToKnow": [
+      "Zanzibar is Tanzania — one visa covers island + mainland.",
+      "Yellow fever recommended; malaria risk even on a beach holiday.",
+      "Modest dress in Stone Town."
+    ],
+    "packing": [
+      "Linen + modest cover-up",
+      "Reef shoes",
+      "DEET + YF card"
+    ],
+    "documents": [
+      "Passport",
+      "Tanzania e-visa",
+      "Yellow fever card if held"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Zanzibar",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Stone Town arrival",
+        "description": "ZNZ transfer, alley walk, sunset dhow if you like.",
+        "meals": "Dinner",
+        "stayCity": "Zanzibar"
+      },
+      {
+        "day": 2,
+        "title": "Spice + Prison Island",
+        "description": "Classic island intro.",
+        "meals": "Breakfast",
+        "stayCity": "Zanzibar"
+      },
+      {
+        "day": 3,
+        "title": "North beaches",
+        "description": "Nungwi / Kendwa swim day.",
+        "meals": "Breakfast",
+        "stayCity": "Zanzibar"
+      },
+      {
+        "day": 4,
+        "title": "Reef or rest",
+        "description": "Snorkel or hammock.",
+        "meals": "Breakfast",
+        "stayCity": "Zanzibar"
+      },
+      {
+        "day": 5,
+        "title": "Stone Town again",
+        "description": "Forodhani night market.",
+        "meals": "Breakfast",
+        "stayCity": "Zanzibar"
+      },
+      {
+        "day": 6,
+        "title": "Depart ZNZ",
+        "description": "Airport buffer.",
+        "meals": "Breakfast",
+        "stayCity": "Zanzibar"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      6,
+      6
+    ],
+    "minDurationDays": 5,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published",
+      "lastFeaturedRotateAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "pkg-cape-town-wild",
+    "slug": "cape-town-wild-coast",
+    "title": "Cape Town Wild Coast",
+    "tagline": "Table Mountain, penguins, and a Cape Peninsula loop.",
+    "theme": "adventure",
+    "themes": [
+      "adventure",
+      "wildlife",
+      "beach",
+      "city",
+      "hiking"
+    ],
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 5,
+    "durationDays": 6,
+    "destinations": [
+      "Cape Town"
+    ],
+    "flight": {
+      "gatewayAirport": "CPT",
+      "gatewayCity": "Cape Town"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Table Mountain weather window",
+      "Boulders penguins",
+      "Stellenbosch or Cape Point"
+    ],
+    "inclusions": [
+      "Curated Cape Town itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights",
+      "South Africa visa",
+      "Cable car / wine tastings"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar"
+    ],
+    "difficulty": "Easy–moderate",
+    "groupSizeHint": "Active couples & friends",
+    "goodToKnow": [
+      "Indian passports generally need a SA visa before travel.",
+      "Cape Town itself has no malaria. Kruger would.",
+      "Load-shedding: hotels have backups; carry a power bank."
+    ],
+    "packing": [
+      "Windbreaker",
+      "Hiking shoes",
+      "Type M / universal adaptor",
+      "SPF"
+    ],
+    "documents": [
+      "Passport",
+      "SA visa",
+      "Return ticket"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Cape Town",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive CPT",
+        "description": "Waterfront evening if you land early.",
+        "meals": "Dinner",
+        "stayCity": "Cape Town"
+      },
+      {
+        "day": 2,
+        "title": "Table Mountain",
+        "description": "Cable car weather window + city bowl.",
+        "meals": "Breakfast",
+        "stayCity": "Cape Town"
+      },
+      {
+        "day": 3,
+        "title": "Peninsula",
+        "description": "Chapman's Peak, penguins, Cape Point.",
+        "meals": "Breakfast",
+        "stayCity": "Cape Town"
+      },
+      {
+        "day": 4,
+        "title": "Wine or hike",
+        "description": "Stellenbosch or Lion's Head.",
+        "meals": "Breakfast",
+        "stayCity": "Cape Town"
+      },
+      {
+        "day": 5,
+        "title": "Free Cape Town",
+        "description": "Beaches or museums.",
+        "meals": "Breakfast",
+        "stayCity": "Cape Town"
+      },
+      {
+        "day": 6,
+        "title": "Depart",
+        "description": "Airport 20–30 min.",
+        "meals": "Breakfast",
+        "stayCity": "Cape Town"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      6,
+      6
+    ],
+    "minDurationDays": 5,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-kathmandu-trek-gate",
+    "slug": "kathmandu-himalaya-gate",
+    "title": "Kathmandu Himalaya Gate",
+    "tagline": "Durbar squares, stupa circuits, trek briefing if you stay longer.",
+    "theme": "trekking",
+    "themes": [
+      "trekking",
+      "hiking",
+      "pilgrimage",
+      "culture",
+      "adventure"
+    ],
+    "region": "international",
+    "currency": "INR",
+    "durationNights": 4,
+    "durationDays": 5,
+    "destinations": [
+      "Kathmandu"
+    ],
+    "flight": {
+      "gatewayAirport": "KTM",
+      "gatewayCity": "Kathmandu"
+    },
+    "coverImage": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1600&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=80"
+    ],
+    "highlights": [
+      "Thamel base",
+      "Boudha / Swayambhu",
+      "Trek desk if you add Pokhara / EBC later"
+    ],
+    "inclusions": [
+      "Curated Kathmandu itinerary",
+      "Live hotel stay for selected dates"
+    ],
+    "exclusions": [
+      "Flights",
+      "Trek permits / TIMS",
+      "Helicopter rescue insurance"
+    ],
+    "idealMonths": [
+      "Oct",
+      "Nov",
+      "Mar",
+      "Apr"
+    ],
+    "difficulty": "Easy in the city",
+    "groupSizeHint": "Trek-curious travellers",
+    "goodToKnow": [
+      "Indian citizens: no visa; passport is the simplest ID.",
+      "Kathmandu ~1,400 m is fine. Treks need extra days + acclimatisation.",
+      "Air quality can be poor in winter — mask if sensitive."
+    ],
+    "packing": [
+      "Layers",
+      "Mask optional",
+      "Broken-in shoes if you add a trek"
+    ],
+    "documents": [
+      "Passport / valid ID",
+      "Insurance if trekking onward"
+    ],
+    "featured": false,
+    "stay": {
+      "city": "Kathmandu",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Thamel",
+        "description": "Settle, Durbar square evening.",
+        "meals": "Dinner",
+        "stayCity": "Kathmandu"
+      },
+      {
+        "day": 2,
+        "title": "Stupa circuit",
+        "description": "Boudha + Swayambhu, walk clockwise.",
+        "meals": "Breakfast",
+        "stayCity": "Kathmandu"
+      },
+      {
+        "day": 3,
+        "title": "Patan or Bhaktapur",
+        "description": "Heritage day.",
+        "meals": "Breakfast",
+        "stayCity": "Kathmandu"
+      },
+      {
+        "day": 4,
+        "title": "Trek desk or free",
+        "description": "Plan Pokhara / EBC add-on or café hop.",
+        "meals": "Breakfast",
+        "stayCity": "Kathmandu"
+      },
+      {
+        "day": 5,
+        "title": "Depart KTM",
+        "description": "Airport buffer.",
+        "meals": "Breakfast",
+        "stayCity": "Kathmandu"
+      }
+    ],
+    "productType": "curated_template",
+    "recommendedDurationDays": [
+      5,
+      5
+    ],
+    "minDurationDays": 4,
+    "markets": [
+      "*"
+    ],
+    "pipeline": {
+      "qualityScore": 90,
+      "status": "published"
+    }
+  },
+  {
+    "id": "pkg-nyc-long-weekend",
+    "slug": "nyc-long-weekend",
+    "title": "New York Long Weekend",
+    "tagline": "Skyline mornings, neighbourhood food, one easy city break.",
+    "overview": "4-day plan based in New York. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "region": "domestic",
+    "markets": [
+      "US"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "New York"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "New York"
+    ],
+    "flight": {
+      "gatewayAirport": "JFK",
+      "gatewayCity": "New York"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Central Park walk",
+      "Neighbourhood food crawl",
+      "Skyline viewpoint"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": true,
+    "currency": "USD",
+    "stay": {
+      "city": "New York",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive New York",
+        "description": "Arrive New York in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "New York highlights",
+        "description": "New York highlights in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive New York",
+        "description": "Arrive New York in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "New York highlights",
+        "description": "New York highlights in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in New York.",
+        "stayCity": "New York",
+        "anchors": [
+          "New York"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-miami-beach-reset",
+    "slug": "miami-beach-reset",
+    "title": "Miami Beach Reset",
+    "tagline": "Art Deco mornings and warm Atlantic evenings.",
+    "overview": "4-day plan based in Miami. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "beach",
+    "themes": [
+      "beach",
+      "city"
+    ],
+    "region": "domestic",
+    "markets": [
+      "US"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "beach",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Miami"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Miami"
+    ],
+    "flight": {
+      "gatewayAirport": "MIA",
+      "gatewayCity": "Miami"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Miami walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "USD",
+    "stay": {
+      "city": "Miami",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Miami",
+        "description": "Arrive Miami in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Miami highlights",
+        "description": "Miami highlights in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Miami",
+        "description": "Arrive Miami in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Miami highlights",
+        "description": "Miami highlights in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Miami.",
+        "stayCity": "Miami",
+        "anchors": [
+          "Miami"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-california-coast-sampler",
+    "slug": "california-coast-sampler",
+    "title": "California Coast Sampler",
+    "tagline": "LA energy, Pacific light, one easy west-coast loop.",
+    "overview": "5-day plan based in Los Angeles. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "beach",
+      "roadtrip"
+    ],
+    "region": "domestic",
+    "markets": [
+      "US"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Los Angeles"
+    ],
+    "recommendedDurationDays": [
+      5,
+      7
+    ],
+    "minDurationDays": 4,
+    "durationDays": 5,
+    "durationNights": 4,
+    "destinations": [
+      "Los Angeles"
+    ],
+    "flight": {
+      "gatewayAirport": "LAX",
+      "gatewayCity": "Los Angeles"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Los Angeles walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "USD",
+    "stay": {
+      "city": "Los Angeles",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Los Angeles",
+        "description": "Arrive Los Angeles in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Los Angeles icons",
+        "description": "Los Angeles icons in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Deep dive day",
+        "description": "Deep dive day in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Free day",
+        "description": "Free day in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Museum or viewpoint",
+          "Cafe stop"
+        ]
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Depart in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Los Angeles",
+        "description": "Arrive Los Angeles in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Los Angeles icons",
+        "description": "Los Angeles icons in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Deep dive day",
+        "description": "Deep dive day in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Free day",
+        "description": "Free day in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Museum or viewpoint",
+          "Cafe stop"
+        ]
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Depart in Los Angeles.",
+        "stayCity": "Los Angeles",
+        "anchors": [
+          "Los Angeles"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-paris-long-weekend",
+    "slug": "paris-long-weekend",
+    "title": "Paris Long Weekend",
+    "tagline": "Cafés, museums, and Seine-light evenings.",
+    "overview": "4-day plan based in Paris. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food",
+      "honeymoon"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Paris"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Paris"
+    ],
+    "flight": {
+      "gatewayAirport": "CDG",
+      "gatewayCity": "Paris"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Louvre or Orsay",
+      "Neighbourhood dinner",
+      "Seine walk"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": true,
+    "currency": "EUR",
+    "stay": {
+      "city": "Paris",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Paris",
+        "description": "Arrive Paris in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Paris highlights",
+        "description": "Paris highlights in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Paris",
+        "description": "Arrive Paris in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Paris highlights",
+        "description": "Paris highlights in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Paris.",
+        "stayCity": "Paris",
+        "anchors": [
+          "Paris"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-rome-classic-break",
+    "slug": "rome-classic-break",
+    "title": "Rome Classic Break",
+    "tagline": "Ancient stones and perfect pasta nights.",
+    "overview": "4-day plan based in Rome. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food",
+      "culture"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Rome"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Rome"
+    ],
+    "flight": {
+      "gatewayAirport": "FCO",
+      "gatewayCity": "Rome"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Historic centre",
+      "Trastevere evening",
+      "Gelato stop"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "EUR",
+    "stay": {
+      "city": "Rome",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Rome",
+        "description": "Arrive Rome in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Rome highlights",
+        "description": "Rome highlights in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Rome",
+        "description": "Arrive Rome in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Rome highlights",
+        "description": "Rome highlights in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Rome.",
+        "stayCity": "Rome",
+        "anchors": [
+          "Rome"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-london-city-sampler",
+    "slug": "london-city-sampler",
+    "title": "London City Sampler",
+    "tagline": "Parks, pubs, and world-class museums.",
+    "overview": "4-day plan based in London. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food",
+      "culture"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "London"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "London"
+    ],
+    "flight": {
+      "gatewayAirport": "LHR",
+      "gatewayCity": "London"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "London walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "GBP",
+    "stay": {
+      "city": "London",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive London",
+        "description": "Arrive London in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "London highlights",
+        "description": "London highlights in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive London",
+        "description": "Arrive London in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "London highlights",
+        "description": "London highlights in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in London.",
+        "stayCity": "London",
+        "anchors": [
+          "London"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-barcelona-med-break",
+    "slug": "barcelona-med-break",
+    "title": "Barcelona Med Break",
+    "tagline": "Gaudí curves and Mediterranean nights.",
+    "overview": "4-day plan based in Barcelona. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "beach",
+      "food"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Barcelona"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Barcelona"
+    ],
+    "flight": {
+      "gatewayAirport": "BCN",
+      "gatewayCity": "Barcelona"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Gothic Quarter",
+      "Beach afternoon",
+      "Tapas night"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "EUR",
+    "stay": {
+      "city": "Barcelona",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Barcelona",
+        "description": "Arrive Barcelona in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Barcelona highlights",
+        "description": "Barcelona highlights in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Barcelona",
+        "description": "Arrive Barcelona in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Barcelona highlights",
+        "description": "Barcelona highlights in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Barcelona.",
+        "stayCity": "Barcelona",
+        "anchors": [
+          "Barcelona"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-tokyo-neon-nights",
+    "slug": "tokyo-neon-nights",
+    "title": "Tokyo Neon Nights",
+    "tagline": "Neon nights, quiet shrines, endless bowls.",
+    "overview": "5-day plan based in Tokyo. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Tokyo"
+    ],
+    "recommendedDurationDays": [
+      5,
+      7
+    ],
+    "minDurationDays": 4,
+    "durationDays": 5,
+    "durationNights": 4,
+    "destinations": [
+      "Tokyo"
+    ],
+    "flight": {
+      "gatewayAirport": "NRT",
+      "gatewayCity": "Tokyo"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Neighbourhood ramen",
+      "Shrine morning",
+      "Skyline view"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": true,
+    "currency": "JPY",
+    "stay": {
+      "city": "Tokyo",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Tokyo",
+        "description": "Arrive Tokyo in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Tokyo icons",
+        "description": "Tokyo icons in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Deep dive day",
+        "description": "Deep dive day in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Free day",
+        "description": "Free day in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Museum or viewpoint",
+          "Cafe stop"
+        ]
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Depart in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Tokyo",
+        "description": "Arrive Tokyo in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Tokyo icons",
+        "description": "Tokyo icons in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Deep dive day",
+        "description": "Deep dive day in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Free day",
+        "description": "Free day in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Museum or viewpoint",
+          "Cafe stop"
+        ]
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Depart in Tokyo.",
+        "stayCity": "Tokyo",
+        "anchors": [
+          "Tokyo"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-bali-soft-reset",
+    "slug": "bali-soft-reset",
+    "title": "Bali Soft Reset",
+    "tagline": "Rice terraces, surf towns, and temple sunsets.",
+    "overview": "5-day plan based in Bali. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "beach",
+    "themes": [
+      "beach",
+      "wellness",
+      "honeymoon"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "beach",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Bali"
+    ],
+    "recommendedDurationDays": [
+      5,
+      7
+    ],
+    "minDurationDays": 4,
+    "durationDays": 5,
+    "durationNights": 4,
+    "destinations": [
+      "Bali"
+    ],
+    "flight": {
+      "gatewayAirport": "DPS",
+      "gatewayCity": "Bali"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Bali walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "USD",
+    "stay": {
+      "city": "Bali",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Bali",
+        "description": "Arrive Bali in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Bali icons",
+        "description": "Bali icons in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Deep dive day",
+        "description": "Deep dive day in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Free day",
+        "description": "Free day in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Museum or viewpoint",
+          "Cafe stop"
+        ]
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Depart in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Bali",
+        "description": "Arrive Bali in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Bali icons",
+        "description": "Bali icons in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Deep dive day",
+        "description": "Deep dive day in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Free day",
+        "description": "Free day in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Museum or viewpoint",
+          "Cafe stop"
+        ]
+      },
+      {
+        "day": 5,
+        "title": "Depart",
+        "description": "Depart in Bali.",
+        "stayCity": "Bali",
+        "anchors": [
+          "Bali"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-dubai-skyline-escape",
+    "slug": "dubai-skyline-escape",
+    "title": "Dubai Skyline Escape",
+    "tagline": "Desert dunes meet futuristic skyline.",
+    "overview": "4-day plan based in Dubai. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "luxury",
+      "adventure"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Dubai"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Dubai"
+    ],
+    "flight": {
+      "gatewayAirport": "DXB",
+      "gatewayCity": "Dubai"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Dubai walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "AED",
+    "stay": {
+      "city": "Dubai",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Dubai",
+        "description": "Arrive Dubai in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Dubai highlights",
+        "description": "Dubai highlights in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Dubai",
+        "description": "Arrive Dubai in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Dubai highlights",
+        "description": "Dubai highlights in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Dubai.",
+        "stayCity": "Dubai",
+        "anchors": [
+          "Dubai"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-singapore-easy-days",
+    "slug": "singapore-easy-days",
+    "title": "Singapore Easy Days",
+    "tagline": "Garden city, hawker flavours, skyline walks.",
+    "overview": "4-day plan based in Singapore. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food",
+      "family"
+    ],
+    "region": "international",
+    "markets": [
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Singapore"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Singapore"
+    ],
+    "flight": {
+      "gatewayAirport": "SIN",
+      "gatewayCity": "Singapore"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Singapore walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "SGD",
+    "stay": {
+      "city": "Singapore",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Singapore",
+        "description": "Arrive Singapore in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Singapore highlights",
+        "description": "Singapore highlights in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Singapore",
+        "description": "Arrive Singapore in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Singapore highlights",
+        "description": "Singapore highlights in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GLOBAL",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-edinburgh-castle-break",
+    "slug": "edinburgh-castle-break",
+    "title": "Edinburgh Castle Break",
+    "tagline": "Castle views, festival energy, highland day trips.",
+    "overview": "4-day plan based in Edinburgh. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "culture",
+      "hills"
+    ],
+    "region": "domestic",
+    "markets": [
+      "GB"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Edinburgh"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Edinburgh"
+    ],
+    "flight": {
+      "gatewayAirport": "EDI",
+      "gatewayCity": "Edinburgh"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Edinburgh walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": true,
+    "currency": "GBP",
+    "stay": {
+      "city": "Edinburgh",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Edinburgh",
+        "description": "Arrive Edinburgh in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Edinburgh highlights",
+        "description": "Edinburgh highlights in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Edinburgh",
+        "description": "Arrive Edinburgh in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Edinburgh highlights",
+        "description": "Edinburgh highlights in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Edinburgh.",
+        "stayCity": "Edinburgh",
+        "anchors": [
+          "Edinburgh"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GB",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-bath-cotswolds-escape",
+    "slug": "bath-cotswolds-escape",
+    "title": "Bath & Cotswolds Escape",
+    "tagline": "Georgian crescents and honey-stone villages.",
+    "overview": "4-day plan based in Bath. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "culture"
+    ],
+    "region": "domestic",
+    "markets": [
+      "GB"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Bath"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Bath"
+    ],
+    "flight": {
+      "gatewayAirport": "BRS",
+      "gatewayCity": "Bath"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Bath walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "GBP",
+    "stay": {
+      "city": "Bath",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Bath",
+        "description": "Arrive Bath in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Bath highlights",
+        "description": "Bath highlights in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Bath",
+        "description": "Arrive Bath in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Bath highlights",
+        "description": "Bath highlights in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Bath.",
+        "stayCity": "Bath",
+        "anchors": [
+          "Bath"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "GB",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-abu-dhabi-calm-days",
+    "slug": "abu-dhabi-calm-days",
+    "title": "Abu Dhabi Calm Days",
+    "tagline": "Grand Mosque calm and island resort pace.",
+    "overview": "4-day plan based in Abu Dhabi. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "luxury",
+      "honeymoon"
+    ],
+    "region": "domestic",
+    "markets": [
+      "AE"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Abu Dhabi"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Abu Dhabi"
+    ],
+    "flight": {
+      "gatewayAirport": "AUH",
+      "gatewayCity": "Abu Dhabi"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Abu Dhabi walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Nov",
+      "Dec",
+      "Jan",
+      "Feb",
+      "Mar"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "AED",
+    "stay": {
+      "city": "Abu Dhabi",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Abu Dhabi",
+        "description": "Arrive Abu Dhabi in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Abu Dhabi highlights",
+        "description": "Abu Dhabi highlights in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Abu Dhabi",
+        "description": "Arrive Abu Dhabi in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Abu Dhabi highlights",
+        "description": "Abu Dhabi highlights in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Abu Dhabi.",
+        "stayCity": "Abu Dhabi",
+        "anchors": [
+          "Abu Dhabi"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "AE",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-singapore-home-weekend",
+    "slug": "singapore-home-weekend",
+    "title": "Singapore Home Weekend",
+    "tagline": "Hawker runs, gardens, and an easy staycation reset.",
+    "overview": "3-day plan based in Singapore. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food",
+      "family"
+    ],
+    "region": "domestic",
+    "markets": [
+      "SG"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Singapore"
+    ],
+    "recommendedDurationDays": [
+      3,
+      5
+    ],
+    "minDurationDays": 2,
+    "durationDays": 3,
+    "durationNights": 2,
+    "destinations": [
+      "Singapore"
+    ],
+    "flight": {
+      "gatewayAirport": "SIN",
+      "gatewayCity": "Singapore"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Singapore walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "SGD",
+    "stay": {
+      "city": "Singapore",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Singapore",
+        "description": "Arrive Singapore in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Singapore highlights",
+        "description": "Singapore highlights in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Singapore",
+        "description": "Arrive Singapore in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Singapore highlights",
+        "description": "Singapore highlights in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Singapore.",
+        "stayCity": "Singapore",
+        "anchors": [
+          "Singapore"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "SG",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-melbourne-laneway-break",
+    "slug": "melbourne-laneway-break",
+    "title": "Melbourne Laneway Break",
+    "tagline": "Coffee culture, laneway art, and easy day trips.",
+    "overview": "4-day plan based in Melbourne. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "region": "domestic",
+    "markets": [
+      "AU"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Melbourne"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Melbourne"
+    ],
+    "flight": {
+      "gatewayAirport": "MEL",
+      "gatewayCity": "Melbourne"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Melbourne walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": true,
+    "currency": "AUD",
+    "stay": {
+      "city": "Melbourne",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Melbourne",
+        "description": "Arrive Melbourne in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Melbourne highlights",
+        "description": "Melbourne highlights in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Melbourne",
+        "description": "Arrive Melbourne in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Melbourne highlights",
+        "description": "Melbourne highlights in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Melbourne.",
+        "stayCity": "Melbourne",
+        "anchors": [
+          "Melbourne"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "AU",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-sydney-local-harbour",
+    "slug": "sydney-local-harbour",
+    "title": "Sydney Local Harbour",
+    "tagline": "Ferry light, beach mornings, neighbourhood evenings.",
+    "overview": "4-day plan based in Sydney. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "beach"
+    ],
+    "region": "domestic",
+    "markets": [
+      "AU"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Sydney"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Sydney"
+    ],
+    "flight": {
+      "gatewayAirport": "SYD",
+      "gatewayCity": "Sydney"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Sydney walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "AUD",
+    "stay": {
+      "city": "Sydney",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Sydney",
+        "description": "Arrive Sydney in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Sydney highlights",
+        "description": "Sydney highlights in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Sydney",
+        "description": "Arrive Sydney in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Sydney highlights",
+        "description": "Sydney highlights in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Sydney.",
+        "stayCity": "Sydney",
+        "anchors": [
+          "Sydney"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "AU",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-kyoto-temple-days",
+    "slug": "kyoto-temple-days",
+    "title": "Kyoto Temple Days",
+    "tagline": "Temples, gardens, and maple-light evenings.",
+    "overview": "4-day plan based in Kyoto. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "culture",
+    "themes": [
+      "culture",
+      "city",
+      "food"
+    ],
+    "region": "domestic",
+    "markets": [
+      "JP"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "culture",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Kyoto"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Kyoto"
+    ],
+    "flight": {
+      "gatewayAirport": "KIX",
+      "gatewayCity": "Kyoto"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Kyoto walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": true,
+    "currency": "JPY",
+    "stay": {
+      "city": "Kyoto",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Kyoto",
+        "description": "Arrive Kyoto in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Kyoto highlights",
+        "description": "Kyoto highlights in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Kyoto",
+        "description": "Arrive Kyoto in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Kyoto highlights",
+        "description": "Kyoto highlights in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Kyoto.",
+        "stayCity": "Kyoto",
+        "anchors": [
+          "Kyoto"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "JP",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-toronto-lake-city",
+    "slug": "toronto-lake-city",
+    "title": "Toronto Lake City",
+    "tagline": "Lake city with neighbourhood food scenes.",
+    "overview": "4-day plan based in Toronto. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "region": "domestic",
+    "markets": [
+      "CA"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Toronto"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Toronto"
+    ],
+    "flight": {
+      "gatewayAirport": "YYZ",
+      "gatewayCity": "Toronto"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Toronto walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "CAD",
+    "stay": {
+      "city": "Toronto",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Toronto",
+        "description": "Arrive Toronto in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Toronto highlights",
+        "description": "Toronto highlights in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Toronto",
+        "description": "Arrive Toronto in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Toronto highlights",
+        "description": "Toronto highlights in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Toronto.",
+        "stayCity": "Toronto",
+        "anchors": [
+          "Toronto"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "CA",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-vancouver-coast-mountains",
+    "slug": "vancouver-coast-mountains",
+    "title": "Vancouver Coast & Mountains",
+    "tagline": "Ocean walks with mountain edges in view.",
+    "overview": "4-day plan based in Vancouver. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "hills",
+      "adventure"
+    ],
+    "region": "domestic",
+    "markets": [
+      "CA"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Vancouver"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Vancouver"
+    ],
+    "flight": {
+      "gatewayAirport": "YVR",
+      "gatewayCity": "Vancouver"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Vancouver walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "CAD",
+    "stay": {
+      "city": "Vancouver",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Vancouver",
+        "description": "Arrive Vancouver in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Vancouver highlights",
+        "description": "Vancouver highlights in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Vancouver",
+        "description": "Arrive Vancouver in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Vancouver highlights",
+        "description": "Vancouver highlights in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Vancouver.",
+        "stayCity": "Vancouver",
+        "anchors": [
+          "Vancouver"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "CA",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-amsterdam-canal-break",
+    "slug": "amsterdam-canal-break",
+    "title": "Amsterdam Canal Break",
+    "tagline": "Canals, bikes, and golden-hour bridges.",
+    "overview": "4-day plan based in Amsterdam. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "culture"
+    ],
+    "region": "international",
+    "markets": [
+      "GB",
+      "EU",
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Amsterdam"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Amsterdam"
+    ],
+    "flight": {
+      "gatewayAirport": "AMS",
+      "gatewayCity": "Amsterdam"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Amsterdam walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "EUR",
+    "stay": {
+      "city": "Amsterdam",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Amsterdam",
+        "description": "Arrive Amsterdam in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Amsterdam highlights",
+        "description": "Amsterdam highlights in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Amsterdam",
+        "description": "Arrive Amsterdam in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Amsterdam highlights",
+        "description": "Amsterdam highlights in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Amsterdam.",
+        "stayCity": "Amsterdam",
+        "anchors": [
+          "Amsterdam"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "EU",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  },
+  {
+    "id": "pkg-prague-old-town",
+    "slug": "prague-old-town",
+    "title": "Prague Old Town",
+    "tagline": "Fairy-tale bridges and old-town spires.",
+    "overview": "4-day plan based in Prague. Live stays when you pick dates - not a frozen brochure price.",
+    "theme": "city",
+    "themes": [
+      "city",
+      "honeymoon"
+    ],
+    "region": "international",
+    "markets": [
+      "GB",
+      "EU",
+      "*"
+    ],
+    "productType": "curated_template",
+    "travelStyle": "city",
+    "requiredAnchors": [],
+    "routeConcept": [
+      "Prague"
+    ],
+    "recommendedDurationDays": [
+      4,
+      6
+    ],
+    "minDurationDays": 3,
+    "durationDays": 4,
+    "durationNights": 3,
+    "destinations": [
+      "Prague"
+    ],
+    "flight": {
+      "gatewayAirport": "PRG",
+      "gatewayCity": "Prague"
+    },
+    "coverImage": "",
+    "gallery": [],
+    "highlights": [
+      "Prague walk",
+      "Local food",
+      "Easy pacing"
+    ],
+    "inclusions": [
+      "Validated day-by-day plan for your dates",
+      "Live hotel stays for each base city",
+      "Package confirmation with structured itinerary"
+    ],
+    "exclusions": [
+      "Flights into the gateway city",
+      "Personal expenses and tips",
+      "Optional activities not listed as included"
+    ],
+    "idealMonths": [
+      "Apr",
+      "May",
+      "Jun",
+      "Sep",
+      "Oct"
+    ],
+    "difficulty": "Easy",
+    "groupSizeHint": "Couples & small groups",
+    "featured": false,
+    "currency": "EUR",
+    "stay": {
+      "city": "Prague",
+      "minStars": 3,
+      "boardHint": "Breakfast"
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "title": "Arrive Prague",
+        "description": "Arrive Prague in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Prague highlights",
+        "description": "Prague highlights in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "dayBlueprints": [
+      {
+        "day": 1,
+        "title": "Arrive Prague",
+        "description": "Arrive Prague in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "Check in",
+          "Evening walk"
+        ]
+      },
+      {
+        "day": 2,
+        "title": "Prague highlights",
+        "description": "Prague highlights in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "City highlights",
+          "Local lunch"
+        ]
+      },
+      {
+        "day": 3,
+        "title": "Neighbourhood day",
+        "description": "Neighbourhood day in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "Neighbourhood explore",
+          "Sunset"
+        ]
+      },
+      {
+        "day": 4,
+        "title": "Depart",
+        "description": "Depart in Prague.",
+        "stayCity": "Prague",
+        "anchors": [
+          "Prague"
+        ],
+        "activities": [
+          "Breakfast",
+          "Airport transfer"
+        ]
+      }
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:46:56Z",
+      "publisher": "package_factory.publisher",
+      "market": "EU",
+      "authoredAt": "2026-08-12T16:46:56Z",
+      "checkedAt": "2026-08-12T16:46:56Z",
+      "reverifiedAt": "2026-08-12T16:46:56Z"
+    }
+  }
+]

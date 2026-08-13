@@ -1,28 +1,54 @@
-import React from "react";
-// import { ThemeProvider } from "@/context/ThemeContext";
-// import { CurrencyProvider } from "@/context/CurrencyContext";
-// import { AuthProvider } from "@/features/auth/context/AuthContext";
+import React, { useEffect } from "react";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { APP_CONFIG } from "@/app/config";
+import { CurrencyProvider } from "@/context/CurrencyContext";
+import { HomeLocationProvider } from "@/context/HomeLocationContext";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { VeroUiProvider } from "@/context/VeroUiContext";
+import { TripProvider } from "@/features/trips/TripContext";
+import { AuthProvider } from "@/features/auth/context/AuthContext";
+import TasteModal from "@/features/marketing/TasteModal";
+import { captureAttributionFromUrl } from "@/services/attribution";
+import { initAcquisitionPixels } from "@/services/acquisitionPixels";
 
-/**
- * Wraps the entire app with all required context providers.
- * Add new providers here as needed — keeps App.jsx clean.
- *
- * Order matters: outermost providers are available to inner ones.
- * AuthProvider is innermost so it can access Theme & Currency.
- */
-export default function AppProviders({ children }) {
+function MarketingBootstrap({ children }) {
+  useEffect(() => {
+    captureAttributionFromUrl();
+    initAcquisitionPixels();
+  }, []);
   return (
     <>
-      {/* Uncomment providers as they are implemented:
-      <ThemeProvider>
-        <CurrencyProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </CurrencyProvider>
-      </ThemeProvider>
-      */}
       {children}
+      <TasteModal />
     </>
   );
+}
+
+/**
+ * Wraps the entire app with required context providers.
+ */
+export default function AppProviders({ children }) {
+  const googleClientId = APP_CONFIG.GOOGLE_CLIENT_ID;
+  const tree = (
+    <ThemeProvider>
+      <AuthProvider>
+        <LanguageProvider>
+          <CurrencyProvider>
+            <HomeLocationProvider>
+              <VeroUiProvider>
+                <TripProvider>
+                  <MarketingBootstrap>{children}</MarketingBootstrap>
+                </TripProvider>
+              </VeroUiProvider>
+            </HomeLocationProvider>
+          </CurrencyProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+
+  if (!googleClientId) return tree;
+
+  return <GoogleOAuthProvider clientId={googleClientId}>{tree}</GoogleOAuthProvider>;
 }

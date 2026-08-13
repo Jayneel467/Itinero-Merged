@@ -1,0 +1,38 @@
+{
+  "id": "austin",
+  "slug": "austin",
+  "city": "Austin",
+  "country": "USA",
+  "continent": "americas",
+  "iata": "AUS",
+  "themes": [
+    "city",
+    "food",
+    "adventure"
+  ],
+  "imageId": "photo-1531219572328-a0171b4448a3",
+  "blurb": "Live music, breakfast tacos, and Hill Country day trips.",
+  "trendingScore": 85,
+  "minTripDays": 3,
+  "lat": 30.27,
+  "lng": -97.74,
+  "markets": [
+    "US",
+    "*"
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "US",
+    "authoredAt": "2026-08-12T16:42:39Z",
+    "author": "explore_factory.author.seed",
+    "checkedAt": "2026-08-12T16:42:39Z",
+    "checker": "explore_factory.checker",
+    "checkIssues": [],
+    "reverifiedAt": "2026-08-12T16:42:39Z",
+    "reverifier": "explore_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

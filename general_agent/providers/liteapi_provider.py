@@ -1,9 +1,8 @@
 """
-Raw HTTP client for LiteAPI's hotel and flight rate-search endpoints.
+Raw HTTP client for LiteAPI hotel/flight search plus hold (prebook/verify).
 
-Search only, deliberately - this file does not implement /rates/prebook or
-/rates/book. Do not add those here without an explicit decision to do so;
-booking is a separate workstream.
+Full passenger booking (/flights/bookings, /rates/book) stays on the site
+checkout (supervisor) — this module only searches and holds live rates.
 """
 import logging
 
@@ -49,6 +48,32 @@ def search_flight_rates(payload: dict) -> dict:
     except requests.exceptions.RequestException as e:
         logger.warning("LiteAPI flight search failed: %s", e)
         raise ProviderRequestError("LiteAPI flights", str(e)) from e
+
+
+def verify_flight_offer(payload: dict) -> dict:
+    """POST /flights/verify — confirm a live offerId is still bookable."""
+    try:
+        response = requests.post(
+            f"{BASE_URL}/flights/verify", headers=_headers(), json=payload, timeout=20
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.warning("LiteAPI flight verify failed: %s", e)
+        raise ProviderRequestError("LiteAPI flight verify", str(e)) from e
+
+
+def prebook_hotel_rate(payload: dict) -> dict:
+    """POST /rates/prebook — hold a hotel offerId (prefer usePaymentSdk in prod)."""
+    try:
+        response = requests.post(
+            f"{BASE_URL}/rates/prebook", headers=_headers(), json=payload, timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.warning("LiteAPI hotel prebook failed: %s", e)
+        raise ProviderRequestError("LiteAPI hotel prebook", str(e)) from e
 
 
 def get_airport_reference_data() -> dict:

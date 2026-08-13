@@ -2,9 +2,8 @@
 Quick, search-only flight/hotel lookups for Vero (general_agent).
 
 Reuses the EXACT same search code ITINERARY_AGENT's booking flow already
-uses — FlightAgent.search_flights() / HotelAgent.search_hotels(), which try
-real LiteAPI data first and fall back to LLM-generated data only if that
-fails. No separate search implementation, no ITINERARY_AGENT changes.
+uses — FlightAgent.search_flights() / HotelAgent.search_hotels(), live
+LiteAPI only (no dummy fares). No separate search implementation.
 
 Search-only: nothing here ever prebooks anything. When the user commits to a
 specific result, llm/tools.py's select_searched_flight/select_searched_hotel
@@ -90,7 +89,7 @@ def run_flight_search(
     cabin_class: str = "Economy",
     max_budget_per_person: Optional[float] = None,
     nonstop_preferred: bool = False,
-    max_results: int = 5,
+    max_results: int = 12,
 ) -> dict[str, Any]:
     """Returns {"text": str, "cards": dict|None, "flights": list[dict]}."""
     # LiteAPI's real flight search requires a 3-letter IATA code, not a
@@ -123,36 +122,95 @@ def run_flight_search(
 
     response = _get_flight_agent().search_flights(instruction=instruction, search_params=params)
 
+    left_nav = {
+        "type": "search_flights",
+        "origin": resolved_origin,
+        "destination": resolved_destination,
+        "depart_date": departure_date,
+        "return_date": return_date,
+        "trip": "return" if return_date else "oneway",
+        "adults": adults,
+        "cabin": cabin_class or "Economy",
+    }
+
     if not response.flights:
+        # Never tell the LLM the route "doesn't exist". Left page (supervisor +
+        # hub pairing) often has inventory the agent preview missed.
         return {
-            "text": f"No flights found from {origin} to {destination} on {departure_date}.",
+            "text": (
+                f"Live preview for {origin} → {destination} on {departure_date} came back thin. "
+                "Do NOT say there are no flights. Open the left Itinero flights page for the "
+                "same route/date and tell the user results are loading there. "
+                "Offer ±1 day only if the left list is also empty."
+            ),
             "cards": None,
             "flights": [],
+            "left_nav": left_nav,
         }
 
-    flights = [f.model_dump(mode="json") for f in response.flights[:max_results]]
+    dumped = [f.model_dump(mode="json") for f in response.flights]
+    # Drop consolidator shells that duplicate real marketing carriers.
+    from services.card_mapping import _GDS_SHELL_RE, _airline_label
 
-    lines = [
-        f"Flights: {origin} -> {destination} ({departure_date}"
-        + (f", return {return_date}" if return_date else "") + f"), {adults} passenger(s):"
-    ]
-    for i, f in enumerate(flights, 1):
-        dep = str(f["departure_time"])[11:16]
-        arr = str(f["arrival_time"])[11:16]
-        stops_str = "Nonstop" if f["stops"] == 0 else f"{f['stops']} stop(s)"
-        lines.append(
-            f"{i}. {f['airline']} {f['flight_number']} | {dep} -> {arr} | "
-            f"{f['duration_minutes']}min | {stops_str} | Rs.{f['price_per_adult']:.0f}/adult "
-            f"| id={f['flight_id']}"
+    cleaned = []
+    seen_sched: set[str] = set()
+    for f in dumped:
+        raw_airline = f.get("airline")
+        raw_name = (
+            str(raw_airline.get("name") or "")
+            if isinstance(raw_airline, dict)
+            else str(raw_airline or "")
         )
+        # Drop pure consolidator shells (APG / Hahn Air / …) — they duplicate real carriers.
+        if _GDS_SHELL_RE.search(raw_name):
+            continue
+        label = _airline_label(f)
+        key = "|".join(
+            [
+                str(f.get("flight_number") or ""),
+                str(f.get("departure_time") or "")[:16],
+                str(f.get("arrival_time") or "")[:16],
+                str(f.get("price_per_adult") or ""),
+            ]
+        )
+        if key in seen_sched:
+            continue
+        seen_sched.add(key)
+        f = {**f, "airline": label}
+        cleaned.append(f)
+    dumped = cleaned or dumped
+    by_airline: dict[str, list] = {}
+    for f in dumped:
+        name = str(f.get("airline") or f.get("airline_code") or "Airline")
+        by_airline.setdefault(name, []).append(f)
+    diversified: list = []
+    queues = [list(v) for v in by_airline.values()]
+    added = True
+    while added and len(diversified) < max_results:
+        added = False
+        for q in queues:
+            if q and len(diversified) < max_results:
+                diversified.append(q.pop(0))
+                added = True
+    flights = diversified or dumped[:max_results]
 
     cards = flight_cards(
         flights,
         title=f"Flights: {origin} -> {destination}",
-        subtitle=f"Departure: {departure_date}" + (f" · Return: {return_date}" if return_date else "") + f" · {adults} passenger(s)",
+        subtitle=f"Departure: {departure_date}"
+        + (f" · Return: {return_date}" if return_date else "")
+        + f" · {adults} passenger(s)",
     )
 
-    return {"text": "\n".join(lines), "cards": cards, "flights": flights}
+    # Keep tool text short — UI renders selectable cards. Do not number options.
+    text = (
+        f"Found {len(flights)} flights {origin} → {destination} on {departure_date}"
+        + (f" (return {return_date})" if return_date else "")
+        + f". Cards are shown in the UI — do NOT re-list them as numbered text. "
+        f"One short line + ask which to pick (or more options)."
+    )
+
+    return {"text": text, "cards": cards, "flights": flights, "left_nav": left_nav}
 
 
 def run_hotel_search(
@@ -201,21 +259,26 @@ def run_hotel_search(
 
     response = _get_hotel_agent().search_hotels(instruction=instruction, search_params=params, day_label="quick")
 
+    left_nav = {
+        "type": "search_hotels",
+        "city": location.split(",")[0].strip() or location,
+        "check_in": check_in,
+        "check_out": check_out,
+        "guests": adults,
+    }
+
     if not response.hotels:
         return {
-            "text": f"No hotels found in {location} for {check_in} to {check_out}.",
+            "text": (
+                f"Live hotel preview for {location} ({check_in} → {check_out}) came back thin. "
+                "Do NOT say there are no hotels. Open the left hotels page and let the user browse."
+            ),
             "cards": None,
             "hotels": [],
+            "left_nav": left_nav,
         }
 
     hotels = [h.model_dump(mode="json") for h in response.hotels[:max_results]]
-
-    lines = [f"Hotels in {location} ({check_in} to {check_out}, {adults} adult(s)):"]
-    for i, h in enumerate(hotels, 1):
-        lines.append(
-            f"{i}. {h['name']} ({h['star_rating']}*) | {h['room_type']} | {h['meal_plan']} "
-            f"| Rs.{h['price_per_night']:.0f}/night | {h['cancellation_policy']} | id={h['hotel_id']}"
-        )
 
     cards = hotel_cards(
         hotels,
@@ -223,4 +286,11 @@ def run_hotel_search(
         subtitle=f"{check_in} to {check_out} · {adults} adult(s)",
     )
 
-    return {"text": "\n".join(lines), "cards": cards, "hotels": hotels}
+    # Keep tool text short — UI renders selectable cards. Do not number options.
+    text = (
+        f"Found {len(hotels)} hotels in {location} ({check_in} → {check_out}). "
+        f"Cards are shown in the UI — do NOT re-list them as numbered text. "
+        f"One short line + ask which to pick (or more options)."
+    )
+
+    return {"text": text, "cards": cards, "hotels": hotels, "left_nav": left_nav}

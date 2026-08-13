@@ -13,7 +13,67 @@ from supervisor.normalize import normalize_search_list, offer_to_ui
 # In-memory min-fare cache for price calendar (real LiteAPI only — never invent).
 _PRICE_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 _PRICE_CACHE_TTL_SEC = 15 * 60
-_PRICE_CALENDAR_CONCURRENCY = 3
+# Higher fan-out after main search finishes (frontend defers calendar).
+_PRICE_CALENDAR_CONCURRENCY = 6
+# Calendar probes: fail fast so one slow day doesn't dominate the strip.
+_PRICE_CALENDAR_TIMEOUT_SEC = 14.0
+_PRICE_CALENDAR_RETRIES = 0
+
+# STOL / mountain fields almost never appear on live global fares.
+_STOL_LOCAL = {
+    "LUA": ("Lukla", "KTM", "Kathmandu"),
+    "JMO": ("Jomsom", "KTM", "Kathmandu"),
+    "IMK": ("Simikot", "KTM", "Kathmandu"),
+    "PPL": ("Phaplu", "KTM", "Kathmandu"),
+}
+
+
+def _flight_payment_mode() -> str:
+    """Always LiteAPI Payment SDK (Stripe). Razorpay is not supported."""
+    return "liteapi_sdk"
+
+
+def _resolve_stripe_publishable(raw: str | None) -> str | None:
+    """Map LiteAPI publishableKey labels (sandbox/live) to a real Stripe pk_* key."""
+    key = (raw or "").strip()
+    if key.startswith("pk_"):
+        return key
+    env = (
+        (os.getenv("STRIPE_PUBLISHABLE_KEY") or "")
+        or (os.getenv("STRIPE_PK") or "")
+        or (os.getenv("VITE_STRIPE_PUBLISHABLE_KEY") or "")
+    ).strip()
+    if env.startswith("pk_"):
+        return env
+    label = key.lower()
+    if label in {"sandbox", "live", "test", "production"} and env.startswith("pk_"):
+        return env
+    return env if env.startswith("pk_") else (key if key.startswith("pk_") else None)
+
+
+def _empty_offers_message(origin: str, destination: str) -> str:
+    o = (origin or "").strip().upper()
+    d = (destination or "").strip().upper()
+    dest_hit = _STOL_LOCAL.get(d)
+    origin_hit = _STOL_LOCAL.get(o)
+    if dest_hit:
+        name, hub, hub_name = dest_hit
+        if o == hub:
+            return (
+                f"{name} ({d}) isn’t on live global fares — it’s a short mountain hop "
+                f"from {hub_name}. Book that last sector locally; we don’t invent those prices."
+            )
+        return (
+            f"{name} ({d}) isn’t on live global fares. Search {o}→{hub} ({hub_name}), "
+            f"then book the last hop locally."
+        )
+    if origin_hit:
+        name, hub, hub_name = origin_hit
+        return (
+            f"{name} ({o}) isn’t on live global fares. Depart {hub_name} ({hub}) "
+            f"on live fares, or book that hop locally."
+        )
+    return f"No live offers for {o}→{d}."
 
 
 def _cache_key(
@@ -26,6 +86,7 @@ def _cache_key(
     infants: int,
     cabin: str,
     return_date: str | None,
+    currency: str = "INR",
 ) -> str:
     return "|".join(
         [
@@ -37,6 +98,7 @@ def _cache_key(
             str(infants),
             (cabin or "ECONOMY").upper(),
             return_date or "",
+            (currency or "INR").upper(),
         ]
     )
 
@@ -84,13 +146,19 @@ async def structured_price_calendar(
     infants: int = 0,
     cabin: str | None = "ECONOMY",
     return_date: str | None = None,
+    currency: str = "INR",
 ) -> dict[str, Any]:
     """Fan-out LiteAPI searches for min fare per date (manual flow only, no AI).
 
-    Does not mutate booking session offer state. Uses concurrency limits + TTL cache.
+    Uses one-way probes for the strip (much faster than N round-trips). Round-trip
+    booking still uses the main /search endpoint. Concurrency + short timeout + TTL cache.
     """
+    from flight_agent.config import get_settings
     from flight_agent.models.intents import FlightSearchParams
+    from flight_agent.providers.liteapi_provider import LiteAPIProvider
     from flight_agent.services.flight_service import FlightService
+
+    _ = return_date  # API compat; strip uses one-way probes for speed
 
     # Deduplicate while preserving order
     seen: set[str] = set()
@@ -117,12 +185,15 @@ async def structured_price_calendar(
     adults_n = max(1, adults)
     children_n = max(0, children)
     infants_n = max(0, infants)
+    currency_u = (currency or "INR").upper()
 
+    # One-way calendar probes for strip speed (main /search still does round-trip).
+    # return_date kept for API compatibility with the FastAPI request model.
     results: dict[str, dict[str, Any]] = {}
     pending: list[str] = []
 
     for date in unique_dates:
-        day_return = return_date if return_date and return_date > date else None
+        day_return = None
         key = _cache_key(
             origin=origin_u,
             destination=dest_u,
@@ -132,6 +203,7 @@ async def structured_price_calendar(
             infants=infants_n,
             cabin=cabin_u,
             return_date=day_return,
+            currency=currency_u,
         )
         cached = _cache_get(key)
         if cached is not None:
@@ -143,10 +215,17 @@ async def structured_price_calendar(
 
     if pending:
         sem = asyncio.Semaphore(_PRICE_CALENDAR_CONCURRENCY)
-        svc = FlightService()
+        base = get_settings()
+        cal_settings = base.model_copy(
+            update={
+                "liteapi_timeout_seconds": _PRICE_CALENDAR_TIMEOUT_SEC,
+                "liteapi_max_retries": _PRICE_CALENDAR_RETRIES,
+            }
+        )
+        svc = FlightService(provider=LiteAPIProvider(cal_settings), settings=cal_settings)
 
         async def fetch_one(date: str) -> None:
-            day_return = return_date if return_date and return_date > date else None
+            day_return = None
             key = _cache_key(
                 origin=origin_u,
                 destination=dest_u,
@@ -156,6 +235,7 @@ async def structured_price_calendar(
                 infants=infants_n,
                 cabin=cabin_u,
                 return_date=day_return,
+                currency=currency_u,
             )
             async with sem:
                 try:
@@ -168,14 +248,14 @@ async def structured_price_calendar(
                         children=children_n,
                         infants=infants_n,
                         cabin_class=cabin_u,
-                        currency="INR",
+                        currency=currency_u,
                     )
                     result = await svc.search(params)
-                    min_price, currency = _min_price_from_offers(result.get("offers") or [])
+                    min_price, cur = _min_price_from_offers(result.get("offers") or [])
                     entry = {
                         "date": date,
                         "minPrice": min_price,
-                        "currency": currency,
+                        "currency": cur or currency_u,
                     }
                     _cache_set(key, entry)
                     results[date] = entry
@@ -185,7 +265,7 @@ async def structured_price_calendar(
                     entry = {
                         "date": date,
                         "minPrice": None,
-                        "currency": "INR",
+                        "currency": currency_u,
                     }
                     # Cache misses briefly so a transient failure doesn't hammer LiteAPI
                     _PRICE_CACHE[key] = (time.monotonic() + 60, entry)
@@ -200,13 +280,13 @@ async def structured_price_calendar(
     priced = sum(1 for row in ordered if isinstance(row.get("minPrice"), (int, float)))
     mode = "live" if priced or not errors else "degraded"
     message = (
-        f"Price calendar: {priced}/{len(ordered)} days with live LiteAPI fares."
+        f"Price calendar: {priced}/{len(ordered)} days with live fares."
         if ordered
         else "No dates requested."
     )
     if errors and not priced:
         message = (
-            "Live price calendar failed. Check LiteAPI / API_KEY — no sample fares are shown."
+            "Live price calendar failed. Try again — no sample fares are shown."
         )
 
     return {
@@ -231,6 +311,7 @@ async def structured_search(
     infants: int,
     cabin: str | None,
     session: dict[str, Any],
+    currency: str = "INR",
 ) -> dict[str, Any]:
     """Call FlightService.search and persist offers on the shared session."""
     try:
@@ -249,7 +330,7 @@ async def structured_search(
                 children=max(0, children),
                 infants=max(0, infants),
                 cabin_class=(cabin or "ECONOMY").upper() if cabin else "ECONOMY",
-                currency="INR",
+                currency=(currency or "INR").upper(),
             )
             result = await svc.search(params)
         finally:
@@ -259,6 +340,29 @@ async def structured_search(
         ui = normalize_search_list(
             offers, origin=origin.upper(), destination=destination.upper()
         )
+
+        # Seed one-way calendar cache for this depart day (skip RT — different fare).
+        if not return_date:
+            min_p, cur = _min_price_from_offers(offers)
+            if min_p is not None:
+                _cache_set(
+                    _cache_key(
+                        origin=params.origin,
+                        destination=params.destination,
+                        date=params.departure_date,
+                        adults=params.adults,
+                        children=params.children,
+                        infants=params.infants,
+                        cabin=params.cabin_class,
+                        return_date=None,
+                        currency=params.currency,
+                    ),
+                    {
+                        "date": params.departure_date,
+                        "minPrice": min_p,
+                        "currency": cur or params.currency,
+                    },
+                )
 
         ctx_data = session.get("flight_context")
         ctx = SessionContext.model_validate(ctx_data) if ctx_data else SessionContext()
@@ -272,21 +376,22 @@ async def structured_search(
             "children": params.children,
             "infants": params.infants,
             "cabin_class": params.cabin_class,
+            "currency": params.currency,
         }
         session["flight_context"] = ctx.model_dump()
 
         total_offers = int(result.get("total_offers") or len(offers))
         if ui:
-            message = f"Found {len(ui)} live offers via LiteAPI."
+            message = f"Found {len(ui)} live offers."
         elif total_offers > 0:
             message = (
-                f"LiteAPI returned {total_offers} offer(s) for "
+                f"Live search returned {total_offers} offer(s) for "
                 f"{params.origin}→{params.destination}, but none looked like real "
                 "schedules (sandbox/junk carriers or bad airports were filtered). "
                 "Try BOM→DEL or another major route."
             )
         else:
-            message = f"No LiteAPI offers for {params.origin}→{params.destination}."
+            message = _empty_offers_message(params.origin, params.destination)
         return {
             "session_id": session["session_id"],
             "flights": ui,
@@ -301,19 +406,33 @@ async def structured_search(
         }
     except Exception as exc:
         traceback.print_exc()
+        detail = ""
+        details = getattr(exc, "details", None)
+        if isinstance(details, dict):
+            detail = str(details.get("description") or "").strip()
+        # LiteAPI often puts the actionable reason in description (e.g. sandbox-only flights).
+        if detail and "sandbox API keys only" in detail.lower():
+            user_msg = (
+                "Flight search isn’t available on this account yet. "
+                "Try again shortly, or search another major route like BOM→DEL."
+            )
+        elif detail:
+            user_msg = f"Live flight search failed: {detail}"
+        else:
+            user_msg = (
+                "Live flight search failed. Try again — no sample fares are shown."
+            )
         return {
             "session_id": session["session_id"],
             "flights": [],
             "mode": "degraded",
-            "message": (
-                f"Live flight search failed ({type(exc).__name__}). "
-                "Check LiteAPI / API_KEY and try again — no sample fares are shown."
-            ),
+            "message": user_msg,
             "route_path": ["start", "manual_booking", "flight_service", "error"],
             "session_context": session.get("flight_context"),
             "booking_ready": False,
             "payment_ready": False,
             "error": f"{type(exc).__name__}: {exc}",
+            "error_detail": detail or None,
         }
 
 
@@ -439,17 +558,18 @@ async def structured_select(
 
 
 def _is_sandbox_app() -> bool:
-    import os
+    """Env-only. Never treat sand_* keys as sandbox when APP_ENV=production."""
+    try:
+        from supervisor.payment_guards import is_sandbox_app
 
-    env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "sandbox").lower()
-    if env in {"sandbox", "development", "dev", "local", "test"}:
-        return True
-    # LiteAPI sandbox keys are prefixed sand_
-    for key_name in ("LITEAPI_API_KEY", "LITEAPI_KEY", "API_KEY"):
-        val = (os.getenv(key_name) or "").strip().lower()
-        if val.startswith("sand_"):
-            return True
-    return False
+        return is_sandbox_app()
+    except Exception:
+        import os
+
+        env = (
+            os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "sandbox"
+        ).lower()
+        return env in {"sandbox", "development", "dev", "local", "test"}
 
 
 def _booking_payload(booking: dict[str, Any]) -> dict[str, Any]:
@@ -486,6 +606,7 @@ async def structured_prebook(
     session: dict[str, Any],
     passengers: list[dict[str, Any]],
     contact: dict[str, Any],
+    voucher_code: str | None = None,
 ) -> dict[str, Any]:
     """Prebook selected offer with traveler details (LiteAPI Payment SDK path)."""
     import asyncio
@@ -560,6 +681,11 @@ async def structured_prebook(
         pax = [PassengerSlot.model_validate(p) for p in passengers]
         contact_slot = ContactSlot.model_validate(contact)
 
+        settings = get_settings()
+        cur = ((ctx.search_context or {}).get("currency") or settings.default_currency or "INR").upper()
+        pay_mode = _flight_payment_mode()
+        use_sdk = pay_mode == "liteapi_sdk" or settings.liteapi_use_payment_sdk
+
         svc = FlightService()
         try:
             async def _run_prebook() -> dict[str, Any]:
@@ -567,7 +693,13 @@ async def structured_prebook(
                     verified = await svc.verify(offer_id)
                     ctx.verified_offer_id = offer_id
                     ctx.last_verified_offer = verified
-                return await svc.prebook(offer_id, pax, contact_slot)
+                return await svc.prebook(
+                    offer_id,
+                    pax,
+                    contact_slot,
+                    voucher_code=voucher_code,
+                    use_payment_sdk=use_sdk,
+                )
 
             # Cap wall time so Review → payment never hangs forever server-side.
             prebook = await asyncio.wait_for(_run_prebook(), timeout=50.0)
@@ -576,27 +708,25 @@ async def structured_prebook(
 
         settings = get_settings()
         # Env fallback when LiteAPI omits publishableKey (common in some sandbox accounts).
-        publishable = (
+        publishable = _resolve_stripe_publishable(
             prebook.get("publishable_key")
             or (settings.stripe_publishable_key or "").strip()
-            or (os.getenv("STRIPE_PUBLISHABLE_KEY") or "").strip()
             or None
         )
-        if publishable and not prebook.get("publishable_key"):
+        if publishable:
             prebook = {**prebook, "publishable_key": publishable}
 
         client_secret = prebook.get("secret_key")
         has_stripe = bool(client_secret and publishable)
         ok = bool(prebook.get("success")) and bool(prebook.get("prebook_id"))
-        # When LiteAPI omits Payment SDK secrets, always allow mock card in sandbox
-        # so Review → Payment works locally (test card 4242…).
-        force_mock = (os.getenv("ITINERO_ALLOW_MOCK_PAYMENT") or "true").lower() in {
-            "1",
-            "true",
-            "yes",
-        }
-        allow_mock = ok and not has_stripe and (_is_sandbox_app() or force_mock)
-        payment_mode = "stripe" if has_stripe else ("mock_sandbox" if allow_mock else "unavailable")
+        # Sandbox-only mock when LiteAPI omits Payment SDK secrets.
+        allow_mock = ok and not has_stripe and _is_sandbox_app()
+        if has_stripe:
+            payment_mode = "stripe"
+        elif allow_mock:
+            payment_mode = "mock_sandbox"
+        else:
+            payment_mode = "unavailable"
 
         ctx.prebook_id = prebook.get("prebook_id")
         ctx.transaction_id = prebook.get("transaction_id")
@@ -606,6 +736,12 @@ async def structured_prebook(
         ctx.travelers_draft = passengers
         ctx.awaiting_payment_confirmation = ok
         session["flight_context"] = ctx.model_dump()
+        session["booking_contact"] = {
+            "email": str(contact.get("email") or "").strip(),
+            "first_name": str(contact.get("first_name") or "").strip(),
+            "last_name": str(contact.get("last_name") or "").strip(),
+            "phone_number": str(contact.get("phone_number") or "").strip(),
+        }
 
         if ok and has_stripe:
             message = "Hold created. Complete card payment with LiteAPI Payment SDK (Stripe)."
@@ -636,6 +772,9 @@ async def structured_prebook(
                 "payment_methods": prebook.get("payment_methods"),
                 "payment_mode": payment_mode,
                 "allow_mock_payment": allow_mock,
+                # LiteAPI paid bags/seats — only known after hold (not at search)
+                "services_attachable": bool(prebook.get("services_attachable")),
+                "services": prebook.get("services") or {},
             },
             "session_context": {
                 k: v
@@ -643,7 +782,6 @@ async def structured_prebook(
                 if k != "secret_key"
             },
             "booking_ready": ok,
-            # UI can open payment when Stripe is ready OR sandbox mock is allowed.
             "payment_ready": ok and (has_stripe or allow_mock),
             "route_path": ["start", "manual_booking", "prebook", "payment"],
             "mode": "live" if has_stripe else ("sandbox" if allow_mock else "live"),
@@ -689,14 +827,179 @@ async def structured_prebook(
         }
 
 
+async def structured_attach_services(
+    *,
+    session: dict[str, Any],
+    prebook_id: str | None = None,
+    selected_services: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Attach seats/bags (and any other LiteAPI ancillaries) to an existing hold.
+
+    LiteAPI returns a *new* transactionId / secretKey / price after attach —
+    callers must replace the previous payment intent values.
+    """
+    try:
+        from flight_agent.config import get_settings
+        from flight_agent.exceptions import LiteAPIError
+        from flight_agent.models.agent import SessionContext
+        from flight_agent.services.flight_service import FlightService
+
+        ctx_data = session.get("flight_context")
+        ctx = SessionContext.model_validate(ctx_data) if ctx_data else SessionContext()
+        pid = (prebook_id or ctx.prebook_id or "").strip()
+        selections = list(selected_services or [])
+
+        if not pid:
+            return {
+                "ok": False,
+                "error": "No booking hold to attach extras to.",
+                "error_code": "missing_prebook",
+                "session_id": session["session_id"],
+            }
+        if not selections:
+            return {
+                "ok": True,
+                "skipped": True,
+                "session_id": session["session_id"],
+                "prebook": ctx.last_prebook or {"prebook_id": pid},
+                "message": "No extras selected — continuing with base fare.",
+            }
+
+        # Normalize keys for LiteAPI (camelCase aliases on AttachServicesRequest)
+        normalized: list[dict[str, Any]] = []
+        for item in selections:
+            if not isinstance(item, dict):
+                continue
+            sid = item.get("serviceId") or item.get("service_id")
+            if not sid:
+                continue
+            row: dict[str, Any] = {
+                "serviceId": sid,
+                "passengerIndex": int(
+                    item.get("passengerIndex")
+                    if item.get("passengerIndex") is not None
+                    else item.get("passenger_index")
+                    if item.get("passenger_index") is not None
+                    else 0
+                ),
+                "quantity": int(item.get("quantity") or 1),
+            }
+            seg = item.get("segmentKey") or item.get("segment_key")
+            if seg:
+                row["segmentKey"] = seg
+            normalized.append(row)
+
+        if not normalized:
+            return {
+                "ok": False,
+                "error": "No valid extras to attach.",
+                "error_code": "invalid_services",
+                "session_id": session["session_id"],
+            }
+
+        svc = FlightService()
+        try:
+            result = await svc.attach_services(pid, normalized)
+        finally:
+            await svc.close()
+
+        publishable = (
+            result.get("publishable_key")
+            or (ctx.last_prebook or {}).get("publishable_key")
+            or (get_settings().stripe_publishable_key or "").strip()
+            or None
+        )
+        client_secret = result.get("secret_key")
+        has_stripe = bool(client_secret and publishable)
+        allow_mock = _is_sandbox_app() and not has_stripe
+        payment_mode = "stripe" if has_stripe else ("mock_sandbox" if allow_mock else "unknown")
+
+        ok = bool(result.get("success")) and bool(result.get("prebook_id") or pid)
+        ctx.prebook_id = result.get("prebook_id") or pid
+        ctx.transaction_id = result.get("transaction_id") or ctx.transaction_id
+        ctx.selected_services = normalized
+        ctx.available_services = result.get("services") or ctx.available_services
+        ctx.last_prebook = {
+            **(ctx.last_prebook or {}),
+            **result,
+            "payment_mode": payment_mode,
+            "allow_mock_payment": allow_mock,
+            "selected_services": normalized,
+        }
+        session["flight_context"] = ctx.model_dump()
+
+        return {
+            "ok": ok,
+            "session_id": session["session_id"],
+            "prebook": {
+                "prebook_id": ctx.prebook_id,
+                "price": result.get("price"),
+                "currency": result.get("currency"),
+                "publishable_key": publishable,
+                "transaction_id": result.get("transaction_id"),
+                "client_secret": client_secret,
+                "has_secret": bool(client_secret),
+                "payment_methods": result.get("payment_methods"),
+                "payment_mode": payment_mode,
+                "allow_mock_payment": allow_mock,
+                "services_attachable": bool(result.get("services_attachable")),
+                "services": result.get("services") or {},
+                "selected_services": normalized,
+            },
+            "payment_ready": ok and (has_stripe or allow_mock),
+            "message": (
+                "Extras added — total updated. Continue to payment."
+                if ok
+                else "Could not attach extras to this hold."
+            ),
+            "error": None if ok else "attach_services_failed",
+            "route_path": ["start", "manual_booking", "prebook", "attach_services", "payment"],
+        }
+    except Exception as exc:
+        traceback.print_exc()
+        from flight_agent.exceptions import LiteAPIError
+
+        detail = ""
+        if isinstance(exc, LiteAPIError) and isinstance(exc.details, dict):
+            detail = str(exc.details.get("description") or "")[:500]
+        return {
+            "ok": False,
+            "error": _friendly_liteapi_error(exc),
+            "error_code": "attach_services_failed",
+            "liteapi_description": detail or None,
+            "session_id": session["session_id"],
+            "payment_ready": False,
+            "mode": "degraded",
+        }
+
+
 async def structured_complete(
     *,
     session: dict[str, Any],
     prebook_id: str | None = None,
     transaction_id: str | None = None,
     mock_payment: bool = False,
+    payment_provider: str | None = None,
+    payment_id: str | None = None,
+    expected_amount: float | None = None,
+    currency: str | None = None,
 ) -> dict[str, Any]:
-    """Finalize LiteAPI booking after payment (TRANSACTION_ID) or sandbox CREDIT/mock."""
+    """Finalize LiteAPI booking after Stripe / Payment SDK / sandbox CREDIT."""
+    # Bind client prebook to session hold before importing Travel_Agent stack.
+    ctx_raw = session.get("flight_context") if isinstance(session, dict) else None
+    if isinstance(ctx_raw, dict):
+        session_pid_early = str(ctx_raw.get("prebook_id") or "").strip()
+    else:
+        session_pid_early = ""
+    client_pid_early = (prebook_id or "").strip()
+    if client_pid_early and session_pid_early and client_pid_early != session_pid_early:
+        return {
+            "ok": False,
+            "error": "prebook_mismatch",
+            "message": "This fare hold does not belong to the current booking session.",
+            "session_id": session.get("session_id") if isinstance(session, dict) else None,
+        }
+
     try:
         from flight_agent.config import get_settings
         from flight_agent.models.agent import SessionContext
@@ -705,9 +1008,32 @@ async def structured_complete(
 
         ctx_data = session.get("flight_context")
         ctx = SessionContext.model_validate(ctx_data) if ctx_data else SessionContext()
-        pid = prebook_id or ctx.prebook_id
-        tid = transaction_id or ctx.transaction_id
+        session_pid = (ctx.prebook_id or "").strip()
+        client_pid = (prebook_id or "").strip()
+        # Prefer session hold — never complete an unbound client-supplied prebook
+        # when the session already has one.
+        pid = session_pid or client_pid
+        tid = (transaction_id or ctx.transaction_id or "").strip() or None
         last_pb = ctx.last_prebook or {}
+        provider = str(payment_provider or "").strip().lower()
+        pay_ref = str(payment_id or "").strip()
+        if provider == "razorpay":
+            return {
+                "ok": False,
+                "error": "razorpay_disabled",
+                "message": "Razorpay is not supported. Complete card payment with Stripe.",
+                "session_id": session.get("session_id"),
+            }
+        if mock_payment:
+            from supervisor.payment_guards import assert_mock_payment_allowed
+
+            blocked = assert_mock_payment_allowed(mock_payment=True)
+            if blocked:
+                return {
+                    **blocked,
+                    "session_id": session.get("session_id"),
+                }
+
         sandbox_mock = bool(mock_payment) and _is_sandbox_app()
         if not pid:
             return {
@@ -716,36 +1042,46 @@ async def structured_complete(
                 "session_id": session["session_id"],
             }
 
+        # Stripe / SDK path needs a real transaction id (session or client).
+        if not mock_payment and provider in {"", "stripe", "liteapi_sdk"} and not pay_ref:
+            if not tid and not _is_sandbox_app():
+                return {
+                    "ok": False,
+                    "error": "payment_required",
+                    "message": "Complete card payment before issuing the ticket.",
+                    "session_id": session.get("session_id"),
+                }
+
         settings = get_settings()
         booking: dict[str, Any] | None = None
         complete_error: str | None = None
 
         svc = FlightService()
         try:
-            attempts: list[tuple[str | None, str | None]] = []
-            if sandbox_mock:
-                # Demo card path: prefer CREDIT (no Stripe confirm), then TRANSACTION_ID if present.
-                attempts.append((PaymentMethod.CREDIT.value, None))
+            attempts: list[tuple[str | None, str | None, str | None]] = []
+            if sandbox_mock or provider == "stripe":
                 if tid:
-                    attempts.append((PaymentMethod.TRANSACTION_ID.value, tid))
+                    attempts.append((PaymentMethod.TRANSACTION_ID.value, tid, None))
+                if sandbox_mock:
+                    attempts.append((PaymentMethod.CREDIT.value, None, None))
             else:
                 if tid:
-                    attempts.append((PaymentMethod.TRANSACTION_ID.value, tid))
+                    attempts.append((PaymentMethod.TRANSACTION_ID.value, tid, None))
                 if (
                     _is_sandbox_app()
                     and not tid
                     and not settings.liteapi_use_payment_sdk
                 ):
-                    attempts.append((PaymentMethod.CREDIT.value, None))
+                    attempts.append((PaymentMethod.CREDIT.value, None, None))
                 if not attempts:
                     if settings.liteapi_use_payment_sdk:
-                        attempts.append((PaymentMethod.TRANSACTION_ID.value, tid))
+                        attempts.append((PaymentMethod.TRANSACTION_ID.value, tid, None))
                     else:
-                        attempts.append((PaymentMethod.CREDIT.value, None))
+                        attempts.append((PaymentMethod.CREDIT.value, None, None))
 
-            seen: set[tuple[str | None, str | None]] = set()
-            for method, method_tid in attempts:
-                key = (method, method_tid)
+            seen: set[tuple[str | None, str | None, str | None]] = set()
+            for method, method_tid, method_token in attempts:
+                key = (method, method_tid, method_token)
                 if key in seen:
                     continue
                 seen.add(key)
@@ -756,6 +1092,7 @@ async def structured_complete(
                         pid,
                         transaction_id=method_tid,
                         payment_method=method,
+                        payment_token=method_token,
                     )
                     break
                 except Exception as exc:
@@ -864,4 +1201,176 @@ async def structured_complete(
             "booking_ready": False,
             "payment_ready": True,
             "mode": "degraded",
+        }
+
+
+async def structured_flight_get_booking(*, booking_id: str) -> dict[str, Any]:
+    """GET LiteAPI flight booking by id."""
+    bid = (booking_id or "").strip()
+    if not bid:
+        return {"ok": False, "error": "missing_booking_id"}
+    try:
+        from flight_agent.services.flight_service import FlightService
+
+        svc = FlightService()
+        try:
+            booking = await svc.get_booking(bid)
+        finally:
+            await svc.close()
+        return {
+            "ok": bool(booking.get("found") or booking.get("booking_id")),
+            "booking": booking,
+        }
+    except Exception as exc:
+        traceback.print_exc()
+        return {"ok": False, "error": _friendly_liteapi_error(exc)}
+
+
+async def structured_flight_cancel_quote(*, booking_id: str) -> dict[str, Any]:
+    """GET LiteAPI cancel quote — fee/refund, no commit."""
+    bid = (booking_id or "").strip()
+    if not bid:
+        return {"ok": False, "error": "missing_booking_id", "message": "Missing booking id."}
+    try:
+        from flight_agent.services.flight_service import FlightService
+
+        svc = FlightService()
+        try:
+            quote = await svc.get_cancellation_quote(bid)
+        finally:
+            await svc.close()
+        return quote if isinstance(quote, dict) else {"ok": False, "message": "No quote."}
+    except Exception as exc:
+        traceback.print_exc()
+        return {
+            "ok": False,
+            "error": "quote_failed",
+            "message": _friendly_liteapi_error(exc),
+        }
+
+
+async def structured_flight_cancel_booking(
+    *,
+    booking_id: str,
+    payment_id: str | None = None,
+    expected_amount: float | None = None,
+    payment_provider: str | None = None,
+) -> dict[str, Any]:
+    """Cancel via LiteAPI; refund via LiteAPI auto-refund or Itinero Stripe when pi_."""
+    bid = (booking_id or "").strip()
+    if not bid:
+        return {"ok": False, "error": "missing_booking_id", "message": "Missing booking id."}
+    try:
+        from flight_agent.services.flight_service import FlightService
+        from supervisor.payment_routing import (
+            customer_refund_rail,
+            maybe_refund_customer_after_cancel,
+        )
+
+        svc = FlightService()
+        try:
+            result = await svc.cancel_booking(bid)
+        finally:
+            await svc.close()
+
+        pending = bool(result.get("pending"))
+        cancelled = bool(result.get("cancelled") or result.get("already_cancelled"))
+        rail = customer_refund_rail(
+            payment_id=payment_id,
+            payment_provider=payment_provider,
+        )
+        liteapi_handles_refund = rail == "liteapi"
+
+        message = str(result.get("message") or "")
+        dest = str(result.get("destination") or "original_payment").replace("_", " ")
+        stripe_refund: dict[str, Any] | None = None
+
+        if cancelled or pending:
+            if rail == "itinero_stripe" and not pending:
+                # Inventory was usually CREDIT on packages — refund Itinero merchant charge.
+                refund_amt = result.get("refund_amount")
+                if refund_amt is None:
+                    refund_amt = expected_amount
+                stripe_refund = await maybe_refund_customer_after_cancel(
+                    payment_id=payment_id,
+                    payment_provider=payment_provider,
+                    amount=float(refund_amt) if refund_amt is not None else None,
+                    currency=result.get("currency"),
+                    booking_id=bid,
+                )
+            elif rail == "itinero_stripe" and pending:
+                message = (
+                    f"{message} Airline cancel is still pending — Itinero Stripe refund "
+                    "will need a follow-up once cancel finalizes (or contact support)."
+                ).strip()
+
+        if pending and liteapi_handles_refund:
+            message = (
+                f"{message} Refund (if any) is credited by LiteAPI to {dest} "
+                "after the airline confirms cancel."
+            ).strip()
+        elif cancelled and liteapi_handles_refund:
+            amt = result.get("refund_amount")
+            if amt is not None:
+                message = (
+                    f"{message} LiteAPI refund amount {amt} {result.get('currency') or ''} "
+                    f"→ {dest}."
+                ).strip()
+            else:
+                message = (
+                    f"{message} LiteAPI handles refund to {dest} per cancellation policy."
+                ).strip()
+        elif stripe_refund and stripe_refund.get("ok") and not stripe_refund.get("skipped"):
+            amt = stripe_refund.get("refund_amount")
+            message = (
+                f"{message} Refund of {amt} {stripe_refund.get('currency') or ''} "
+                "sent to your original card via Stripe."
+                if amt is not None
+                else f"{message} Stripe refund submitted to your original card."
+            ).strip()
+        elif stripe_refund and stripe_refund.get("skipped") and stripe_refund.get("message"):
+            message = f"{message} {stripe_refund['message']}".strip()
+        elif stripe_refund and not stripe_refund.get("ok"):
+            message = (
+                f"{message} Ticket cancel went through, but Stripe refund failed: "
+                f"{stripe_refund.get('message') or 'contact support'}."
+            ).strip()
+        elif rail == "legacy_unsupported":
+            message = (
+                f"{message} Legacy payment cannot be auto-refunded — contact support."
+            ).strip()
+
+        return {
+            "ok": True,
+            "booking": result,
+            "cancellation": {
+                "status": result.get("status"),
+                "cancellation_fee": result.get("cancellation_fee"),
+                "refund_amount": (
+                    (stripe_refund or {}).get("refund_amount")
+                    if stripe_refund and stripe_refund.get("ok")
+                    else result.get("refund_amount")
+                ),
+                "currency": result.get("currency") or (stripe_refund or {}).get("currency"),
+                "destination": result.get("destination"),
+                "vouchers": result.get("vouchers") or [],
+                "pending": pending,
+                "liteapi_auto_refund": liteapi_handles_refund,
+                "refund_rail": rail,
+            },
+            "itinero_stripe_refund": stripe_refund,
+            "pending": pending,
+            "message": message
+            or (
+                "Flight booking cancelled."
+                if cancelled
+                else "Cancel requested — check booking status."
+            ),
+        }
+    except Exception as exc:
+        traceback.print_exc()
+        return {
+            "ok": False,
+            "error": "cancel_failed",
+            "message": _friendly_liteapi_error(exc),
         }

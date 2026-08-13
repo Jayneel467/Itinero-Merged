@@ -1,30 +1,8 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check } from 'lucide-react';
+import { MODAL_LANGUAGES, modalSelectionCode } from '@/constants/languages';
 import styles from './LanguageModal.module.css';
-
-const LANGUAGES = [
-  { code: 'en-US', name: 'English (US)', flag: 'https://flagcdn.com/w40/us.png' },
-  { code: 'hi-IN', name: 'हिन्दी', flag: 'https://flagcdn.com/w40/in.png' },
-  { code: 'en-GB', name: 'English (UK)', flag: 'https://flagcdn.com/w40/gb.png' },
-  { code: 'es-ES', name: 'Español', flag: 'https://flagcdn.com/w40/es.png' },
-  { code: 'fr-FR', name: 'Français', flag: 'https://flagcdn.com/w40/fr.png' },
-  { code: 'de-DE', name: 'Deutsch', flag: 'https://flagcdn.com/w40/de.png' },
-  { code: 'it-IT', name: 'Italiano', flag: 'https://flagcdn.com/w40/it.png' },
-  { code: 'nl-NL', name: 'Nederlands', flag: 'https://flagcdn.com/w40/nl.png' },
-  { code: 'ja-JP', name: '日本語', flag: 'https://flagcdn.com/w40/jp.png' },
-  { code: 'zh-CN', name: '简体中文', flag: 'https://flagcdn.com/w40/cn.png' },
-  { code: 'ko-KR', name: '한국어', flag: 'https://flagcdn.com/w40/kr.png' },
-  { code: 'ar-SA', name: 'العربية', flag: 'https://flagcdn.com/w40/sa.png' },
-  { code: 'pt-BR', name: 'Português (BR)', flag: 'https://flagcdn.com/w40/br.png' },
-  { code: 'tr-TR', name: 'Türkçe', flag: 'https://flagcdn.com/w40/tr.png' },
-  { code: 'ru-RU', name: 'Русский', flag: 'https://flagcdn.com/w40/ru.png' },
-  { code: 'id-ID', name: 'Bahasa Indonesia', flag: 'https://flagcdn.com/w40/id.png' },
-  { code: 'ms-MY', name: 'Bahasa Malaysia', flag: 'https://flagcdn.com/w40/my.png' },
-  { code: 'th-TH', name: 'ภาษาไทย', flag: 'https://flagcdn.com/w40/th.png' },
-  { code: 'vi-VN', name: 'Tiếng Việt', flag: 'https://flagcdn.com/w40/vn.png' },
-  { code: 'pl-PL', name: 'Polski', flag: 'https://flagcdn.com/w40/pl.png' },
-];
 
 export default function LanguageModal({ isOpen, onClose, selectedLanguage, onSelect }) {
   if (!isOpen) return null;
@@ -40,8 +18,8 @@ export default function LanguageModal({ isOpen, onClose, selectedLanguage, onSel
         </div>
 
         <div className={styles.grid}>
-          {LANGUAGES.map((lang) => {
-            const isSelected = selectedLanguage === lang.code;
+          {MODAL_LANGUAGES.map((lang) => {
+            const isSelected = modalSelectionCode(selectedLanguage) === lang.code;
             return (
               <button
                 key={lang.code}

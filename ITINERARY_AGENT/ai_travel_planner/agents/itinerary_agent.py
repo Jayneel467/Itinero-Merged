@@ -429,8 +429,21 @@ class ItineraryAgent:
                 "Return the 5 best options ranked by value."
             )
 
+            dest_city = (
+                (p.destination or "").split(",")[0].strip()
+                or (area or "").split(",")[0].strip()
+            )
+            try:
+                from services import location_resolver
+                cc = (
+                    location_resolver.resolve_country_code(p.destination or "")
+                    or location_resolver.resolve_country_code(area or "")
+                    or "IN"
+                )
+            except Exception:
+                cc = "IN"
             search_params = HotelSearchParams(
-                location=f"{area}, {p.destination}",
+                location=f"{dest_city}, {cc}",
                 check_in=check_in,
                 check_out=check_out,
                 adults=p.adults,
@@ -528,10 +541,19 @@ class ItineraryAgent:
         )
 
         state.itinerary.draft = draft
+        scope = (getattr(state, "planning_scope", "full") or "full").lower().strip()
+        if scope == "itinerary_only":
+            # Deliver the day plan immediately — no hotel/flight approval gate.
+            state.itinerary.draft_approved = True
+            state.clear_pending_action()
+            state.set_stage(WorkflowStage.FINAL_ITINERARY)
+            return state
+
         state.set_stage(WorkflowStage.DRAFT_ITINERARY_REVIEW)
         state.set_pending_action(PendingAction.APPROVE_DRAFT_ITINERARY)
 
         reply = self._format_draft_itinerary_message(draft)
+        reply += self._format_draft_cta(scope)
         state.add_assistant_message(reply)
         return state
 
@@ -547,6 +569,32 @@ class ItineraryAgent:
         p = state.trip.search_params
         flight = state.flights.selected_flight
         prebooks = state.hotels.prebooks
+        scope = (getattr(state, "planning_scope", "full") or "full").lower().strip()
+        itinerary_only = scope == "itinerary_only" or (not flight and not prebooks)
+
+        if itinerary_only and draft:
+            # Skip hotel-merge LLM — surface the day plan as the final deliverable.
+            days = list(draft.days)
+            final = FinalItinerary(
+                trip_title=draft.trip_title,
+                origin=p.origin or "",
+                destination=p.destination or "",
+                departure_date=p.departure_date or date.today(),
+                return_date=p.return_date,
+                outbound_flight=None,
+                flight_prebook_id=None,
+                hotel_prebook_ids=[],
+                hotel_names=[],
+                total_days=len(days),
+                days=days,
+                total_flight_cost=0.0,
+                total_hotel_cost=0.0,
+                grand_total=0.0,
+            )
+            state.itinerary.final = final
+            state.set_stage(WorkflowStage.COMPLETED)
+            state.add_assistant_message(self._format_final_itinerary_message(final))
+            return state
 
         hotel_summary = "\n".join(
             f"  {label}: {pb.hotel.name} ({pb.hotel.area}), "
@@ -562,7 +610,7 @@ class ItineraryAgent:
 
         context = (
             f"Draft itinerary:\n{draft_json}\n\n"
-            f"Hotel pre-bookings:\n{hotel_summary}\n\n"
+            f"Hotel pre-bookings:\n{hotel_summary or '(none)'}\n\n"
             f"Outbound flight: {flight.airline if flight else 'N/A'} "
             f"{flight.flight_number if flight else ''} "
             f"arriving {flight.arrival_time.strftime('%H:%M') if flight else 'N/A'}\n"
@@ -626,13 +674,19 @@ class ItineraryAgent:
         for i, f in enumerate(flights, 1):
             rec = " ⭐ Recommended" if f.recommended else ""
             stops = "Nonstop" if f.stops == 0 else f"{f.stops} stop(s) via {', '.join(f.stopover_cities)}"
+            meta = [f.cabin_class.value, f"₹{f.price_per_adult:,.0f}/adult"]
+            if f.baggage_included:
+                meta.append(f.baggage_included)
+            if f.refund_policy:
+                meta.append(f.refund_policy)
+            if f.seats_available and f.seats_available > 0:
+                meta.append(f"{f.seats_available} seats left")
             lines.append(
                 f"  {i}. {f.airline} {f.flight_number}{rec}\n"
                 f"     {f.origin} → {f.destination} | "
                 f"{f.departure_time.strftime('%d %b, %H:%M')} → {f.arrival_time.strftime('%H:%M')} | "
                 f"{f.duration_display} | {stops}\n"
-                f"     {f.cabin_class.value} | ₹{f.price_per_adult:,.0f}/adult | "
-                f"{f.baggage_included} | {f.refund_policy} | {f.seats_available} seats left\n"
+                f"     {' | '.join(meta)}\n"
             )
 
         recommended = state.flights.recommended_flight
@@ -1035,31 +1089,50 @@ class ItineraryAgent:
         if draft.notes:
             lines.append(f"\n📝 Trip notes: {draft.notes}")
 
-        lines.append(
+        return "\n".join(lines)
+
+    def _format_draft_cta(self, scope: str = "full") -> str:
+        if (scope or "full").lower().strip() == "itinerary_only":
+            return (
+                "\n\nThis is your day-by-day plan (no flights or hotels). "
+                "Reply **yes** to lock it in, or tell me what you'd like to change."
+            )
+        if (scope or "full").lower().strip() == "hotels_only":
+            return (
+                "\n\nWant any changes to this itinerary, or shall I search hotels next? "
+                "(approve / suggest changes)"
+            )
+        return (
             "\n\nWould you like to make any changes to this itinerary, "
             "or shall I proceed to search for hotels? (approve / suggest changes)"
         )
-        return "\n".join(lines)
 
     def _format_final_itinerary_message(self, final: FinalItinerary) -> str:
         """Format the complete final itinerary."""
         lines = [
             f"\n{'═'*60}",
-            f"  🗺️  FINAL ITINERARY: {final.trip_title.upper()}",
+            f"  🗺️  YOUR ITINERARY: {final.trip_title.upper()}",
             f"{'═'*60}\n",
-            f"  ✈  Outbound: {final.outbound_flight.airline if final.outbound_flight else 'N/A'} "
-            f"{final.outbound_flight.flight_number if final.outbound_flight else ''} "
-            f"| Flight Prebook: {final.flight_prebook_id or 'N/A'}",
         ]
+
+        if final.outbound_flight or final.flight_prebook_id:
+            lines.append(
+                f"  ✈  Outbound: {final.outbound_flight.airline if final.outbound_flight else ''} "
+                f"{final.outbound_flight.flight_number if final.outbound_flight else ''} "
+                f"| Flight Prebook: {final.flight_prebook_id or '—'}"
+            )
 
         for i, (name, pid) in enumerate(
             zip(final.hotel_names, final.hotel_prebook_ids), 1
         ):
             lines.append(f"  🏨  Hotel {i}: {name} | Prebook: {pid}")
 
-        lines.append(f"\n  💰 Flight Cost:  ₹{final.total_flight_cost:,.0f}")
-        lines.append(f"  💰 Hotel Cost:   ₹{final.total_hotel_cost:,.0f}")
-        lines.append(f"  💰 Grand Total:  ₹{final.grand_total:,.0f} {final.currency}")
+        if final.total_flight_cost or final.total_hotel_cost:
+            lines.append(f"\n  💰 Flight Cost:  ₹{final.total_flight_cost:,.0f}")
+            lines.append(f"  💰 Hotel Cost:   ₹{final.total_hotel_cost:,.0f}")
+            lines.append(f"  💰 Grand Total:  ₹{final.grand_total:,.0f} {final.currency}")
+        else:
+            lines.append("\n  📌 Activities & pacing only — no flights or hotels booked.")
         lines.append(f"\n{'─'*60}")
 
         for day in final.days:

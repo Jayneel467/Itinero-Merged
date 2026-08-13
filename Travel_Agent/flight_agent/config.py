@@ -44,9 +44,18 @@ class Settings(BaseSettings):
         default="https://api.liteapi.travel/v3.0",
         validation_alias=AliasChoices("LITEAPI_BASE_URL", "BASE_URL", "liteapi_base_url"),
     )
-    liteapi_timeout_seconds: float = Field(default=28.0, validation_alias="LITEAPI_TIMEOUT_SECONDS")
+    liteapi_timeout_seconds: float = Field(
+        default=90.0,
+        validation_alias="LITEAPI_TIMEOUT_SECONDS",
+        description="Read timeout for LiteAPI calls (long-haul / connecting searches need headroom).",
+    )
+    liteapi_search_timeout_seconds: float = Field(
+        default=90.0,
+        validation_alias="LITEAPI_SEARCH_TIMEOUT_SECONDS",
+        description="Dedicated timeout for /flights/rates (connecting itineraries).",
+    )
     liteapi_max_retries: int = Field(default=2, validation_alias="LITEAPI_MAX_RETRIES")
-    liteapi_use_payment_sdk: bool = Field(default=False, validation_alias="LITEAPI_USE_PAYMENT_SDK")
+    liteapi_use_payment_sdk: bool = Field(default=True, validation_alias="LITEAPI_USE_PAYMENT_SDK")
     stripe_publishable_key: str = Field(
         default="",
         validation_alias=AliasChoices("STRIPE_PUBLISHABLE_KEY", "STRIPE_PK"),

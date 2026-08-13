@@ -1,0 +1,77 @@
+# Daily catalog curator
+#
+# Improves packages every day, fills thin markets, polishes Explore,
+# then verifies Explore + Packages page contracts.
+#
+# Schedule: 06:15 UTC daily. Set CATALOG_CURATOR_TOKEN in repo secrets if you
+# later switch this to hit a live /api/catalog/daily endpoint.
+
+name: Daily catalog curator
+
+on:
+  schedule:
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+    inputs:
+      markets:
+        description: "Comma-separated markets"
+        required: false
+        default: "GLOBAL,US,IN,GB,AE,SG,AU,JP,CA"
+      dry_run:
+        description: "Dry run (no writes)"
+        required: false
+        default: "false"
+
+jobs:
+  curate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run daily curator
+        env:
+          CURATOR_MARKETS: ${{ github.event.inputs.markets || 'GLOBAL,US,IN,GB,AE,SG,AU,JP,CA' }}
+        run: |
+          set -euo pipefail
+          MARKETS="${CURATOR_MARKETS:-GLOBAL,US,IN,GB,AE,SG,AU,JP,CA}"
+          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
+            python -m supervisor.catalog_curator daily --markets "$MARKETS" --dry-run --no-publish
+          else
+            python -m supervisor.catalog_curator daily --markets "$MARKETS" --publish
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-curator-report
+          path: supervisor/data/catalog_curator_reports/
+          if-no-files-found: ignore
+
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const day = new Date().toISOString().slice(0, 10);
+            const title = `Catalog curator failed (${day})`;
+            const body = [
+              'Daily catalog curator (`supervisor.catalog_curator daily`) failed.',
+              '',
+              'Check the workflow artifact `catalog-curator-report` and logs.',
+              '',
+              `Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });

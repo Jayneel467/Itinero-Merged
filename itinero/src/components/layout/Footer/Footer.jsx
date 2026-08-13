@@ -1,50 +1,62 @@
 import { Link } from "react-router-dom";
+import { useHomeLocationOptional } from "@/context/HomeLocationContext";
+import { isTrainsMarket } from "@/constants/regionalFeatures";
 import "./Footer.css";
 
-const productLinks = [
-  { label: "Ask Vero", to: "/vero" },
+const BASE_LINKS = [
   { label: "Flights", to: "/flights" },
-  { label: "Hotels & Stays", to: "/hotels" },
-];
-const exploreLinks = [
-  { label: "Flights", to: "/flights" },
-  { label: "Hotels & Stays", to: "/hotels" },
+  { label: "Stays", to: "/hotels" },
+  { label: "Trains", to: "/trains", indiaOnly: true },
+  { label: "Transits", to: "/transits" },
+  { label: "Packages", to: "/packages" },
+  { label: "Explore", to: "/explore" },
+  { label: "Vero", to: "/vero" },
+  { label: "Help", to: "/help" },
+  { label: "Feedback", to: "/feedback" },
+  { label: "Terms", to: "/terms" },
+  { label: "Privacy", to: "/privacy" },
+  { label: "Cancellations", to: "/cancellation" },
 ];
 
 export default function Footer() {
+  const logoSrc = `${import.meta.env.BASE_URL}itinero-logo.png`;
+  const year = new Date().getFullYear();
+  const home = useHomeLocationOptional();
+  const showTrains = isTrainsMarket({
+    countryCode: home?.countryCode,
+    passportCountry: home?.passportCountry,
+  });
+  const links = BASE_LINKS.filter((l) => !l.indiaOnly || showTrains);
+
   return (
     <footer className="footer">
-      <div className="footer__inner">
-        <div className="footer__top">
-          <section className="footer__brand">
-            <div className="footer__logo" aria-label="Itinero">
-              <span>itin</span>
-              <em>ero</em>
-            </div>
-            <p className="footer__tagline">
-              Itinero is your intelligent travel companion — powered by Vero, your AI travel
-              buddy. Discover deals, smart routing, and seamless booking.
-            </p>
-          </section>
-
-          <nav className="footer__col" aria-label="Product">
-            <h3 className="footer__col-heading">Product</h3>
-            {productLinks.map((l) => (
-              <Link key={l.label} to={l.to} className="footer__col-link">
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-
-          <nav className="footer__col" aria-label="Explore">
-            <h3 className="footer__col-heading">Explore</h3>
-            {exploreLinks.map((l) => (
-              <Link key={l.label} to={l.to} className="footer__col-link">
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
+      <div className="footer__inner footer__inner--simple">
+        <Link to="/" className="footer__logoLink" aria-label="Itinero home">
+          <img src={logoSrc} alt="itinero" className="footer__logoImg" />
+        </Link>
+        <p className="footer__tagline footer__tagline--center">
+          Discover more <em>everywhere</em>.
+        </p>
+        <nav className="footer__simpleNav" aria-label="Product">
+          {links.map((l) => (
+            <Link key={l.label} to={l.to} className="footer__col-link">
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+        <p className="footer__helpCopy footer__helpCopy--center">
+          Your trip doesn’t end at checkout. Vero stays with you for the next move.
+        </p>
+        <p className="footer__copy">
+          © {year} Itinero ·{" "}
+          <Link to="/help" className="footer__col-link">
+            Support
+          </Link>
+          {" · "}
+          <Link to="/feedback" className="footer__col-link">
+            Feedback
+          </Link>
+        </p>
       </div>
     </footer>
   );

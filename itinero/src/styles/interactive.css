@@ -1,0 +1,31 @@
+/* ═══════════════════════════════════════════════════════
+   Interactive controls - native element baseline
+   Shared ActionButton / ActionRow live in components/shared.
+   ═══════════════════════════════════════════════════════ */
+
+@layer base {
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    line-height: 1.2;
+    vertical-align: middle;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:disabled,
+  input[type="button"]:disabled,
+  input[type="submit"]:disabled,
+  input[type="reset"]:disabled {
+    cursor: not-allowed;
+  }
+
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}

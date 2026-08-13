@@ -10,7 +10,7 @@ const TABS = [
 ];
 
 /**
- * In-chat flight results panel — compact OTA-style list matching Vero booking UX.
+ * In-chat flight results panel - compact OTA-style list matching Vero booking UX.
  * Select → confirm strip → BookingPopup (passenger → review → pay via LiteAPI/Stripe).
  */
 export default function VeroFlightCards({ flights, sessionId }) {
@@ -206,16 +206,16 @@ export default function VeroFlightCards({ flights, sessionId }) {
                     <div className="vero-flight-card__schedule">
                       <div>
                         <em>{flight.departure?.time || "--:--"}</em>
-                        <span>{flight.departure?.airport || "—"}</span>
+                        <span>{flight.departure?.airport || "-"}</span>
                       </div>
                       <div className="vero-flight-card__mid">
-                        <span>{flight.duration || "—"}</span>
+                        <span>{flight.duration || "-"}</span>
                         <div className="vero-flight-card__line" />
                         <span>{flight.stops || "Direct"}</span>
                       </div>
                       <div>
                         <em>{flight.arrival?.time || "--:--"}</em>
-                        <span>{flight.arrival?.airport || "—"}</span>
+                        <span>{flight.arrival?.airport || "-"}</span>
                       </div>
                     </div>
 

@@ -6,14 +6,18 @@ import re
 from datetime import datetime
 from typing import Any
 
-# Sandbox / vendor junk carriers that sometimes appear on invalid routes.
+# Vendor / sandbox placeholders — never show these as bookable carriers.
+# Nuitée / ND is LiteAPI sandbox marketing, not a real airline.
 _JUNK_AIRLINE_RE = re.compile(
-    r"nuit[eéè]e|nuitee|sandbox|test\s*air|dummy\s*air|fake\s*air",
+    r"nuit[eé]e|nuitee|\bsandbox\b|test\s*air|dummy\s*air|fake\s*air|mock\s*air",
     re.I,
 )
+_JUNK_AIRLINE_CODES = frozenset({"ND"})
 _IATA_RE = re.compile(r"^[A-Z]{3}$")
-# Outbound display duration beyond this is almost certainly a mapping bug.
-_MAX_DURATION_MINUTES = 36 * 60
+# Outbound display duration beyond this is almost certainly a round-trip
+# mapping bug (e.g. BOM→BOM spanning days). Real long-haul with layovers
+# (STV→JFK via DXB, etc.) routinely runs 24–60h — keep those.
+_MAX_DURATION_MINUTES = 5 * 24 * 60
 # English-looking tokens that are never airports (slot-parse leftovers).
 _INVALID_IATA = frozenset(
     {
@@ -23,6 +27,42 @@ _INVALID_IATA = frozenset(
         "ITS", "LET", "PUT", "SAY", "SHE", "TOO", "USE", "FLY", "AIR", "VIA",
     }
 )
+
+_CODE_NAMES = {
+    "6E": "IndiGo",
+    "QP": "Akasa Air",
+    "SG": "SpiceJet",
+    "IX": "Air India Express",
+    "AI": "Air India",
+    "UK": "Vistara",
+    "9I": "Alliance Air",
+    "G8": "Go First",
+    "I5": "AirAsia India",
+}
+
+
+def _canonicalize_airline_ui(name: Any, code: Any = None) -> tuple[str, str]:
+    c = str(code or "").strip().upper()
+    if len(c) == 2 and c in _CODE_NAMES:
+        return _CODE_NAMES[c], c
+    n = str(name or "").strip()
+    if len(n) == 2 and n.upper() in _CODE_NAMES:
+        return _CODE_NAMES[n.upper()], n.upper()
+    key = re.sub(r"\s+", " ", n.lower())
+    aliases = (
+        ("air india express", "Air India Express", "IX"),
+        ("indigo", "IndiGo", "6E"),
+        ("akasa", "Akasa Air", "QP"),
+        ("spicejet", "SpiceJet", "SG"),
+        ("spice jet", "SpiceJet", "SG"),
+        ("vistara", "Vistara", "UK"),
+        ("air india", "Air India", "AI"),
+        ("alliance air", "Alliance Air", "9I"),
+    )
+    for alias, canon, acode in aliases:
+        if key == alias or key.startswith(alias + " ") or alias in key:
+            return canon, c or acode
+    return (n or "Airline"), c
 
 
 def _parse_duration_minutes(duration: str | None) -> int | None:
@@ -43,7 +83,11 @@ def is_plausible_offer(
 ) -> bool:
     """Drop sandbox junk / mapping bugs before they reach the UI."""
     airline = str(ui.get("airline") or "")
+    code = str(ui.get("airline_code") or "").strip().upper()
+    flight_no = str(ui.get("flight_number") or "").strip().upper()
     if _JUNK_AIRLINE_RE.search(airline):
+        return False
+    if code in _JUNK_AIRLINE_CODES or flight_no.startswith("ND"):
         return False
 
     origin = str(ui.get("origin") or "").upper().strip()
@@ -176,7 +220,9 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
         outbound, inbound = _split_legs(segs)
         first = outbound[0] if outbound else {}
         last = outbound[-1] if outbound else {}
-        airline = first.get("airline") or "Airline"
+        airline, airline_code = _canonicalize_airline_ui(
+            first.get("airline"), first.get("airline_code")
+        )
         flight_number = first.get("flight_number")
         origin = first.get("from") or fallback_origin
         destination = last.get("to") or fallback_dest
@@ -193,6 +239,7 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
             "id": str(raw.get("offer_id") or raw.get("id") or f"offer-{raw.get('index', '')}"),
             "offer_id": raw.get("offer_id") or raw.get("id"),
             "airline": airline,
+            "airline_code": airline_code or None,
             "flight_number": flight_number,
             "origin": origin,
             "destination": destination,
@@ -205,6 +252,11 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
             "cabin": raw.get("cabin_class") or raw.get("cabin"),
             "fare_family": raw.get("fare_family"),
             "seats_remaining": raw.get("seats_remaining"),
+            "refundable": raw.get("refundable"),
+            "changeable": raw.get("changeable"),
+            "has_refund_fee": raw.get("has_refund_fee"),
+            "has_change_fee": raw.get("has_change_fee"),
+            "terms_summary": raw.get("terms_summary"),
             "baggage": raw.get("baggage"),
             "baggage_detail": raw.get("baggage_detail"),
             "amenities": raw.get("amenities") or [],
@@ -214,6 +266,9 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
             "price_base": raw.get("price_base"),
             "price_taxes": raw.get("price_taxes"),
             "price_fees": raw.get("price_fees"),
+            "fare_options": list(raw.get("fare_options") or []),
+            "fare_options_count": raw.get("fare_options_count")
+            or len(raw.get("fare_options") or []),
             # Keep full journey for booking/verify; UI cards use outbound for the main row
             "segments": segs,
             "outbound_segments": outbound,
@@ -246,6 +301,11 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
             "cabin": raw.get("cabin") or raw.get("cabin_class"),
             "fare_family": raw.get("fare_family"),
             "seats_remaining": raw.get("seats_remaining"),
+            "refundable": raw.get("refundable"),
+            "changeable": raw.get("changeable"),
+            "has_refund_fee": raw.get("has_refund_fee"),
+            "has_change_fee": raw.get("has_change_fee"),
+            "terms_summary": raw.get("terms_summary"),
             "baggage": raw.get("baggage"),
             "baggage_detail": raw.get("baggage_detail"),
             "amenities": raw.get("amenities") or [],
@@ -254,6 +314,9 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
             "price_base": raw.get("price_base"),
             "price_taxes": raw.get("price_taxes"),
             "price_fees": raw.get("price_fees"),
+            "fare_options": list(raw.get("fare_options") or []),
+            "fare_options_count": raw.get("fare_options_count")
+            or len(raw.get("fare_options") or []),
             "segments": raw.get("segments") or raw.get("segments_summary") or [],
             "outbound_segments": raw.get("outbound_segments") or [],
             "inbound_segments": raw.get("inbound_segments") or [],
@@ -278,6 +341,11 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
         "cabin": raw.get("cabin_class") or raw.get("cabin"),
         "fare_family": raw.get("fare_family"),
         "seats_remaining": raw.get("seats_remaining"),
+        "refundable": raw.get("refundable"),
+        "changeable": raw.get("changeable"),
+        "has_refund_fee": raw.get("has_refund_fee"),
+        "has_change_fee": raw.get("has_change_fee"),
+        "terms_summary": raw.get("terms_summary"),
         "baggage": raw.get("baggage"),
         "baggage_detail": raw.get("baggage_detail"),
         "amenities": raw.get("amenities") or [],
@@ -286,6 +354,9 @@ def offer_to_ui(raw: dict[str, Any], *, fallback_origin: str = "", fallback_dest
         "price_base": raw.get("price_base"),
         "price_taxes": raw.get("price_taxes"),
         "price_fees": raw.get("price_fees"),
+        "fare_options": list(raw.get("fare_options") or []),
+        "fare_options_count": raw.get("fare_options_count")
+        or len(raw.get("fare_options") or []),
         "segments": [],
         "outbound_segments": [],
         "inbound_segments": [],

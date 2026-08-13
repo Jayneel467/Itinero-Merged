@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getStatusLines } from "../utils/statusLines";
 
-/** Cycle interval: ~1.5–2.5s with slight jitter so it feels alive. */
+/** Cycle interval: ~1.5-2.5s with slight jitter so it feels alive. */
 const BASE_MS = 1800;
 const JITTER_MS = 700;
 
@@ -9,7 +9,7 @@ const JITTER_MS = 700;
  * Rotating status line while /api/chat is in flight.
  * Clears itself when `active` becomes false (done / error).
  *
- * `mode`: "clarify" | "search" | undefined — overrides airline-joke lines
+ * `mode`: "clarify" | "search" | undefined - overrides airline-joke lines
  * when we're only collecting a date / airport.
  */
 export default function VeroTypingStatus({ active, userMessage, mode }) {

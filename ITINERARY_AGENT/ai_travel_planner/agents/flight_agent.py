@@ -12,17 +12,14 @@ Architecture
 ------------
 The Flight Agent is a *worker* agent.  It never speaks to the user directly.
 It receives a rich natural-language instruction from the Itinerary Agent,
-reasons about it, generates realistic dummy flight data, applies filters and
-ranking, and returns a structured FlightAgentResponse / FlightPrebookResponse.
-
-Replacing the dummy data layer with a real API (e.g. Duffel) requires only
-swapping out the `_generate_dummy_flights()` and `_call_prebook_api()` methods.
+searches live LiteAPI fares, and returns a structured FlightAgentResponse.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timedelta
@@ -66,7 +63,7 @@ You are an expert Flight Search Agent for an AI Travel Planning system.
 
 Your responsibilities:
 1. Parse the natural-language instruction you receive from the Itinerary Agent.
-2. Generate realistic dummy flight data that matches the request.
+2. Work only with live fare data already provided — never invent prices.
 3. Apply the requested filters (budget, stops, time-of-day, airline, cabin class).
 4. Rank results by value score (price + duration + stops + user preference).
 5. Identify the single best-value recommendation.
@@ -296,24 +293,94 @@ class FlightAgent:
         instruction: str,
         flight: FlightOption,
         passengers: dict[str, int],
+        *,
+        allowed_offer_ids: set[str] | list[str] | None = None,
     ) -> FlightPrebookResponse:
-        """Pre-book the selected flight and return a pre-booking record."""
+        """Verify the live LiteAPI offer. Never invent a fake FPB- hold.
+
+        ``allowed_offer_ids`` must contain the offer — only IDs from this
+        session's LiteAPI search (or verified quick-search cache) may be verified.
+        """
         logger.info("FlightAgent.prebook_flight: %s", flight.flight_id)
 
         adults = passengers.get("adults", 1)
         children = passengers.get("children", 0)
         total = flight.price_per_adult * adults + flight.price_per_child * children
+        offer_id = (getattr(flight, "offer_id", None) or "").strip()
 
-        prebook_instruction = (
-            f"{instruction}\n\n"
-            f"Pre-book the following flight for {adults} adult(s) and {children} child(ren).\n"
-            f"Flight details: {json.dumps(flight.model_dump(mode='json'), default=str)}\n"
-            f"Total price: ₹{total:,.0f}\n"
-            f"Current timestamp: {datetime.now().isoformat()}"
+        allowed = {
+            str(x).strip()
+            for x in (allowed_offer_ids or [])
+            if str(x).strip()
+        }
+        if not offer_id:
+            return FlightPrebookResponse(
+                status=AgentResponseStatus.ERROR,
+                action_performed="prebook_flight",
+                summary=(
+                    f"I couldn't hold {flight.airline} {flight.flight_number} — "
+                    "missing a live offer id from search."
+                ),
+                errors=["Missing offer_id"],
+                suggested_next_action="Search flights again",
+            )
+        if not allowed or offer_id not in allowed:
+            logger.warning(
+                "FlightAgent: rejecting unbound offer_id=%s (allowed=%s)",
+                offer_id[:24],
+                len(allowed),
+            )
+            return FlightPrebookResponse(
+                status=AgentResponseStatus.ERROR,
+                action_performed="prebook_flight",
+                summary=(
+                    "That flight offer is not from this search session. "
+                    "Please search again and pick a listed option."
+                ),
+                errors=["offer_id not bound to session search"],
+                suggested_next_action="Search flights again",
+            )
+
+        try:
+            from general_agent.providers import liteapi_provider
+            body = liteapi_provider.verify_flight_offer({"offerId": offer_id})
+            data = body.get("data") if isinstance(body, dict) else {}
+            if not isinstance(data, dict):
+                data = {}
+            verified_id = str(data.get("offerId") or data.get("id") or offer_id)
+            expiry = datetime.now() + timedelta(minutes=30)
+            prebook = FlightPrebook(
+                prebook_id=verified_id,
+                flight=flight,
+                passengers=passengers,
+                total_price=total,
+                currency="INR",
+                booking_status="Fare verified — complete passenger details to confirm",
+                booking_expiry=expiry,
+            )
+            return FlightPrebookResponse(
+                status=AgentResponseStatus.SUCCESS,
+                action_performed="prebook_flight",
+                summary=(
+                    f"{flight.airline} {flight.flight_number} fare is live. "
+                    f"Offer id: {prebook.prebook_id}."
+                ),
+                prebook=prebook,
+                suggested_next_action="Review draft itinerary",
+            )
+        except Exception as exc:
+            logger.warning("FlightAgent: live fare verify failed: %s", exc)
+
+        return FlightPrebookResponse(
+            status=AgentResponseStatus.ERROR,
+            action_performed="prebook_flight",
+            summary=(
+                f"I couldn't hold {flight.airline} {flight.flight_number} just now. "
+                "Complete booking on the left with passenger details — I won't invent a fake hold."
+            ),
+            errors=["Live fare verify unavailable"],
+            suggested_next_action="Book on the flights page or retry",
         )
-
-        raw_json = self._call_llm(_PREBOOK_SYSTEM_PROMPT, prebook_instruction)
-        return self._parse_prebook_response(raw_json, flight, passengers, total)
 
     # ── LLM call ─────────────────────────────────────────────────────────────
 
@@ -347,39 +414,31 @@ class FlightAgent:
         Returns an empty list on any failure so the caller can fall back.
         """
         try:
-            from general_agent.services.travel_service import (
-                search_flights as liteapi_search_flights,
-                _parse_journey,
-            )
+            from general_agent.services.travel_service import _parse_journey
         except ImportError as exc:
-            logger.warning("FlightAgent: could not import travel_service: %s", exc)
+            logger.warning("FlightAgent: could not import _parse_journey: %s", exc)
             return []
 
         try:
-            # Call the raw provider directly to get the parsed journey dicts
             from general_agent.providers import liteapi_provider
             from general_agent.exceptions import ProviderRequestError
+            try:
+                from general_agent.services import location_resolver
+            except ImportError:
+                from services import location_resolver
 
-            origin = params.origin or ""
-            destination = params.destination or ""
+            origin = str(params.origin or "").strip().upper()
+            destination = str(params.destination or "").strip().upper()
             if not origin or not destination or not params.departure_date:
                 return []
-
-            legs = [
-                {
-                    "origin": origin,
-                    "destination": destination,
-                    "date": str(params.departure_date),
-                    "direction": "OUTBOUND",
-                }
-            ]
-            if params.return_date and params.trip_type and params.trip_type.value == "round_trip":
-                legs.append({
-                    "origin": destination,
-                    "destination": origin,
-                    "date": str(params.return_date),
-                    "direction": "INBOUND",
-                })
+            if not re.fullmatch(r"[A-Z]{3}", origin):
+                resolved_o = location_resolver.resolve_airport_code(origin)
+                if resolved_o:
+                    origin = resolved_o
+            if not re.fullmatch(r"[A-Z]{3}", destination):
+                resolved_d = location_resolver.resolve_airport_code(destination)
+                if resolved_d:
+                    destination = resolved_d
 
             cabin_map = {
                 "Economy": "ECONOMY",
@@ -389,27 +448,92 @@ class FlightAgent:
             }
             cabin = cabin_map.get(params.cabin_class.value if params.cabin_class else "Economy", "ECONOMY")
 
-            payload = {
-                "legs": legs,
-                "adults": params.adults or 1,
-                "currency": "USD",
-                "cabinClass": cabin,
+            dest_alts = {
+                "DXB": ["DWC"],
+                "DWC": ["DXB"],
+                "JFK": ["EWR"],
+                "EWR": ["JFK"],
+                "LGA": ["JFK", "EWR"],
+                "LHR": ["LGW"],
+                "LGW": ["LHR"],
+                "GOI": ["GOX"],
+                "GOX": ["GOI"],
+                "CDG": ["ORY"],
+                "ORY": ["CDG"],
             }
-            body = liteapi_provider.search_flight_rates(payload)
+            dest_try = [destination] + [c for c in dest_alts.get(destination, []) if c != destination]
 
-            # Parse using travel_service's journey parser
             parsed: list[dict] = []
-            for item in (body.get("data") or []):
-                for journey in (item.get("journeys") or []):
-                    result = _parse_journey(journey, "USD")
-                    if result:
-                        parsed.append(result)
+            used_dest = destination
+            for dest in dest_try:
+                legs = [
+                    {
+                        "origin": origin,
+                        "destination": dest,
+                        "date": str(params.departure_date),
+                        "direction": "OUTBOUND",
+                    }
+                ]
+                if params.return_date and params.trip_type and params.trip_type.value == "round_trip":
+                    legs.append({
+                        "origin": dest,
+                        "destination": origin,
+                        "date": str(params.return_date),
+                        "direction": "INBOUND",
+                    })
+                payload = {
+                    "legs": legs,
+                    "adults": params.adults or 1,
+                    "currency": "INR",
+                    "cabinClass": cabin,
+                }
+                logger.info("FlightAgent LiteAPI search %s → %s on %s", origin, dest, params.departure_date)
+                body = liteapi_provider.search_flight_rates(payload)
+                batch: list[dict] = []
+                for item in (body.get("data") or []):
+                    for journey in (item.get("journeys") or []):
+                        result = _parse_journey(journey, "INR")
+                        if result:
+                            batch.append(result)
+                if batch:
+                    parsed = batch
+                    used_dest = dest
+                    destination = used_dest
+                    break
 
             if not parsed:
                 return []
 
-            parsed.sort(key=lambda f: f["price"])
-            parsed = parsed[:8]  # cap at 8 options
+            # Collapse fare-family duplicates, then diversify so LCCs aren't buried.
+            by_sched: dict[str, dict] = {}
+            for f in parsed:
+                key = "|".join(
+                    [
+                        str(f.get("airline_code") or f.get("airline") or "").upper(),
+                        str(f.get("flight_number") or "").upper(),
+                        str(f.get("dep_time") or ""),
+                        str(f.get("arr_time") or ""),
+                    ]
+                )
+                prev = by_sched.get(key)
+                if prev is None or float(f.get("price") or 0) < float(prev.get("price") or 0):
+                    by_sched[key] = f
+            parsed = sorted(by_sched.values(), key=lambda x: float(x.get("price") or 0))
+
+            by_airline: dict[str, list] = {}
+            for f in parsed:
+                name = str(f.get("airline") or f.get("airline_code") or "Airline")
+                by_airline.setdefault(name, []).append(f)
+            diversified: list[dict] = []
+            queues = [list(v) for v in by_airline.values()]
+            added = True
+            while added and len(diversified) < 12:
+                added = False
+                for q in queues:
+                    if q and len(diversified) < 12:
+                        diversified.append(q.pop(0))
+                        added = True
+            parsed = diversified or parsed[:12]
 
             return self._map_liteapi_to_flight_options(parsed, params)
 
@@ -474,11 +598,12 @@ class FlightAgent:
             total = price * adults + (price * 0.75 * children)
 
             baggage = "15 kg check-in + 7 kg cabin" if f.get("has_checked_bag") else "7 kg cabin only"
-            refund = (
-                "Fully Refundable" if f.get("refundable") is True
-                else "Non-refundable" if f.get("refundable") is False
-                else "Non-refundable"
-            )
+            if f.get("refundable") is True:
+                refund = "Fully Refundable"
+            elif f.get("refundable") is False:
+                refund = "Non-refundable"
+            else:
+                refund = ""
 
             # Rank by price (cheaper = better score), capped 0-10
             max_price = max(p.get("price", 1) for p in parsed_flights) or 1
@@ -503,9 +628,10 @@ class FlightAgent:
                 total_price=round(total, 2),
                 baggage_included=baggage,
                 refund_policy=refund,
-                seats_available=10,
+                seats_available=int(f.get("seats_available") or 0),
+                offer_id=f.get("offer_id"),
                 rank_score=rank_score,
-                recommended=(i == 0),  # cheapest is recommended by default
+                recommended=(i == 0),
             ))
 
         return options

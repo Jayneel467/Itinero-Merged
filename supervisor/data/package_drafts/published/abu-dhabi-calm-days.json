@@ -1,0 +1,199 @@
+{
+  "id": "pkg-abu-dhabi-calm-days",
+  "slug": "abu-dhabi-calm-days",
+  "title": "Abu Dhabi Calm Days",
+  "tagline": "Grand Mosque calm and island resort pace.",
+  "overview": "4-day plan based in Abu Dhabi. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "luxury",
+    "honeymoon"
+  ],
+  "region": "domestic",
+  "markets": [
+    "AE"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Abu Dhabi"
+  ],
+  "recommendedDurationDays": [
+    4,
+    6
+  ],
+  "minDurationDays": 3,
+  "durationDays": 4,
+  "durationNights": 3,
+  "destinations": [
+    "Abu Dhabi"
+  ],
+  "flight": {
+    "gatewayAirport": "AUH",
+    "gatewayCity": "Abu Dhabi"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Abu Dhabi walk",
+    "Local food",
+    "Easy pacing"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Nov",
+    "Dec",
+    "Jan",
+    "Feb",
+    "Mar"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": false,
+  "currency": "AED",
+  "stay": {
+    "city": "Abu Dhabi",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Abu Dhabi",
+      "description": "Arrive Abu Dhabi in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Abu Dhabi highlights",
+      "description": "Abu Dhabi highlights in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Abu Dhabi",
+      "description": "Arrive Abu Dhabi in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Abu Dhabi highlights",
+      "description": "Abu Dhabi highlights in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Abu Dhabi.",
+      "stayCity": "Abu Dhabi",
+      "anchors": [
+        "Abu Dhabi"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "AE",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

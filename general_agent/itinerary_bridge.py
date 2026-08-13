@@ -103,6 +103,10 @@ def _parse_task_description(task_description: str) -> dict[str, Any]:
         "accessibility": None,
         "occasion": None,
         "preferences": None,
+        "selected_flight": None,
+        "legs": None,
+        # full | hotels_only | itinerary_only
+        "scope": "full",
     }
 
     if not task_description:
@@ -115,10 +119,24 @@ def _parse_task_description(task_description: str) -> dict[str, Any]:
 
     if isinstance(data, dict):
         result["destination"] = data.get("destination")
-        result["departure"] = data.get("origin")
-        result["checkin"] = data.get("checkin")
-        result["checkout"] = data.get("checkout")
+        result["departure"] = data.get("origin") or data.get("departure")
+        result["origin"] = result["departure"]
+        result["checkin"] = (
+            data.get("checkin")
+            or data.get("departure_date")
+            or data.get("depart_date")
+            or data.get("outbound_date")
+        )
+        result["checkout"] = (
+            data.get("checkout")
+            or data.get("return_date")
+            or data.get("inbound_date")
+        )
         result["trip_type"] = data.get("trip_type")
+        if isinstance(data.get("selected_flight"), dict):
+            result["selected_flight"] = data["selected_flight"]
+        if isinstance(data.get("legs"), list):
+            result["legs"] = data["legs"]
         raw_budget = data.get("budget")
         if raw_budget:
             num = re.sub(r"[^\d.]", "", str(raw_budget).split()[0])
@@ -134,6 +152,22 @@ def _parse_task_description(task_description: str) -> dict[str, Any]:
             result["accessibility"] = extra.get("accessibility")
             result["occasion"] = extra.get("occasion")
             result["preferences"] = extra.get("preferences")
+        scope = str(data.get("scope") or data.get("planning_scope") or "full").lower().strip()
+        if scope in ("itinerary_only", "day_plan", "activities_only", "plan_only"):
+            result["scope"] = "itinerary_only"
+        elif scope in ("hotels_only", "hotel_only", "no_flights"):
+            result["scope"] = "hotels_only"
+        elif scope in ("flights_only", "flight_only"):
+            result["scope"] = "flights_only"
+        else:
+            result["scope"] = "full"
+        # Preference text may also signal scope
+        pref_blob = f"{result.get('preferences') or ''} {data.get('reason') or ''}".lower()
+        if result["scope"] == "full":
+            if any(p in pref_blob for p in ("itinerary only", "no hotel", "no flight", "day plan only")):
+                result["scope"] = "itinerary_only"
+            elif any(p in pref_blob for p in ("hotels only", "skip flight", "no flight")):
+                result["scope"] = "hotels_only"
         return result
 
     # Legacy pipe-separated fallback.
@@ -147,11 +181,12 @@ def _parse_task_description(task_description: str) -> dict[str, Any]:
 
         if key == "destination":
             result["destination"] = value
-        elif key == "departure":
+        elif key in ("departure", "origin"):
             result["departure"] = value
-        elif key == "checkin":
+            result["origin"] = value
+        elif key in ("checkin", "departure_date", "depart_date"):
             result["checkin"] = value
-        elif key == "checkout":
+        elif key in ("checkout", "return_date"):
             result["checkout"] = value
         elif key == "budget":
             num = re.sub(r"[^\d.]", "", value.split()[0]) if value else ""
@@ -279,12 +314,35 @@ def _budget_per_person(raw_budget: Any, adults: int) -> float | None:
     return float(num) / max(adults, 1) if num else None
 
 
+def _origin_dest_from_ui(trip_ctx: dict[str, Any]) -> tuple[str, str]:
+    """Use left-page flights/hotels search when Vero never saved origin/destination."""
+    ui = trip_ctx.get("ui_page") if isinstance(trip_ctx.get("ui_page"), dict) else {}
+    search = ui.get("search") if isinstance(ui.get("search"), dict) else {}
+    screen = str(ui.get("screen") or "")
+    if screen == "hotels":
+        return "", str(search.get("city") or search.get("destination") or "").strip()
+    return str(search.get("origin") or "").strip(), str(search.get("destination") or "").strip()
+
+
+def _dates_from_ui(trip_ctx: dict[str, Any]) -> tuple[str, str]:
+    """Left-page dates when escalate JSON omitted checkin/checkout."""
+    ui = trip_ctx.get("ui_page") if isinstance(trip_ctx.get("ui_page"), dict) else {}
+    search = ui.get("search") if isinstance(ui.get("search"), dict) else {}
+    screen = str(ui.get("screen") or "")
+    if screen == "hotels":
+        return (
+            str(search.get("check_in") or search.get("checkin") or "").strip(),
+            str(search.get("check_out") or search.get("checkout") or "").strip(),
+        )
+    return (
+        str(search.get("depart_date") or search.get("departure_date") or "").strip(),
+        str(search.get("return_date") or "").strip(),
+    )
+
+
 def _resolve_flight_endpoint(place: str) -> str:
-    """Resolve a city name to the IATA airport code LiteAPI's real flight
-    search actually requires (FlightAgent, untouched, passes this straight
-    through with no resolution of its own — a plain city name 400s).
-    Falls back to the original string on any failure — never worse than
-    before. See services/location_resolver.py."""
+    """Resolve a city name to the IATA airport code LiteAPI requires.
+    Falls back to the original string on any failure."""
     try:
         from services import location_resolver
         return location_resolver.resolve_airport_code(place) or place
@@ -311,6 +369,7 @@ def _build_app_state(
     preferences_text: str,
     message_history: list[dict[str, str]],
     trip_type_hint: str | None = None,
+    scope: str = "full",
 ) -> AppState:
     # `checkout` is ambiguous on its own — it's the date the HOTEL stay ends,
     # which is set even for a one-way trip with no return flight. Trusting
@@ -348,22 +407,35 @@ def _build_app_state(
         meal_preference=MealPlan.BREAKFAST,
     )
 
+    scope_n = (scope or "full").lower().strip()
     state = AppState()
     state.trip.search_params = search_params
     state.trip.trip_type = trip_type
     state.trip.is_complete = True
     state.preferences = preferences
+    state.planning_scope = scope_n if scope_n in (
+        "full", "hotels_only", "itinerary_only", "flights_only"
+    ) else "full"
 
     # Skip GREETING + REQUIREMENT_COLLECTION — Vero already gathered this.
-    state.set_stage(WorkflowStage.FLIGHT_SEARCH_CONFIRMATION)
-    state.set_pending_action(PendingAction.SEARCH_FLIGHTS)
+    # itinerary_only / hotels_only: jump straight to day-plan generation
+    # (flight confirm is a dead-end when the user already refused flights).
+    if scope_n in ("itinerary_only", "hotels_only"):
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
+        state.clear_pending_action()
+        logger.info("Bridge: scope=%s — starting at DRAFT_ITINERARY (skip flights)", scope_n)
+    else:
+        # Vero already gathered slots + "build it" — skip the yes/no flight gate.
+        state.set_stage(WorkflowStage.FLIGHT_SEARCH)
+        state.set_pending_action(PendingAction.SEARCH_FLIGHTS)
+        state.confirm_pending_action()
 
     state.conversation.message_history = list(message_history)
     state.conversation.turn_count = len(message_history)
 
     logger.info(
-        "Bridge: built leg AppState — %s → %s | %s → %s | %d adult(s) | budget/person: %s",
-        origin, destination, checkin, checkout, adults, budget_per_person,
+        "Bridge: built leg AppState — %s → %s | %s → %s | %d adult(s) | budget/person: %s | scope=%s",
+        origin, destination, checkin, checkout, adults, budget_per_person, scope_n,
     )
     return state
 
@@ -393,22 +465,83 @@ def build_app_state_from_handoff(
     parsed = _parse_task_description(task_description)
     trip_ctx = general_agent_state.get("trip_context", {}) or {}
 
+    ui_origin, ui_dest = _origin_dest_from_ui(trip_ctx)
+    ui_checkin, ui_checkout = _dates_from_ui(trip_ctx)
     origin = (
-        trip_ctx.get("departure") or trip_ctx.get("origin") or parsed.get("departure") or ""
+        trip_ctx.get("departure")
+        or trip_ctx.get("origin")
+        or parsed.get("origin")
+        or parsed.get("departure")
+        or ui_origin
+        or ""
     )
-    destination = trip_ctx.get("destination") or parsed.get("destination") or ""
+    destination = (
+        trip_ctx.get("destination")
+        or parsed.get("destination")
+        or ui_dest
+        or ""
+    )
     checkin = _safe_date(
-        trip_ctx.get("checkin") or trip_ctx.get("check_in") or parsed.get("checkin")
+        trip_ctx.get("checkin")
+        or trip_ctx.get("check_in")
+        or parsed.get("checkin")
+        or ui_checkin
     )
     checkout = _safe_date(
-        trip_ctx.get("checkout") or trip_ctx.get("check_out") or parsed.get("checkout")
+        trip_ctx.get("checkout")
+        or trip_ctx.get("check_out")
+        or parsed.get("checkout")
+        or ui_checkout
     )
+    if isinstance(parsed.get("selected_flight"), dict) and not isinstance(
+        trip_ctx.get("selected_flight"), dict
+    ):
+        # Only accept escalate JSON selected_flight when it matches quick search cache.
+        trip_ctx = dict(trip_ctx)
+        matched = _match_quick_flight_cache(trip_ctx, parsed["selected_flight"])
+        if matched is not None:
+            trip_ctx["selected_flight"] = matched
+        else:
+            logger.warning(
+                "Bridge: ignoring escalate selected_flight not in quick_flight_search cache."
+            )
     adults = int(trip_ctx.get("adults", parsed.get("adults", 1)) or 1)
     children = int(trip_ctx.get("children", parsed.get("children", 0)) or 0)
     budget_per_person = _budget_per_person(trip_ctx.get("budget") or parsed.get("budget"), adults)
     cabin_class = _cabin_class(trip_ctx.get("cabin_class"))
     preferences_text = parsed.get("preferences") or trip_ctx.get("preferences") or ""
     trip_type_hint = trip_ctx.get("trip_type") or parsed.get("trip_type")
+    scope = str(
+        trip_ctx.get("planning_scope")
+        or trip_ctx.get("scope")
+        or parsed.get("scope")
+        or "full"
+    ).lower().strip()
+
+    # Infer scope from recent user messages when escalate omitted it
+    if scope == "full":
+        hist_blob = " ".join(
+            m.get("content", "")
+            for m in _vero_history_as_messages(general_agent_state)[-8:]
+            if m.get("role") == "user"
+        ).lower()
+        if any(
+            p in hist_blob
+            for p in (
+                "just itinerary",
+                "only itinerary",
+                "itinerary only",
+                "no hotel no flight",
+                "no flight no hotel",
+                "day plan only",
+                "activities only",
+                "no hotel",
+                "no hotels",
+            )
+        ) and any(p in hist_blob for p in ("no flight", "skip flight", "itinerary", "day plan")):
+            scope = "itinerary_only"
+        elif any(p in hist_blob for p in ("hotels only", "skip flight", "no flight")):
+            scope = "hotels_only"
 
     state = _build_app_state(
         origin=origin,
@@ -422,9 +555,49 @@ def build_app_state_from_handoff(
         preferences_text=preferences_text,
         message_history=_vero_history_as_messages(general_agent_state),
         trip_type_hint=trip_type_hint,
+        scope=scope,
     )
     _apply_preselected_flight(state, trip_ctx)
+    # If a preselected flight fast-forwarded us, keep that; otherwise honor skip-flight scopes.
+    if scope in ("itinerary_only", "hotels_only") and not isinstance(
+        trip_ctx.get("selected_flight"), dict
+    ):
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
+        state.clear_pending_action()
+        state.planning_scope = scope
     return state
+
+
+def _match_quick_flight_cache(
+    trip_ctx: dict[str, Any],
+    selected: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Return the authoritative cached flight row, or None if unbound."""
+    cached = (trip_ctx.get("quick_flight_search") or {}).get("results") or []
+    if not isinstance(cached, list) or not cached:
+        return None
+    fid = str(selected.get("flight_id") or "").strip()
+    oid = str(selected.get("offer_id") or selected.get("offerId") or "").strip()
+    match = None
+    if fid:
+        match = next((f for f in cached if isinstance(f, dict) and str(f.get("flight_id") or "") == fid), None)
+    if match is None and oid:
+        match = next(
+            (
+                f
+                for f in cached
+                if isinstance(f, dict)
+                and str(f.get("offer_id") or f.get("offerId") or "").strip() == oid
+            ),
+            None,
+        )
+    if match is None:
+        return None
+    # Offer id must agree when both sides have one (block swapped offer_id).
+    cache_oid = str(match.get("offer_id") or match.get("offerId") or "").strip()
+    if oid and cache_oid and oid != cache_oid:
+        return None
+    return match
 
 
 def _apply_preselected_flight(state: AppState, trip_ctx: dict[str, Any]) -> None:
@@ -434,20 +607,31 @@ def _apply_preselected_flight(state: AppState, trip_ctx: dict[str, Any]) -> None
     redundant re-search/re-selection stages entirely: land the driven session
     straight on FLIGHT_PREBOOK_CONFIRMATION for that exact flight.
 
-    Only fires for a STRUCTURED selection (a dict — written deterministically
-    by select_searched_flight's cache lookup). The legacy free-text
-    trip_context["selected_flight"] string (from update_trip_context, when
-    the user described a flight Vero never searched for herself) is left for
-    the itinerary agent's own requirement text — no fast path for that case,
-    since there's no verified FlightOption to skip ahead with.
+    Only fires for a STRUCTURED selection that matches quick_flight_search
+    cache (written by select_searched_flight). Hand-built escalate JSON or
+    free-text selections are ignored — no LiteAPI verify on unbound offers.
     """
     selected = trip_ctx.get("selected_flight")
     if not isinstance(selected, dict):
         return
+
+    matched = _match_quick_flight_cache(trip_ctx, selected)
+    if matched is None:
+        logger.warning(
+            "Bridge: rejecting selected_flight not present in quick_flight_search cache."
+        )
+        return
+
     try:
-        flight = FlightOption(**selected)
+        flight = FlightOption(**matched)
     except Exception:
-        logger.warning("Bridge: trip_context['selected_flight'] present but not a valid FlightOption — ignoring fast path.")
+        logger.warning(
+            "Bridge: cached selected_flight present but not a valid FlightOption — ignoring fast path."
+        )
+        return
+
+    if not (getattr(flight, "offer_id", None) or "").strip():
+        logger.warning("Bridge: cached flight missing offer_id — ignoring fast path.")
         return
 
     # Reuse the real FlightAgent.select_flight() (pure Python, no LLM call) so
@@ -462,6 +646,8 @@ def _apply_preselected_flight(state: AppState, trip_ctx: dict[str, Any]) -> None
     }
     response = _get_flight_agent().select_flight(flight, passengers)
 
+    # Seed search_results so prebook can bind offer_id to this session.
+    state.flights.search_results = [response.selected_flight or flight]
     state.flights.selected_flight = response.selected_flight
     state.flights.selection_made = True
     state.set_stage(WorkflowStage.FLIGHT_PREBOOK_CONFIRMATION)
@@ -485,8 +671,9 @@ def _build_leg_app_state(
     Travelers/budget/cabin class are shared across legs (Vero collects them
     once at the top level, not per-leg).
     """
-    origin = leg.get("from") or trip_ctx.get("origin") or ""
-    destination = leg.get("to") or ""
+    ui_origin, ui_dest = _origin_dest_from_ui(trip_ctx)
+    origin = leg.get("from") or trip_ctx.get("origin") or ui_origin or ""
+    destination = leg.get("to") or ui_dest or ""
     checkin = _safe_date(leg.get("departure_date"))
 
     checkout = _safe_date(leg.get("hotel_checkout"))
@@ -506,6 +693,7 @@ def _build_leg_app_state(
     budget_per_person = _budget_per_person(trip_ctx.get("budget"), adults)
     cabin_class = _cabin_class(trip_ctx.get("cabin_class"))
     preferences_text = trip_ctx.get("preferences") or ""
+    scope = str(trip_ctx.get("planning_scope") or trip_ctx.get("scope") or "full")
 
     # A multi_destination leg is inherently one-way for flight-search purposes
     # (you fly TO this leg's destination and continue on to the next leg, not
@@ -523,6 +711,7 @@ def _build_leg_app_state(
         preferences_text=preferences_text,
         message_history=message_history,
         trip_type_hint="one_way",
+        scope=scope,
     )
 
 
@@ -559,6 +748,9 @@ def _node_map() -> dict[str, Any]:
         WorkflowStage.FLIGHT_SELECTION.value:           node_flight_selection,
         WorkflowStage.FLIGHT_PREBOOK_CONFIRMATION.value: node_flight_prebook_confirmation,
         WorkflowStage.FLIGHT_PREBOOK.value:             node_flight_prebook,
+        # Safety: REQUIREMENT_COLLECTION isn't a Vero-bridge stage — if we land
+        # here, build the day plan instead of dead-ending with "Let's continue".
+        WorkflowStage.REQUIREMENT_COLLECTION.value:     node_draft_itinerary,
         WorkflowStage.DRAFT_ITINERARY.value:            node_draft_itinerary,
         WorkflowStage.DRAFT_ITINERARY_REVIEW.value:     node_draft_itinerary_review,
         WorkflowStage.HOTEL_SEARCH.value:               node_hotel_search,
@@ -708,11 +900,23 @@ def _start_leg_session(app_state: AppState) -> tuple[dict[str, Any], str, dict[s
         reply_text = "\n\n".join(replies) if replies else "Ready to pre-book this flight?"
         return state_dict, reply_text, None
 
-    state_dict, _ = _run_node(node_map, entry_stage, state_dict)
+    last_stage = entry_stage
+    state_dict, unknown = _run_node(node_map, entry_stage, state_dict)
+    cards = None if unknown else _cards_for_transition(last_stage, state_dict)
+
+    # Auto-advance draft / search stages so the first reply can include the
+    # day-by-day plan (not just "Building your itinerary…").
+    steps = 0
+    while not unknown and _stage_of(state_dict) in _AUTO_ADVANCE and steps < _MAX_AUTO_ADVANCE_STEPS:
+        stage = _stage_of(state_dict)
+        state_dict, unknown = _run_node(node_map, stage, state_dict)
+        cards = cards or (None if unknown else _cards_for_transition(stage, state_dict))
+        steps += 1
+
     replies, _ = _new_assistant_messages(state_dict, start_count)
 
-    reply_text = "\n\n".join(replies) if replies else "Let's get your trip planned — shall I search for flights?"
-    return state_dict, reply_text, None
+    reply_text = "\n\n".join(replies) if replies else "Let's get your trip planned."
+    return state_dict, reply_text, cards
 
 
 def _continue_leg_session(
@@ -739,7 +943,10 @@ def _continue_leg_session(
         logger.warning("Bridge: auto-advance loop guard triggered at stage=%s", _stage_of(state_dict))
 
     replies, msg_count = _new_assistant_messages(state_dict, msg_count)
-    reply_text = "\n\n".join(replies) if replies else "Let's continue — what would you like to do next?"
+    reply_text = "\n\n".join(replies) if replies else (
+        "I still need the destination locked before I can build that. "
+        "If this is a same-city day, say so and I’ll plan places + transport instead."
+    )
 
     is_complete = unknown or _stage_of(state_dict) == WorkflowStage.COMPLETED.value
     return state_dict, reply_text, is_complete, cards
@@ -751,35 +958,41 @@ def _continue_leg_session(
 # stitched together into one combined reply/result at the end.
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _is_multi_leg(general_agent_state: dict[str, Any]) -> list[dict[str, Any]] | None:
+def _is_multi_leg(
+    general_agent_state: dict[str, Any],
+    task_description: str = "",
+) -> list[dict[str, Any]] | None:
     trip_ctx = general_agent_state.get("trip_context", {}) or {}
     legs = trip_ctx.get("legs")
     if trip_ctx.get("trip_type") == "multi_destination" and legs:
         return legs
+    parsed = _parse_task_description(task_description)
+    if str(parsed.get("trip_type") or "").lower() == "multi_destination" and parsed.get("legs"):
+        return parsed["legs"]
     return None
 
 
 def start_itinerary_session(
     general_agent_state: dict[str, Any],
     task_description: str,
-) -> tuple[dict[str, Any], str]:
+) -> tuple[dict[str, Any], str, dict[str, Any] | None]:
     """Public entry point — see _start_itinerary_session_raw. Normalizes the
     reply text into clean markdown (see to_markdown) before returning, the
     single guaranteed point of coverage regardless of which internal path
     produced it."""
-    state, reply_text = _start_itinerary_session_raw(general_agent_state, task_description)
-    return state, to_markdown(reply_text)
+    state, reply_text, cards = _start_itinerary_session_raw(general_agent_state, task_description)
+    return state, to_markdown(reply_text), cards
 
 
 def _start_itinerary_session_raw(
     general_agent_state: dict[str, Any],
     task_description: str,
-) -> tuple[dict[str, Any], str]:
+) -> tuple[dict[str, Any], str, dict[str, Any] | None]:
     """Begin a new ITINERARY_AGENT session from a Vero handoff. Builds AppState
     (single-leg, or leg 1 of a multi_destination trip) and runs the entry
-    node. Returns (state_dict, reply_text) for this turn.
+    node. Returns (state_dict, reply_text, cards) for this turn.
     """
-    legs = _is_multi_leg(general_agent_state)
+    legs = _is_multi_leg(general_agent_state, task_description)
     logger.info(
         "Bridge: starting itinerary session | multi_leg=%s | task=%s",
         bool(legs), (task_description or "")[:120],
@@ -789,7 +1002,7 @@ def _start_itinerary_session_raw(
         trip_ctx = general_agent_state.get("trip_context", {}) or {}
         history = _vero_history_as_messages(general_agent_state)
         leg0_state = _build_leg_app_state(legs[0], trip_ctx, history)
-        leg_dict, reply_text, _ = _start_leg_session(leg0_state)
+        leg_dict, reply_text, cards = _start_leg_session(leg0_state)
 
         wrapper = {
             "mode": "multi_leg",
@@ -800,11 +1013,11 @@ def _start_itinerary_session_raw(
             "current_session": leg_dict,
         }
         header = f"**Leg 1 of {len(legs)}: {legs[0].get('from', '?')} → {legs[0].get('to', '?')}**\n\n"
-        return wrapper, header + reply_text
+        return wrapper, header + reply_text, cards
 
     app_state = build_app_state_from_handoff(general_agent_state, task_description)
-    state_dict, reply_text, _ = _start_leg_session(app_state)
-    return state_dict, reply_text
+    state_dict, reply_text, cards = _start_leg_session(app_state)
+    return state_dict, reply_text, cards
 
 
 def continue_itinerary_session(

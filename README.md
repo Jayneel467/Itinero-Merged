@@ -71,14 +71,35 @@ npm run dev
 
 Live fares only via `POST /api/flights/search` — no mock prices.
 
+## Testing
+
+Smoke tests for API contracts and UI routes:
+
+```bash
+./scripts/dev-supervisor.sh          # local API on :8000 (sandbox)
+./scripts/run-site-audit.sh          # backend pytest + Playwright
+.venv/bin/python -m pytest supervisor/tests -q
+```
+
+Details: [`e2e/README.md`](e2e/README.md)
+
+Vero AI audit (chat + page context + booking tools):
+
+```bash
+./scripts/dev-vero.sh              # Vero LLM on :8001
+./scripts/run-vero-audit.sh        # pytest + killshots + companion critical
+.venv/bin/python -m pytest supervisor/tests/test_vero_chat_smoke.py -v
+```
+
 ## Status snapshot
 
 | Area | Status |
 |------|--------|
 | Flights (LiteAPI, manual) | Live if keys set |
+| Hotels (LiteAPI, manual) | Live if keys set |
 | Vero chat | Live if OpenAI (+ tools) |
 | Research / weather / food | Live if OpenAI (+ tools) |
 | Itinerary | Best-effort |
-| Hotels / train / bus | Stub (honest, no fake data) |
-| Visa / PDF / Tracking / Calling | Future V1.1 (named stubs) |
+| Train / bus | India-focused live data where configured |
+| Visa / PDF / Tracking / Calling | Partial — see supervisor capabilities |
 | Clerk auth | Disabled for now |

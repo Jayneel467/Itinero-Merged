@@ -1,0 +1,198 @@
+{
+  "id": "pkg-sydney-local-harbour",
+  "slug": "sydney-local-harbour",
+  "title": "Sydney Local Harbour",
+  "tagline": "Ferry light, beach mornings, neighbourhood evenings.",
+  "overview": "4-day plan based in Sydney. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "beach"
+  ],
+  "region": "domestic",
+  "markets": [
+    "AU"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Sydney"
+  ],
+  "recommendedDurationDays": [
+    4,
+    6
+  ],
+  "minDurationDays": 3,
+  "durationDays": 4,
+  "durationNights": 3,
+  "destinations": [
+    "Sydney"
+  ],
+  "flight": {
+    "gatewayAirport": "SYD",
+    "gatewayCity": "Sydney"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Sydney walk",
+    "Local food",
+    "Easy pacing"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Sep",
+    "Oct"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": false,
+  "currency": "AUD",
+  "stay": {
+    "city": "Sydney",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Sydney",
+      "description": "Arrive Sydney in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Sydney highlights",
+      "description": "Sydney highlights in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Sydney",
+      "description": "Arrive Sydney in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Sydney highlights",
+      "description": "Sydney highlights in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Sydney.",
+      "stayCity": "Sydney",
+      "anchors": [
+        "Sydney"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "AU",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

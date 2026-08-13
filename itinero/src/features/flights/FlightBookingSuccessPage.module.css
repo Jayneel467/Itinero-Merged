@@ -1,0 +1,661 @@
+.page {
+  min-height: 100vh;
+  background: #f3f5f8;
+  padding: 24px 16px 88px;
+}
+
+.sheet {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.ticket {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 14px 40px rgba(0, 20, 57, 0.08);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 14px;
+  border-bottom: 3px solid #e96e33;
+}
+
+.wordmark {
+  height: 28px;
+  width: auto;
+  max-width: 148px;
+  object-fit: contain;
+  display: block;
+}
+
+.headRight {
+  text-align: right;
+}
+
+.headTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #111827;
+}
+
+.headMeta {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.warn {
+  margin: 12px 24px 0;
+  background: #fff4eb;
+  border: 1px solid #ffd7b8;
+  color: #9a3412;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.airlineCard {
+  margin: 16px 24px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.airlineBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.airlineName {
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.flightNo {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.airlineBrand {
+  height: 22px;
+  width: auto;
+  max-width: 110px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.refBar {
+  margin: 12px 24px 0;
+  background: #001439;
+  color: #fff;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.refLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c4d2e8;
+}
+
+.pnr {
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.badge {
+  display: inline-block;
+  background: #fff;
+  color: #059669;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-align: center;
+  justify-self: center;
+}
+
+.badgePending {
+  color: #c2410c;
+  background: #fff7ed;
+}
+
+.badgeCancelled {
+  color: #b42318;
+  background: #fef3f2;
+}
+
+.refDate {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.route {
+  display: grid;
+  grid-template-columns: 1fr 150px 1fr;
+  gap: 8px;
+  padding: 22px 24px 8px;
+  align-items: start;
+}
+
+.kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e96e33;
+}
+
+.time {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: #111827;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iata {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.city {
+  margin-top: 2px;
+  font-size: 14px;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.aptName {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.right {
+  text-align: right;
+}
+
+.mid {
+  text-align: center;
+  padding-top: 18px;
+}
+
+.dur {
+  font-size: 13px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.path {
+  position: relative;
+  height: 14px;
+  margin: 8px 0 6px;
+}
+
+.path::before,
+.path::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 10px);
+  border-top: 2px solid #e96e33;
+}
+
+.path::before {
+  left: 0;
+}
+
+.path::after {
+  right: 0;
+}
+
+.dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: #e96e33;
+}
+
+.stops {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 24px 0;
+}
+
+.airportCell {
+  background: #f5f7fa;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.cellTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.cellSub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.cellTerm {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #111827;
+  white-space: pre-line;
+}
+
+.tip {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.paxCard {
+  margin: 12px 24px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.paxLine {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  white-space: pre-line;
+}
+
+.payRow {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 12px;
+  padding: 12px 24px 0;
+}
+
+.paid {
+  background: #fff7ed;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.paidLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e96e33;
+}
+
+.paidAmt {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.paidVia {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  word-break: break-all;
+}
+
+.barcodeWrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.barcode {
+  height: 48px;
+  width: 100%;
+  background: repeating-linear-gradient(
+    to right,
+    #111827 0 2px,
+    transparent 2px 4px,
+    #111827 4px 5px,
+    transparent 5px 8px,
+    #111827 8px 12px,
+    transparent 12px 14px
+  );
+}
+
+.barcodeNum {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #111827;
+}
+
+.veroHelp {
+  margin: 14px 24px 0;
+  background: #001439;
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.veroFace {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.veroCopy h3 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  color: #fff;
+}
+
+.veroCopy p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #c4d2e8;
+}
+
+.veroBtn {
+  margin-left: auto;
+  border: none;
+  background: #e96e33;
+  color: #fff;
+  font-weight: 800;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.klookExtras {
+  margin: 12px 24px 0;
+  padding: 14px 16px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.klookTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.klookHint {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.klookRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.klookBtn,
+.klookBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 9px 13px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.klookBtn {
+  background: #001439;
+  color: #fff;
+}
+
+.klookBtn:hover {
+  background: #002056;
+}
+
+.klookBtnGhost {
+  background: #fff;
+  color: #001439;
+  border: 1px solid #e5e7eb;
+}
+
+.klookBtnGhost:hover {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.foot {
+  margin: 16px 24px 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.foot p {
+  margin: 0;
+  max-width: 70%;
+}
+
+.foot strong {
+  white-space: nowrap;
+  color: #4b5563;
+}
+
+.btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnGhost {
+  background: #fff;
+  color: #001439;
+  border: 1px solid #d0d5dd;
+}
+
+.btnPdf {
+  background: #001439;
+  color: #fff;
+}
+
+.btnPdf:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.btnCancel {
+  background: #fff;
+  color: #b42318;
+  border: 1px solid #fecdca;
+}
+
+.btnCancel:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.cancelOk {
+  margin: 10px 24px 0;
+  color: #067647;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pdfErr {
+  margin: 10px 24px 0;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.navRow {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.navGhost,
+.navPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navGhost {
+  background: #fff;
+  color: #001439;
+  border: 1px solid #d0d5dd;
+}
+
+.navPrimary {
+  background: #e96e33;
+  color: #fff;
+  border: none;
+}
+
+.empty {
+  max-width: 520px;
+  margin: 80px auto;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.empty p {
+  color: #475467;
+  font-size: 15px;
+}
+
+@media (max-width: 760px) {
+  .head,
+  .refBar,
+  .route,
+  .grid2,
+  .paxCard,
+  .payRow,
+  .veroHelp,
+  .foot {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .headRight,
+  .right,
+  .refDate {
+    text-align: left;
+  }
+
+  .badge {
+    justify-self: start;
+  }
+
+  .time {
+    font-size: 28px;
+  }
+
+  .veroBtn {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .foot p {
+    max-width: none;
+  }
+}

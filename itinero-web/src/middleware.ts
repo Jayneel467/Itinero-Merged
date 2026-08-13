@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-/** Pass-through middleware (Clerk auth optional — re-enable later). */
+/** Pass-through middleware (Clerk auth optional - re-enable later). */
 export function middleware() {
   return NextResponse.next();
 }

@@ -1,0 +1,38 @@
+{
+  "id": "edinburgh",
+  "slug": "edinburgh",
+  "city": "Edinburgh",
+  "country": "UK",
+  "continent": "europe",
+  "iata": "EDI",
+  "themes": [
+    "city",
+    "culture",
+    "hills"
+  ],
+  "imageId": "photo-1506377247377-2a5b3b417ebb",
+  "blurb": "Castle views, festival energy, and highland day trips.",
+  "trendingScore": 88,
+  "minTripDays": 3,
+  "lat": 55.95,
+  "lng": -3.19,
+  "markets": [
+    "GB",
+    "*"
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "GB",
+    "authoredAt": "2026-08-12T16:27:16Z",
+    "author": "explore_factory.author.seed",
+    "checkedAt": "2026-08-12T16:27:16Z",
+    "checker": "explore_factory.checker",
+    "checkIssues": [],
+    "reverifiedAt": "2026-08-12T16:27:16Z",
+    "reverifier": "explore_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

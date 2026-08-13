@@ -1,0 +1,131 @@
+.hero {
+  min-height: min(88vh, 820px);
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  display: flex;
+  align-items: flex-end;
+}
+
+.inner {
+  width: min(720px, 100%);
+  padding: 48px 24px 64px;
+  margin: 0 auto 0 0;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fdba74;
+}
+
+.title {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.sub {
+  margin: 0 0 22px;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 36rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.primary,
+.secondary,
+.leadRow button {
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.primary {
+  background: #f97316;
+  color: #fff;
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.offer {
+  margin: 0 0 28px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.offer strong {
+  letter-spacing: 0.06em;
+}
+
+.lead {
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+}
+
+.leadLabel {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.leadRow {
+  display: flex;
+  gap: 8px;
+}
+
+.leadRow input {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.leadRow button {
+  background: #001439;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.msg {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #fdba74;
+}
+
+@media (max-width: 640px) {
+  .inner {
+    padding: 32px 16px 48px;
+  }
+  .leadRow {
+    flex-direction: column;
+  }
+}

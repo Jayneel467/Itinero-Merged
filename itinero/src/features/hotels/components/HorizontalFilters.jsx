@@ -19,7 +19,7 @@ export const HorizontalFilters = () => {
         
         <button className={styles.filterBtn}>
           <span className={styles.sparkleIcon}>✨</span>
-          Smart Filter
+          Let Vero Filter
         </button>
 
         <button className={styles.filterDropdown}>

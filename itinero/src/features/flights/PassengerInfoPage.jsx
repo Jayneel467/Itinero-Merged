@@ -1,51 +1,111 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plane, Calendar, Users, SwitchCamera, User, Mail, Phone, Settings, AlertCircle, Check } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Plane,
+  Calendar,
+  User,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Check,
+  Globe2,
+  CreditCard,
+  Users,
+  Briefcase,
+  Luggage,
+} from "lucide-react";
 import { PageLayout } from "@/components/layout";
-import SharedFlightSearchBar from "@/components/SharedFlightSearchBar";
-import overviewStyles from './FlightOverviewPage.module.css';
+import { useCurrency } from "@/context/CurrencyContext";
+import { useVeroUi } from "@/context/VeroUiContext";
+import { buildPassengerPageContext } from "@/features/vero/utils/pageContext";
+import { flightsSearchPath } from "@/features/vero/utils/pageFilterIntent";
+import { findAirportByCode } from "@/constants/airports";
+import {
+  inferAirlineCode,
+  canonicalizeAirlineName,
+} from "./utils/airlineIdentity";
+import { saveFlightCheckout, checkoutAmount } from "./utils/flightCheckout";
+import { readFlightSessionId } from "./utils/persistSelectedFlight";
+import AirlineMark from "./components/AirlineMark";
+import styles from "./PassengerInfoPage.module.css";
+
+const NATIONALITIES = [
+  { value: "in", label: "India" },
+  { value: "ae", label: "United Arab Emirates" },
+  { value: "us", label: "United States" },
+  { value: "gb", label: "United Kingdom" },
+  { value: "sg", label: "Singapore" },
+  { value: "au", label: "Australia" },
+  { value: "ca", label: "Canada" },
+  { value: "de", label: "Germany" },
+  { value: "fr", label: "France" },
+  { value: "sa", label: "Saudi Arabia" },
+  { value: "om", label: "Oman" },
+  { value: "qa", label: "Qatar" },
+  { value: "bh", label: "Bahrain" },
+  { value: "kw", label: "Kuwait" },
+  { value: "np", label: "Nepal" },
+  { value: "bd", label: "Bangladesh" },
+  { value: "lk", label: "Sri Lanka" },
+  { value: "other", label: "Other" },
+];
+
+function readSelectedFlight() {
+  try {
+    return JSON.parse(sessionStorage.getItem("itinero_selected_flight") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function Field({ label, error, icon: Icon, children }) {
+  return (
+    <div className={styles.field}>
+      <label className={styles.label}>{label}</label>
+      <div className={`${styles.inputWrap} ${error ? styles.inputWrapError : ""}`}>
+        {Icon ? <Icon size={16} className={styles.inputIcon} /> : null}
+        {children}
+      </div>
+      {error ? <span className={styles.error}>{error}</span> : null}
+    </div>
+  );
+}
 
 export default function PassengerInfoPage() {
+  const { currency: appCurrency, formatMoney } = useCurrency();
+  const { setPageContext, clearPageContext } = useVeroUi();
+  const [selectedFlight, setSelectedFlight] = useState(readSelectedFlight);
+
   const [travelers, setTravelers] = useState([
-    { id: 1, type: 'adult', firstName: '', lastName: '', gender: '', dob: '', nationality: '', passport: '' }
+    {
+      id: 1,
+      type: "adult",
+      firstName: "",
+      lastName: "",
+      gender: "",
+      dob: "",
+      nationality: "in",
+      passport: "",
+    },
   ]);
-  const [activeTab, setActiveTab] = useState('adult');
+  const [activeTab, setActiveTab] = useState("adult");
   const [isGstEnabled, setIsGstEnabled] = useState(false);
-  
-  // Contact State
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  
-  // GST State
-  const [gstNumber, setGstNumber] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [companyEmail, setCompanyEmail] = useState('');
-  
-  // Emergency State
-  const [emergencyName, setEmergencyName] = useState('');
-  const [emergencyRelationship, setEmergencyRelationship] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
-  
-  // Validation Errors State
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyRelationship, setEmergencyRelationship] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
   const [errors, setErrors] = useState({ travelers: {} });
   const navigate = useNavigate();
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
   const validateForm = () => {
-    let newErrors = { travelers: {} };
+    const newErrors = { travelers: {} };
     let isValid = true;
 
-    // 1. Validate Travelers
-    travelers.forEach(t => {
+    travelers.forEach((t) => {
       const tErrors = {};
       if (!t.firstName.trim()) {
         tErrors.firstName = "First name is required";
@@ -76,7 +136,6 @@ export default function PassengerInfoPage() {
       }
     });
 
-    // 2. Validate Contact
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!contactEmail.trim()) {
       newErrors.contactEmail = "Email is required";
@@ -95,7 +154,6 @@ export default function PassengerInfoPage() {
       isValid = false;
     }
 
-    // 3. Validate GST
     if (isGstEnabled) {
       if (!gstNumber.trim()) {
         newErrors.gstNumber = "GST number is required";
@@ -117,7 +175,6 @@ export default function PassengerInfoPage() {
       }
     }
 
-    // 4. Validate Emergency Contact
     if (!emergencyName.trim()) {
       newErrors.emergencyName = "Emergency contact name is required";
       isValid = false;
@@ -138,557 +195,669 @@ export default function PassengerInfoPage() {
     return isValid;
   };
 
-  const handlePayment = async () => {
+  const goToPayment = () => {
     if (!validateForm()) {
       alert("Please fill all required passenger details correctly.");
       return;
     }
-
-    // Note: You must replace this with a valid test key from your Razorpay Dashboard.
-    // If the key is invalid or dummy, Razorpay's server will return "Something went wrong" inside the modal.
-    const rzpKey = "rzp_test_MJ6kGUsiZlv1c9"; 
-
-    const res = await loadRazorpay();
-    if (!res) {
-      alert("Razorpay SDK failed to load. Are you online?");
+    const flight = selectedFlight || readSelectedFlight();
+    if (!flight || checkoutAmount(flight) <= 0) {
+      alert("No live fare on this booking. Go back and pick a flight again.");
       return;
     }
-
-    const options = {
-      key: rzpKey,
-      amount: "72000", // $720.00 * 100
-      currency: "USD",
-      name: "Itinero",
-      description: "Flight Booking to DXB",
-      image: "/favicon.png",
-      handler: function (response) {
-        // Payment successful! Navigate to success screen
-        navigate('/flights/booking-success');
+    saveFlightCheckout({
+      flight,
+      sessionId: readFlightSessionId() || undefined,
+      travelers,
+      contact: { email: contactEmail.trim(), phone: contactPhone.trim() },
+      emergency: {
+        name: emergencyName.trim(),
+        relationship: emergencyRelationship,
+        phone: emergencyPhone.trim(),
       },
-      prefill: {
-        name: travelers[0] ? `${travelers[0].firstName} ${travelers[0].lastName}` : "Guest",
-        email: contactEmail,
-        contact: contactPhone
-      },
-      theme: {
-        color: "#001439"
-      }
-    };
-    
-    const paymentObject = new window.Razorpay(options);
-    paymentObject.open();
+      gst: isGstEnabled
+        ? {
+            enabled: true,
+            number: gstNumber.trim(),
+            companyName: companyName.trim(),
+            companyEmail: companyEmail.trim(),
+          }
+        : { enabled: false },
+    });
+    navigate("/flights/payment");
   };
 
-  const adults = travelers.filter(t => t.type === 'adult');
-  const children = travelers.filter(t => t.type === 'child');
-  const infants = travelers.filter(t => t.type === 'infant');
+  const adults = travelers.filter((t) => t.type === "adult");
+  const children = travelers.filter((t) => t.type === "child");
+  const infants = travelers.filter((t) => t.type === "infant");
+
+  useEffect(() => {
+    setSelectedFlight(readSelectedFlight());
+  }, []);
+
+  useEffect(() => {
+    setPageContext(buildPassengerPageContext(selectedFlight));
+    return () => clearPageContext();
+  }, [selectedFlight, setPageContext, clearPageContext]);
+
+  const summary = useMemo(() => {
+    const f = selectedFlight;
+    if (!f) return null;
+    const airlineName = canonicalizeAirlineName(
+      f.airline?.name || (typeof f.airline === "string" ? f.airline : ""),
+      f.airline?.code
+    );
+    const flightNo = f.flightNumber || f.flight_number || "";
+    const airlineCode = inferAirlineCode(airlineName, flightNo, f.airline?.code);
+    const origin = String(f.departure?.airport || f.origin || "").toUpperCase();
+    const dest = String(f.arrival?.airport || f.destination || "").toUpperCase();
+    const originMeta = findAirportByCode(origin);
+    const destMeta = findAirportByCode(dest);
+    const depTime = f.departure?.time || "--:--";
+    const arrTime = f.arrival?.time || "--:--";
+    const depDate =
+      f.departure?.date ||
+      (f.departureAt
+        ? new Date(f.departureAt).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })
+        : "");
+    const currencyCode =
+      String(f.currencyCode || f.currency || appCurrency || "INR")
+        .replace(/[^A-Z]/gi, "")
+        .toUpperCase()
+        .slice(0, 3) || "INR";
+    const price = Number(f.price) || 0;
+    const layover = Array.isArray(f.layoverCodes) ? f.layoverCodes.filter(Boolean) : [];
+    const stopsCount =
+      typeof f.stopsCount === "number"
+        ? f.stopsCount
+        : layover.length || (/non[\s-]?stop|direct/i.test(String(f.stops || "")) ? 0 : null);
+    const stopLabel =
+      stopsCount === 0
+        ? "Non-stop"
+        : stopsCount === 1
+          ? layover[0]
+            ? `1 stop · ${layover[0]}`
+            : "1 stop"
+          : stopsCount > 1
+            ? `${stopsCount} stops`
+            : f.stops || "-";
+    const bag = f.baggage || {};
+    return {
+      airlineName,
+      airlineCode,
+      logo: f.airline?.logo || f.logo || "",
+      flightNo,
+      origin,
+      dest,
+      originCity: originMeta?.city || origin,
+      destCity: destMeta?.city || dest,
+      originName: originMeta?.name || originMeta?.city || origin,
+      destName: destMeta?.name || destMeta?.city || dest,
+      depTime,
+      arrTime,
+      depDate,
+      duration: f.duration || "-",
+      stopLabel,
+      cabin: f.cabin || f.fare_family || "Economy",
+      fareFamily: f.fare_family || f.cabin || "Economy",
+      cabinBag: bag.cabin || null,
+      checkedBag: bag.checked || null,
+      refundable: f.refundable,
+      has_refund_fee: f.has_refund_fee === true,
+      terms_summary: Array.isArray(f.terms_summary) ? f.terms_summary : null,
+      currencyCode,
+      price,
+      priceLabel: formatMoney(price, currencyCode),
+    };
+  }, [selectedFlight, appCurrency, formatMoney]);
+
+  const filledCount = useMemo(() => {
+    let n = 0;
+    const t = travelers[0];
+    if (t?.firstName && t?.lastName && t?.gender && t?.dob && t?.nationality && t?.passport) n += 1;
+    if (contactEmail && contactPhone) n += 1;
+    if (emergencyName && emergencyRelationship && emergencyPhone) n += 1;
+    if (!isGstEnabled || (gstNumber && companyName && companyEmail)) n += 1;
+    return n;
+  }, [
+    travelers,
+    contactEmail,
+    contactPhone,
+    emergencyName,
+    emergencyRelationship,
+    emergencyPhone,
+    isGstEnabled,
+    gstNumber,
+    companyName,
+    companyEmail,
+  ]);
 
   const addTraveler = () => {
-    setTravelers([...travelers, {
-      id: Date.now(),
-      type: activeTab,
-      firstName: '',
-      lastName: '',
-      gender: '',
-      dob: '',
-      nationality: '',
-      passport: ''
-    }]);
+    setTravelers([
+      ...travelers,
+      {
+        id: Date.now(),
+        type: activeTab,
+        firstName: "",
+        lastName: "",
+        gender: "",
+        dob: "",
+        nationality: "in",
+        passport: "",
+      },
+    ]);
   };
 
   const updateTraveler = (id, field, value) => {
-    setTravelers(travelers.map(t => t.id === id ? { ...t, [field]: value } : t));
-    
-    // Clear validation error for this traveler and field if it exists
+    setTravelers(travelers.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
     if (errors.travelers[id] && errors.travelers[id][field]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const updatedTravelerErrs = { ...prev.travelers[id] };
         delete updatedTravelerErrs[field];
         return {
           ...prev,
-          travelers: {
-            ...prev.travelers,
-            [id]: updatedTravelerErrs
-          }
+          travelers: { ...prev.travelers, [id]: updatedTravelerErrs },
         };
       });
     }
   };
 
-  const handleContactEmailChange = (val) => {
-    setContactEmail(val);
-    if (errors.contactEmail) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.contactEmail;
-        return copy;
-      });
-    }
+  const clearError = (key) => {
+    if (!errors[key]) return;
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
   };
 
-  const handleContactPhoneChange = (val) => {
-    setContactPhone(val);
-    if (errors.contactPhone) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.contactPhone;
-        return copy;
-      });
+  const goChangeFlight = () => {
+    if (summary?.origin && summary?.dest) {
+      navigate(
+        flightsSearchPath({
+          origin: summary.origin,
+          destination: summary.dest,
+          trip: "oneway",
+          adults: travelers.length || 1,
+          cabin: summary.cabin || "Economy",
+        })
+      );
+      return;
     }
+    navigate("/flights");
   };
 
-  const handleGstNumberChange = (val) => {
-    setGstNumber(val);
-    if (errors.gstNumber) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.gstNumber;
-        return copy;
-      });
-    }
-  };
-
-  const handleCompanyNameChange = (val) => {
-    setCompanyName(val);
-    if (errors.companyName) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.companyName;
-        return copy;
-      });
-    }
-  };
-
-  const handleCompanyEmailChange = (val) => {
-    setCompanyEmail(val);
-    if (errors.companyEmail) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.companyEmail;
-        return copy;
-      });
-    }
-  };
-
-  const handleEmergencyNameChange = (val) => {
-    setEmergencyName(val);
-    if (errors.emergencyName) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.emergencyName;
-        return copy;
-      });
-    }
-  };
-
-  const handleEmergencyRelationshipChange = (val) => {
-    setEmergencyRelationship(val);
-    if (errors.emergencyRelationship) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.emergencyRelationship;
-        return copy;
-      });
-    }
-  };
-
-  const handleEmergencyPhoneChange = (val) => {
-    setEmergencyPhone(val);
-    if (errors.emergencyPhone) {
-      setErrors(prev => {
-        const copy = { ...prev };
-        delete copy.emergencyPhone;
-        return copy;
-      });
-    }
-  };
-
-  const currentList = activeTab === 'adult' ? adults : activeTab === 'child' ? children : infants;
+  const currentList = activeTab === "adult" ? adults : activeTab === "child" ? children : infants;
 
   return (
     <PageLayout>
-      <div className="bg-[#f3f3f3] min-h-screen pb-[50px]">
-        
-        {/* Hero Section */}
-        <div className={overviewStyles.heroSection}>
-          <h1 className={overviewStyles.heroTitle}>
-            Beyond The Clouds
-          </h1>
-          <SharedFlightSearchBar />
+      <div className={styles.page}>
+        <div className={styles.stepperWrap}>
+          <div className={styles.stepper}>
+            <div className={`${styles.step} ${styles.stepDone}`}>
+              <span className={`${styles.stepNum} ${styles.stepNumDone}`}>
+                <Check size={12} strokeWidth={3} />
+              </span>
+              Search
+            </div>
+            <span className={styles.stepSep}>→</span>
+            <div className={`${styles.step} ${styles.stepDone}`}>
+              <span className={`${styles.stepNum} ${styles.stepNumDone}`}>
+                <Check size={12} strokeWidth={3} />
+              </span>
+              Select flight
+            </div>
+            <span className={styles.stepSep}>→</span>
+            <div className={`${styles.step} ${styles.stepActive}`}>
+              <span className={`${styles.stepNum} ${styles.stepNumActive}`}>3</span>
+              Passengers
+            </div>
+            <span className={styles.stepSep}>→</span>
+            <div className={styles.step}>
+              <span className={styles.stepNum}>4</span>
+              Payment
+            </div>
+          </div>
         </div>
 
-      {/* Main Content */}
-      <div className="max-w-[1780px] mx-auto px-4 mt-10 flex flex-col lg:flex-row gap-8">
-        
-        {/* Left Column - Forms */}
-        <div className="flex-1 flex flex-col gap-6">
-          <div>
-            <h2 className="text-2xl font-bold text-[#001439] mb-1">Passenger Information</h2>
-            <p className="text-gray-500 text-sm">Please enter the details of all travelers as per their government ID.</p>
-          </div>
-
-          {/* Box 1: Traveler Information */}
-          <div className="bg-white rounded-[16px] border border-gray-100 shadow-[0_15px_30px_rgba(0,0,0,0.12)] p-6 md:p-8">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#F97211] to-[#E86A10] text-white flex items-center justify-center text-sm font-bold shadow-sm">1</div>
-              <h3 className="text-xl font-bold text-[#001439]">Traveler Information</h3>
+        <div className={styles.layout}>
+          <div className={styles.left}>
+            <div className={styles.headerRow}>
+              <div>
+                <h1 className={styles.title}>Passenger details</h1>
+                <p className={styles.subtitle}>
+                  Enter names exactly as they appear on the passport / government ID.
+                </p>
+              </div>
+              <div className={styles.progressHint}>{filledCount}/4 sections ready</div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex bg-gray-50/80 rounded-[14px] p-1.5 mb-8 border border-gray-100/50">
-              <button 
-                onClick={() => setActiveTab('adult')}
-                className={`flex-1 py-2.5 md:py-3 text-sm rounded-[10px] flex items-center justify-center gap-2 transition-all duration-200 ${activeTab === 'adult' ? 'bg-white shadow-sm text-[#F97211] font-bold border border-gray-100' : 'text-gray-500 font-medium hover:text-gray-700 hover:bg-gray-100/50'}`}
-              >
-                <User size={16} /> Adult ({adults.length})
-              </button>
-              <button 
-                onClick={() => setActiveTab('child')}
-                className={`flex-1 py-2.5 md:py-3 text-sm rounded-[10px] flex items-center justify-center gap-2 transition-all duration-200 ${activeTab === 'child' ? 'bg-white shadow-sm text-[#F97211] font-bold border border-gray-100' : 'text-gray-500 font-medium hover:text-gray-700 hover:bg-gray-100/50'}`}
-              >
-                <User size={16} /> Child ({children.length})
-              </button>
-              <button 
-                onClick={() => setActiveTab('infant')}
-                className={`flex-1 py-2.5 md:py-3 text-sm rounded-[10px] flex items-center justify-center gap-2 transition-all duration-200 ${activeTab === 'infant' ? 'bg-white shadow-sm text-[#F97211] font-bold border border-gray-100' : 'text-gray-500 font-medium hover:text-gray-700 hover:bg-gray-100/50'}`}
-              >
-                <User size={16} /> Infant ({infants.length})
-              </button>
-            </div>
-
-            {/* Dynamic Traveler Forms */}
-            {currentList.map((traveler, index) => {
-              const tErrs = errors.travelers[traveler.id] || {};
-              return (
-                <div key={traveler.id} className="mb-8 last:mb-0">
-                  <div className="flex items-center gap-2 mb-4 text-[#001439] font-bold">
-                    <User size={18} /> 
-                    <span className="capitalize">{traveler.type} {index + 1}</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">First Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="Enter first name" 
-                        className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${tErrs.firstName ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                        value={traveler.firstName} 
-                        onChange={(e) => updateTraveler(traveler.id, 'firstName', e.target.value)} 
-                      />
-                      {tErrs.firstName && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{tErrs.firstName}</span>}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Last Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="Enter last name" 
-                        className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${tErrs.lastName ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                        value={traveler.lastName} 
-                        onChange={(e) => updateTraveler(traveler.id, 'lastName', e.target.value)} 
-                      />
-                      {tErrs.lastName && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{tErrs.lastName}</span>}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gender</label>
-                      <select 
-                        className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${tErrs.gender ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                        value={traveler.gender} 
-                        onChange={(e) => updateTraveler(traveler.id, 'gender', e.target.value)}
-                      >
-                        <option value="">Select gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                      </select>
-                      {tErrs.gender && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{tErrs.gender}</span>}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date Of Birth</label>
-                      <input 
-                        type="date" 
-                        className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${tErrs.dob ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                        value={traveler.dob} 
-                        onChange={(e) => updateTraveler(traveler.id, 'dob', e.target.value)} 
-                      />
-                      {tErrs.dob && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{tErrs.dob}</span>}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nationality</label>
-                      <select 
-                        className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${tErrs.nationality ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                        value={traveler.nationality} 
-                        onChange={(e) => updateTraveler(traveler.id, 'nationality', e.target.value)}
-                      >
-                        <option value="">Select Nationality</option>
-                        <option value="us">United States</option>
-                        <option value="uk">United Kingdom</option>
-                        <option value="in">India</option>
-                      </select>
-                      {tErrs.nationality && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{tErrs.nationality}</span>}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Passport Number</label>
-                      <input 
-                        type="text" 
-                        placeholder="Enter passport number" 
-                        className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${tErrs.passport ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                        value={traveler.passport} 
-                        onChange={(e) => updateTraveler(traveler.id, 'passport', e.target.value)} 
-                      />
-                      {tErrs.passport && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{tErrs.passport}</span>}
+            {summary ? (
+              <div className={styles.recap}>
+                <div className={styles.recapAirline}>
+                  <AirlineMark
+                    name={summary.airlineName}
+                    code={summary.airlineCode}
+                    logo={summary.logo}
+                    flightNumber={summary.flightNo}
+                    size={52}
+                  />
+                  <div>
+                    <div className={styles.recapName}>{summary.airlineName}</div>
+                    <div className={styles.recapCode}>
+                      {summary.flightNo || summary.airlineCode || "Live fare"}
                     </div>
                   </div>
                 </div>
-              );
-            })}
-
-            <button 
-              onClick={addTraveler}
-              className="w-full mt-8 py-3.5 border-2 border-dashed border-[#F97211]/40 text-[#F97211] bg-[#F97211]/5 hover:bg-[#F97211]/10 hover:border-[#F97211] rounded-[12px] font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300"
-            >
-              + Add Another Traveler
-            </button>
-          </div>
-
-          {/* Box 2: Contact Information */}
-          <div className="bg-white rounded-[16px] border border-gray-100 shadow-[0_15px_30px_rgba(0,0,0,0.12)] p-6 md:p-8">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#F97211] to-[#E86A10] text-white flex items-center justify-center text-sm font-bold shadow-sm">2</div>
-              <h3 className="text-xl font-bold text-[#001439]">Contact Information</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email Address</label>
-                <input 
-                  type="email" 
-                  placeholder="Enter email address" 
-                  className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.contactEmail ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                  value={contactEmail}
-                  onChange={(e) => handleContactEmailChange(e.target.value)}
-                />
-                {errors.contactEmail && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.contactEmail}</span>}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone Number</label>
-                <input 
-                  type="tel" 
-                  placeholder="Enter phone number" 
-                  className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.contactPhone ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                  value={contactPhone}
-                  onChange={(e) => handleContactPhoneChange(e.target.value)}
-                />
-                {errors.contactPhone && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.contactPhone}</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* Box 3: GST Information */}
-          <div className="bg-white rounded-[16px] border border-gray-100 shadow-[0_15px_30px_rgba(0,0,0,0.12)] p-6 md:p-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#F97211] to-[#E86A10] text-white flex items-center justify-center text-sm font-bold shadow-sm">3</div>
-                <div>
-                  <h3 className="text-xl font-bold text-[#001439] leading-tight">GST Information (optional)</h3>
-                  <p className="text-sm text-gray-500 mt-1">Add GST details to get invoice for your business.</p>
+                <div className={styles.recapRoute}>
+                  <div>
+                    <div className={styles.recapTime}>{summary.depTime}</div>
+                    <div className={styles.recapAirport}>{summary.origin}</div>
+                    <div className={styles.recapCity}>{summary.originCity}</div>
+                  </div>
+                  <div className={styles.recapMid}>
+                    <div className={styles.recapDur}>{summary.duration}</div>
+                    <div className={styles.recapLine}>
+                      <Plane size={12} color="#6C5CE7" style={{ margin: "0 4px" }} />
+                    </div>
+                    <div className={styles.recapStop}>{summary.stopLabel}</div>
+                  </div>
+                  <div>
+                    <div className={styles.recapTime}>{summary.arrTime}</div>
+                    <div className={styles.recapAirport}>{summary.dest}</div>
+                    <div className={styles.recapCity}>{summary.destCity}</div>
+                  </div>
+                </div>
+                <div className={styles.recapMeta}>
+                  <div className={styles.pills}>
+                    <span className={`${styles.pill} ${styles.pillLive}`}>Live fare</span>
+                    <span className={`${styles.pill} ${styles.pillFare}`}>{summary.fareFamily}</span>
+                    {summary.cabinBag ? (
+                      <span className={styles.pill}>
+                        <Luggage size={11} style={{ display: "inline", marginRight: 4 }} />
+                        Cabin {summary.cabinBag}
+                      </span>
+                    ) : null}
+                    {summary.checkedBag ? (
+                      <span className={styles.pill}>
+                        <Briefcase size={11} style={{ display: "inline", marginRight: 4 }} />
+                        Check-in {summary.checkedBag}
+                      </span>
+                    ) : null}
+                    {summary.refundable === true &&
+                    summary.has_refund_fee !== true &&
+                    !(Array.isArray(summary.terms_summary) &&
+                      summary.terms_summary.some((line) =>
+                        /fees?\s+may\s+vary|fee\s+varies|penalty|with\s+fee/i.test(String(line || ""))
+                      )) ? (
+                      <span className={styles.pill}>Refundable</span>
+                    ) : null}
+                  </div>
+                  <button type="button" className={styles.changeBtn} onClick={goChangeFlight}>
+                    Change flight
+                  </button>
                 </div>
               </div>
-              
-              {/* Custom Toggle Switch */}
-              <button 
-                onClick={() => setIsGstEnabled(!isGstEnabled)}
-                className={`w-12 h-6 rounded-full transition-colors relative ${isGstEnabled ? 'bg-[#F97211]' : 'bg-gray-200'}`}
-              >
-                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${isGstEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
-              </button>
+            ) : null}
+
+            <div className={styles.secure}>
+              <ShieldCheck size={18} />
+              Your passport and contact details stay encrypted and are only used for this booking.
             </div>
 
-            {isGstEnabled && (
-              <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-2 fade-in duration-200">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">GST Number</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter GST Number" 
-                    className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.gstNumber ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                    value={gstNumber}
-                    onChange={(e) => handleGstNumberChange(e.target.value)}
-                  />
-                  {errors.gstNumber && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.gstNumber}</span>}
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Company Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter company name" 
-                    className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.companyName ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                    value={companyName}
-                    onChange={(e) => handleCompanyNameChange(e.target.value)}
-                  />
-                  {errors.companyName && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.companyName}</span>}
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Company Email</label>
-                  <input 
-                    type="email" 
-                    placeholder="Enter company email" 
-                    className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.companyEmail ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                    value={companyEmail}
-                    onChange={(e) => handleCompanyEmailChange(e.target.value)}
-                  />
-                  {errors.companyEmail && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.companyEmail}</span>}
+            <div className={styles.card}>
+              <div className={styles.cardHead}>
+                <div className={styles.cardTitle}>
+                  <span className={styles.num}>1</span>
+                  <div>
+                    <h3>Traveler information</h3>
+                    <p className={styles.cardHint}>One adult ticket on this fare</p>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Box 4: Emergency Contact Information */}
-          <div className="bg-white rounded-[16px] border border-gray-100 shadow-[0_15px_30px_rgba(0,0,0,0.12)] p-6 md:p-8">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#F97211] to-[#E86A10] text-white flex items-center justify-center text-sm font-bold shadow-sm">4</div>
-              <h3 className="text-xl font-bold text-[#001439]">Emergency Contact Information</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Full Name</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter Full Name" 
-                  className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.emergencyName ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                  value={emergencyName}
-                  onChange={(e) => handleEmergencyNameChange(e.target.value)}
-                />
-                {errors.emergencyName && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.emergencyName}</span>}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Relationship</label>
-                <select 
-                  className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.emergencyRelationship ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                  value={emergencyRelationship}
-                  onChange={(e) => handleEmergencyRelationshipChange(e.target.value)}
+              <div className={styles.tabs}>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${activeTab === "adult" ? styles.tabActive : ""}`}
+                  onClick={() => setActiveTab("adult")}
                 >
-                  <option value="">Select relationship</option>
-                  <option value="spouse">Spouse</option>
-                  <option value="parent">Parent</option>
-                  <option value="sibling">Sibling</option>
-                  <option value="friend">Friend</option>
-                </select>
-                {errors.emergencyRelationship && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.emergencyRelationship}</span>}
+                  <User size={15} /> Adult ({adults.length})
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${activeTab === "child" ? styles.tabActive : ""}`}
+                  onClick={() => setActiveTab("child")}
+                >
+                  <User size={15} /> Child ({children.length})
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${activeTab === "infant" ? styles.tabActive : ""}`}
+                  onClick={() => setActiveTab("infant")}
+                >
+                  <User size={15} /> Infant ({infants.length})
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone Number</label>
-                <input 
-                  type="tel" 
-                  placeholder="Enter phone number" 
-                  className={`w-full px-4 py-3.5 rounded-[12px] border bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#F97211]/15 text-sm font-medium transition-all duration-200 ${errors.emergencyPhone ? 'border-red-500 focus:border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-[#F97211]'}`} 
-                  value={emergencyPhone}
-                  onChange={(e) => handleEmergencyPhoneChange(e.target.value)}
-                />
-                {errors.emergencyPhone && <span className="text-red-500 text-[11px] font-semibold mt-1 block">{errors.emergencyPhone}</span>}
+
+              {currentList.map((traveler, index) => {
+                const tErrs = errors.travelers[traveler.id] || {};
+                return (
+                  <div key={traveler.id} style={{ marginBottom: 20 }}>
+                    <div className={styles.travelerLabel}>
+                      <User size={16} />
+                      <span className="capitalize">
+                        {traveler.type} {index + 1}
+                      </span>
+                    </div>
+                    <div className={styles.grid3} style={{ marginBottom: 14 }}>
+                      <Field label="First name" error={tErrs.firstName} icon={User}>
+                        <input
+                          type="text"
+                          placeholder="As on passport"
+                          value={traveler.firstName}
+                          onChange={(e) => updateTraveler(traveler.id, "firstName", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Last name" error={tErrs.lastName} icon={User}>
+                        <input
+                          type="text"
+                          placeholder="As on passport"
+                          value={traveler.lastName}
+                          onChange={(e) => updateTraveler(traveler.id, "lastName", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Gender" error={tErrs.gender} icon={Users}>
+                        <select
+                          value={traveler.gender}
+                          onChange={(e) => updateTraveler(traveler.id, "gender", e.target.value)}
+                        >
+                          <option value="">Select</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other / unspecified</option>
+                        </select>
+                      </Field>
+                    </div>
+                    <div className={styles.grid3}>
+                      <Field label="Date of birth" error={tErrs.dob} icon={Calendar}>
+                        <input
+                          type="date"
+                          value={traveler.dob}
+                          onChange={(e) => updateTraveler(traveler.id, "dob", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Nationality" error={tErrs.nationality} icon={Globe2}>
+                        <select
+                          value={traveler.nationality}
+                          onChange={(e) => updateTraveler(traveler.id, "nationality", e.target.value)}
+                        >
+                          <option value="">Select nationality</option>
+                          {NATIONALITIES.map((n) => (
+                            <option key={n.value} value={n.value}>
+                              {n.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Passport number" error={tErrs.passport} icon={CreditCard}>
+                        <input
+                          type="text"
+                          placeholder="Passport / ID number"
+                          value={traveler.passport}
+                          onChange={(e) => updateTraveler(traveler.id, "passport", e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <button type="button" className={styles.addBtn} onClick={addTraveler}>
+                + Add another traveler
+              </button>
+            </div>
+
+            <div className={styles.card}>
+              <div className={styles.cardHead}>
+                <div className={styles.cardTitle}>
+                  <span className={styles.num}>2</span>
+                  <div>
+                    <h3>Contact information</h3>
+                    <p className={styles.cardHint}>E-ticket and airline updates go here</p>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.grid2}>
+                <Field label="Email address" error={errors.contactEmail} icon={Mail}>
+                  <input
+                    type="email"
+                    placeholder="name@email.com"
+                    value={contactEmail}
+                    onChange={(e) => {
+                      setContactEmail(e.target.value);
+                      clearError("contactEmail");
+                    }}
+                  />
+                </Field>
+                <Field label="Phone number" error={errors.contactPhone} icon={Phone}>
+                  <input
+                    type="tel"
+                    placeholder="10-digit mobile"
+                    value={contactPhone}
+                    onChange={(e) => {
+                      setContactPhone(e.target.value);
+                      clearError("contactPhone");
+                    }}
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className={styles.card}>
+              <div className={styles.cardHead}>
+                <div className={styles.cardTitle}>
+                  <span className={styles.num}>3</span>
+                  <div>
+                    <h3>GST information (optional)</h3>
+                    <p className={styles.cardHint}>Add GST to get a business invoice</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={`${styles.toggle} ${isGstEnabled ? styles.toggleOn : ""}`}
+                  onClick={() => setIsGstEnabled(!isGstEnabled)}
+                  aria-pressed={isGstEnabled}
+                >
+                  <span className={styles.knob} />
+                </button>
+              </div>
+              {isGstEnabled ? (
+                <div className={styles.grid3}>
+                  <Field label="GST number" error={errors.gstNumber} icon={CreditCard}>
+                    <input
+                      type="text"
+                      placeholder="15-character GSTIN"
+                      value={gstNumber}
+                      onChange={(e) => {
+                        setGstNumber(e.target.value);
+                        clearError("gstNumber");
+                      }}
+                    />
+                  </Field>
+                  <Field label="Company name" error={errors.companyName} icon={Briefcase}>
+                    <input
+                      type="text"
+                      placeholder="Registered company"
+                      value={companyName}
+                      onChange={(e) => {
+                        setCompanyName(e.target.value);
+                        clearError("companyName");
+                      }}
+                    />
+                  </Field>
+                  <Field label="Company email" error={errors.companyEmail} icon={Mail}>
+                    <input
+                      type="email"
+                      placeholder="accounts@company.com"
+                      value={companyEmail}
+                      onChange={(e) => {
+                        setCompanyEmail(e.target.value);
+                        clearError("companyEmail");
+                      }}
+                    />
+                  </Field>
+                </div>
+              ) : null}
+            </div>
+
+            <div className={styles.card}>
+              <div className={styles.cardHead}>
+                <div className={styles.cardTitle}>
+                  <span className={styles.num}>4</span>
+                  <div>
+                    <h3>Emergency contact</h3>
+                    <p className={styles.cardHint}>Someone not travelling on this ticket</p>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.grid3}>
+                <Field label="Full name" error={errors.emergencyName} icon={User}>
+                  <input
+                    type="text"
+                    placeholder="Emergency contact name"
+                    value={emergencyName}
+                    onChange={(e) => {
+                      setEmergencyName(e.target.value);
+                      clearError("emergencyName");
+                    }}
+                  />
+                </Field>
+                <Field label="Relationship" error={errors.emergencyRelationship} icon={Users}>
+                  <select
+                    value={emergencyRelationship}
+                    onChange={(e) => {
+                      setEmergencyRelationship(e.target.value);
+                      clearError("emergencyRelationship");
+                    }}
+                  >
+                    <option value="">Select relationship</option>
+                    <option value="spouse">Spouse</option>
+                    <option value="parent">Parent</option>
+                    <option value="sibling">Sibling</option>
+                    <option value="child">Child</option>
+                    <option value="friend">Friend</option>
+                  </select>
+                </Field>
+                <Field label="Phone number" error={errors.emergencyPhone} icon={Phone}>
+                  <input
+                    type="tel"
+                    placeholder="10-digit mobile"
+                    value={emergencyPhone}
+                    onChange={(e) => {
+                      setEmergencyPhone(e.target.value);
+                      clearError("emergencyPhone");
+                    }}
+                  />
+                </Field>
               </div>
             </div>
           </div>
-          
 
-        </div>
-
-        {/* Right Column - Booking Summary */}
-        <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-6">
-          <div className="bg-white rounded-[16px] border border-gray-100 shadow-[0_15px_30px_rgba(0,0,0,0.12)] p-6 md:p-8 sticky top-24">
-            <h3 className="text-xl font-bold text-[#001439] mb-8">Booking Summary</h3>
-            
-            {/* Flight Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#DC2626] rounded-md flex items-center justify-center border border-gray-100">
-                  <Plane className="text-white w-6 h-6 rotate-45" />
+          <aside className={styles.sidebar}>
+            <div className={styles.summary}>
+              <h3 className={styles.summaryTitle}>Booking summary</h3>
+              {!summary ? (
+                <p className={styles.empty}>No flight selected. Go back to search and pick a fare.</p>
+              ) : (
+                <>
+                  <div className={styles.summaryAirline}>
+                    <AirlineMark
+                      name={summary.airlineName}
+                      code={summary.airlineCode}
+                      logo={summary.logo}
+                      flightNumber={summary.flightNo}
+                      size={48}
+                    />
+                    <div>
+                      <div className={styles.summaryName}>{summary.airlineName}</div>
+                      <div className={styles.summaryFlight}>
+                        {summary.flightNo || summary.airlineCode} · {summary.fareFamily}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.summaryRoute}>
+                    <div>
+                      <div className={styles.summaryAirport}>{summary.origin}</div>
+                      <div className={styles.summaryCity}>{summary.originCity}</div>
+                      <div className={styles.summaryCity}>{summary.depTime}</div>
+                    </div>
+                    <div className={styles.summaryMid}>
+                      {summary.duration}
+                      <div>{summary.stopLabel}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div className={styles.summaryAirport}>{summary.dest}</div>
+                      <div className={styles.summaryCity}>{summary.destCity}</div>
+                      <div className={styles.summaryCity}>{summary.arrTime}</div>
+                    </div>
+                  </div>
+                  <div className={styles.metaRow}>
+                    <span>
+                      <Calendar size={12} /> {summary.depDate || "Date TBC"}
+                    </span>
+                    <span>
+                      <Users size={12} /> {travelers.length} pax
+                    </span>
+                    {summary.cabinBag ? (
+                      <span>
+                        <Luggage size={12} /> Cabin {summary.cabinBag}
+                      </span>
+                    ) : null}
+                    {summary.checkedBag ? (
+                      <span>
+                        <Briefcase size={12} /> {summary.checkedBag}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className={styles.fareRow}>
+                    <span>Live fare</span>
+                    <span>{summary.priceLabel}</span>
+                  </div>
+                  <div className={styles.totalRow}>
+                    <span className={styles.totalLabel}>Total</span>
+                    <span className={styles.totalPrice}>{summary.priceLabel}</span>
+                  </div>
+                  <div className={styles.taxNote}>Inclusive of taxes where shown by the airline</div>
+                </>
+              )}
+              <div className={styles.points}>
+                <span>
+                  Earn <strong>120 Itinero Points</strong> on this booking
+                </span>
+                <span>🎁</span>
+              </div>
+              <button type="button" className={styles.payBtn} onClick={goToPayment}>
+                Continue to payment
+              </button>
+              <div className={styles.help}>
+                <div className={styles.helpTitle}>Need help?</div>
+                <div className={styles.helpText}>Our travel experts can finish this booking with you.</div>
+                <div className={styles.helpLinks}>
+                  <a href="tel:+18005550199">
+                    <Phone size={14} /> +1 (800) 555-0199
+                  </a>
+                  <a href="#vero">
+                    <Mail size={14} /> Chat with Vero
+                  </a>
                 </div>
-                <div>
-                  <div className="font-bold text-[#001439]">Emirates</div>
-                  <div className="text-xs text-gray-500">EK 203 • Boeing 777-300ER</div>
-                </div>
-              </div>
-              <span className="bg-green-50 text-green-600 px-2 py-1 rounded text-xs font-bold uppercase">Refundable</span>
-            </div>
-
-            {/* Flight Times */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="text-center">
-                <div className="text-2xl font-black text-[#001439]">08:45</div>
-                <div className="font-bold mt-1 text-sm text-[#001439]">JFK</div>
-                <div className="text-[10px] text-gray-500 leading-tight mt-1">John F. Kennedy Intl.</div>
-              </div>
-              <div className="flex flex-col items-center flex-1 px-4">
-                <span className="text-[10px] font-semibold text-gray-400 mb-1">7h 20m</span>
-                <div className="w-full flex items-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#F97211]"></div>
-                  <div className="flex-1 h-px border-t border-dashed border-gray-300"></div>
-                  <Plane size={12} className="text-[#6C5CE7] mx-1" />
-                  <div className="flex-1 h-px border-t border-dashed border-gray-300"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                </div>
-                <span className="text-[10px] font-semibold text-green-500 mt-1">Direct</span>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-black text-[#001439]">20:05</div>
-                <div className="font-bold mt-1 text-sm text-[#001439]">LHR</div>
-                <div className="text-[10px] text-gray-500 leading-tight mt-1">Heathrow Airport</div>
               </div>
             </div>
-
-            <div className="flex items-center justify-center gap-2 text-xs text-gray-500 mb-6 pb-6 border-b border-gray-100">
-              <Calendar size={12} /> 12 May, 2026 
-              <span className="mx-1">•</span> Economy Class 
-              <span className="mx-1">•</span> {travelers.length} Passenger
-            </div>
-
-            {/* Fare Summary */}
-            <h4 className="font-bold text-[#001439] mb-4">Fare Summary</h4>
-            <div className="space-y-3 text-sm mb-6 pb-6 border-b border-gray-100">
-              <div className="flex justify-between text-gray-600">
-                <span>Base Fare</span>
-                <span className="font-semibold text-[#001439]">$520.00</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Airline Charges</span>
-                <span className="font-semibold text-[#001439]">$80.00</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Taxes & Fees</span>
-                <span className="font-semibold text-[#001439]">$120.00</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center mb-6">
-              <span className="font-bold text-[#001439] text-lg">Total Fare</span>
-              <span className="font-black text-[#001439] text-2xl">$720.00</span>
-            </div>
-
-            {/* Points Banner */}
-            <div className="bg-[#F0F7FF] rounded-[12px] p-3 flex items-center justify-between mb-6">
-              <span className="text-xs text-[#0052CC]">Earn <strong className="font-bold">120 Itinero Points</strong> on this booking</span>
-              <span>🎁</span>
-            </div>
-
-            <button onClick={handlePayment} className="bg-gradient-to-r from-[#F97211] to-[#E86A10] hover:from-[#E86A10] hover:to-[#D95F0D] text-white w-full py-4 rounded-[12px] font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-[0_10px_25px_rgba(249,114,17,0.4)] mb-6">
-              Continue to Payment
-            </button>
-
-            {/* Help Section */}
-            <div>
-              <div className="font-bold text-sm text-[#001439] mb-1">Need Help?</div>
-              <div className="text-xs text-gray-500 mb-3">Our travel experts are here for you.</div>
-              <div className="flex items-center gap-4 text-xs font-semibold">
-                <a href="#" className="flex items-center gap-1.5 text-[#001439]"><Phone size={14} /> +1 (800) 555-0199</a>
-                <a href="#" className="flex items-center gap-1.5 text-[#F97211]"><Mail size={14} /> Chat with us</a>
-              </div>
-              </div>
-            </div>
-          </div>
+          </aside>
         </div>
       </div>
     </PageLayout>

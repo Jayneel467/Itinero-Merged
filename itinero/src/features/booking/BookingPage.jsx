@@ -4,7 +4,7 @@ import { PageLayout } from "@/components/layout";
 import "./BookingPage.css";
 
 /**
- * Booking hub — routes users into the flight or hotel booking flows.
+ * Booking hub - routes users into the flight or hotel booking flows.
  */
 export default function BookingPage() {
   const { type, id } = useParams();
@@ -23,7 +23,7 @@ export default function BookingPage() {
         <p className="booking-page__lead">
           {id
             ? `Continue booking for reference ${id}.`
-            : "Choose what you want to book — we’ll guide you through the steps."}
+            : "Choose what you want to book - we’ll guide you through the steps."}
         </p>
 
         <div className="booking-page__options">

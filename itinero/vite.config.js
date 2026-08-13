@@ -9,6 +9,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    strictPort: false,
     proxy: {
       // Optional: same-origin /api → flights API (manual search + chat routes)
       '/api': {

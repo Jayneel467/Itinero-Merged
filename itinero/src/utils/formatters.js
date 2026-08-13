@@ -7,10 +7,7 @@ import { APP_CONFIG } from "@/app/config";
 
 /**
  * Format a number as currency.
- * @param {number} amount
- * @param {string} currency - ISO 4217 currency code (default: from config)
- * @param {string} locale - BCP 47 locale string (default: from config)
- * @returns {string} Formatted price string (e.g., "₹12,500")
+ * Prefer useCurrency().formatMoney in React components so navbar currency applies.
  */
 export function formatPrice(amount, currency = APP_CONFIG.DEFAULT_CURRENCY, locale = APP_CONFIG.DEFAULT_LOCALE) {
   return new Intl.NumberFormat(locale, {

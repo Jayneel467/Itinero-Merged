@@ -1,0 +1,199 @@
+{
+  "id": "pkg-barcelona-med-break",
+  "slug": "barcelona-med-break",
+  "title": "Barcelona Med Break",
+  "tagline": "Gaudí curves and Mediterranean nights.",
+  "overview": "4-day plan based in Barcelona. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "city",
+  "themes": [
+    "city",
+    "beach",
+    "food"
+  ],
+  "region": "international",
+  "markets": [
+    "*"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "city",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Barcelona"
+  ],
+  "recommendedDurationDays": [
+    4,
+    6
+  ],
+  "minDurationDays": 3,
+  "durationDays": 4,
+  "durationNights": 3,
+  "destinations": [
+    "Barcelona"
+  ],
+  "flight": {
+    "gatewayAirport": "BCN",
+    "gatewayCity": "Barcelona"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Gothic Quarter",
+    "Beach afternoon",
+    "Tapas night"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Sep",
+    "Oct"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": false,
+  "currency": "EUR",
+  "stay": {
+    "city": "Barcelona",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Barcelona",
+      "description": "Arrive Barcelona in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Barcelona highlights",
+      "description": "Barcelona highlights in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Barcelona",
+      "description": "Arrive Barcelona in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Barcelona highlights",
+      "description": "Barcelona highlights in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Neighbourhood day",
+      "description": "Neighbourhood day in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Depart",
+      "description": "Depart in Barcelona.",
+      "stayCity": "Barcelona",
+      "anchors": [
+        "Barcelona"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "GLOBAL",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

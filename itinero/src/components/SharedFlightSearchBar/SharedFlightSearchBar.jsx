@@ -1,14 +1,36 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AIRPORTS, findAirportByCode } from '@/constants/airports';
+import useAirportSuggest from '@/features/flights/hooks/useAirportSuggest';
 import ScrollReveal from '@/components/ScrollReveal';
-import FlightSearchAnimation from '@/features/home/components/FlightSearchAnimation';
+import { useAnchoredPanel } from '@/hooks/useAnchoredPanel';
+import MultiWayFlightRow from './MultiWayFlightRow';
+import { trackInterestEvent } from '@/services/interestTracker';
+
+const PANEL_SHEET =
+  "fixed inset-0 z-[220] w-full h-full bg-white cursor-default overflow-hidden animate-slide-up-modal flex flex-col md:inset-auto md:h-auto md:rounded-[24px] md:shadow-2xl md:overflow-visible md:animate-dropdown-fade-up md:block md:p-6";
 
 function parseLocalDate(value) {
   if (!value) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const [y, m, d] = value.split("-").map(Number);
     return new Date(y, m - 1, d);
+  }
+  // "21 Aug" / "21 Aug 2026"
+  const m = String(value).trim().match(
+    /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?:\s+(\d{4}))?$/i
+  );
+  if (m) {
+    const day = Number(m[1]);
+    const mon = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+    }[m[2].slice(0, 3).toLowerCase()];
+    const year = m[3] ? Number(m[3]) : new Date().getFullYear();
+    if (Number.isFinite(mon)) {
+      const dt = new Date(year, mon, day);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    }
   }
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -20,6 +42,53 @@ function toYmd(date) {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+const MAX_AIRPORTS = 3;
+
+function parseCodesParam(raw) {
+  return String(raw || "")
+    .split(/[,+|/\s]+/)
+    .map((c) => c.trim().toUpperCase())
+    .filter((c) => /^[A-Z]{3}$/.test(c))
+    .filter((c, i, arr) => arr.indexOf(c) === i)
+    .slice(0, MAX_AIRPORTS);
+}
+
+function airportFromCode(code) {
+  return (
+    findAirportByCode(code) || {
+      id: String(code).toLowerCase(),
+      city: code,
+      state: "",
+      name: `${code} Airport`,
+      code,
+    }
+  );
+}
+
+function formatAirportSummary(list) {
+  if (!list?.length) return "";
+  if (list.length === 1) {
+    const a = list[0];
+    const city = a.city || a.name || a.code;
+    return `${city} (${a.code})`;
+  }
+  return list.map((a) => a.code).join(", ");
+}
+
+function toggleAirportInList(list, airport, { max = MAX_AIRPORTS, single = false } = {}) {
+  if (!airport?.code) return list;
+  const code = airport.code.toUpperCase();
+  const exists = list.some((a) => a.code === code);
+  if (exists) {
+    // In multi-airport mode keep at least one selected once the user has picked.
+    if (single || list.length <= 1) return list;
+    return list.filter((a) => a.code !== code);
+  }
+  if (single) return [{ ...airport, code }];
+  if (list.length >= max) return list;
+  return [...list, { ...airport, code }];
 }
 
 function defaultDepartDate() {
@@ -38,8 +107,11 @@ function defaultReturnDate(depart) {
 export default function SharedFlightSearchBar({ onSearchTriggered }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [from, setFrom] = useState(findAirportByCode("BOM") || AIRPORTS[0]);
-  const [to, setTo] = useState(findAirportByCode("DEL") || AIRPORTS[1]);
+  // Always start empty - never preload origin/destination into the bar.
+  const [fromAirports, setFromAirports] = useState([]);
+  const [toAirports, setToAirports] = useState([]);
+  const from = fromAirports[0] || null;
+  const to = toAirports[0] || null;
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchError, setSearchError] = useState("");
@@ -55,17 +127,65 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
   
   const [tripType, setTripType] = useState("Return");
   const [specialFare, setSpecialFare] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [multiFlights, setMultiFlights] = useState([
+    { id: 1, from: null, to: null, departDate: null },
+  ]);
+
+  const allowMultiAirport = tripType !== "Multi-way";
+
+  const updateMultiFlight = (id, field, value) => {
+    setMultiFlights((prev) => prev.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
+  };
+
+  const addMultiFlight = () => {
+    if (multiFlights.length >= 4) return;
+    setMultiFlights((prev) => {
+      const last = prev[prev.length - 1];
+      const nextFrom = last?.to || to || null;
+      return [...prev, { id: Date.now(), from: nextFrom, to: null, departDate: null }];
+    });
+  };
+
+  const removeMultiFlight = (id) => {
+    setMultiFlights((prev) => (prev.length <= 1 ? prev : prev.filter((f) => f.id !== id)));
+  };
   
   const dropdownRef = useRef(null);
+  const fromAnchorRef = useRef(null);
+  const toAnchorRef = useRef(null);
+  const datesAnchorRef = useRef(null);
+  const travelersAnchorRef = useRef(null);
+
+  const datesOpen =
+    activeDropdown === "depart" || (activeDropdown === "return" && tripType === "Return");
+  const fromPanelStyle = useAnchoredPanel(fromAnchorRef, activeDropdown === "from", {
+    width: 420,
+    estimatedHeight: 360,
+    offsetX: -24,
+  });
+  const toPanelStyle = useAnchoredPanel(toAnchorRef, activeDropdown === "to", {
+    width: 420,
+    estimatedHeight: 360,
+    offsetX: -24,
+  });
+  const datesPanelStyle = useAnchoredPanel(datesAnchorRef, datesOpen, {
+    width: 780,
+    estimatedHeight: 460,
+    offsetX: -30,
+  });
+  const travelersPanelStyle = useAnchoredPanel(
+    travelersAnchorRef,
+    activeDropdown === "travelers",
+    { width: 380, estimatedHeight: 360, align: "right" }
+  );
 
   // Hydrate from URL when landing on /flights?... (re-search / deep links)
   useEffect(() => {
-    const qFrom = findAirportByCode(searchParams.get("from"));
-    const qTo = findAirportByCode(searchParams.get("to"));
-    if (qFrom) setFrom(qFrom);
-    if (qTo) setTo(qTo);
-    const dep = parseLocalDate(searchParams.get("depart"));
+    const fromCodes = parseCodesParam(searchParams.get("from"));
+    const toCodes = parseCodesParam(searchParams.get("to"));
+    if (fromCodes.length) setFromAirports(fromCodes.map(airportFromCode));
+    if (toCodes.length) setToAirports(toCodes.map(airportFromCode));
+    const dep = parseLocalDate(searchParams.get("depart") || searchParams.get("date"));
     if (dep) setDepartDate(dep);
     const ret = parseLocalDate(searchParams.get("return"));
     if (ret) setReturnDate(ret);
@@ -78,53 +198,136 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
     const cabin = searchParams.get("cabin");
     if (cabin) setCabinClass(cabin);
     const trip = searchParams.get("trip");
-    if (trip && trip !== "Multi-way") setTripType(trip);
+    if (trip) {
+      const t = trip.toLowerCase();
+      if (t.includes("multi")) setTripType("Multi-way");
+      else if (t.includes("one")) setTripType("One way");
+      else setTripType("Return");
+    }
+    const legsCount = Number(searchParams.get("legs") || 0);
+    if (trip && trip.toLowerCase().includes("multi") && legsCount > 1) {
+      const extras = [];
+      for (let i = 1; i < legsCount; i++) {
+        extras.push({
+          id: i + 1,
+          from: findAirportByCode(searchParams.get(`leg${i}_from`)),
+          to: findAirportByCode(searchParams.get(`leg${i}_to`)),
+          departDate: parseLocalDate(searchParams.get(`leg${i}_depart`)),
+        });
+      }
+      if (extras.length) setMultiFlights(extras);
+    }
+    // Close pickers on URL change so resume/re-search never leaves a stuck overlay.
+    setActiveDropdown(null);
+    setSearchQuery("");
   }, [searchParams]);
 
   const handleSearch = useCallback(() => {
     setActiveDropdown(null);
     setSearchError("");
-    if (!from?.code || !to?.code) {
-      setSearchError("Pick origin and destination airports.");
-      return;
+    if (tripType === "Multi-way") {
+      const legs = [
+        { from, to, departDate },
+        ...multiFlights,
+      ];
+      for (let i = 0; i < legs.length; i++) {
+        const leg = legs[i];
+        if (!leg.from?.code || !leg.to?.code) {
+          setSearchError(`Flight ${i + 1}: pick origin and destination.`);
+          return;
+        }
+        if (leg.from.code === leg.to.code) {
+          setSearchError(`Flight ${i + 1}: origin and destination must differ.`);
+          return;
+        }
+        if (!leg.departDate) {
+          setSearchError(`Flight ${i + 1}: add a departure date.`);
+          return;
+        }
+      }
+      if (typeof onSearchTriggered === "function") onSearchTriggered();
+      // Fall through to immediate navigate (no animation gate).
+    } else {
+      if (!fromAirports.length || !toAirports.length) {
+        setSearchError("Pick origin and destination airports.");
+        return;
+      }
+      const hasValidPair = fromAirports.some((o) =>
+        toAirports.some((d) => o.code !== d.code)
+      );
+      if (!hasValidPair) {
+        setSearchError("Origin and destination must be different.");
+        return;
+      }
+      if (!departDate) {
+        setSearchError("Add a departure date to search live fares.");
+        setActiveDropdown("depart");
+        return;
+      }
+      if (tripType === "Return" && !returnDate) {
+        setSearchError("Add a return date, or switch trip type to One way.");
+        setActiveDropdown("return");
+        return;
+      }
+      if (typeof onSearchTriggered === "function") onSearchTriggered();
     }
-    if (from.code === to.code) {
-      setSearchError("Origin and destination must be different.");
-      return;
-    }
-    if (!departDate) {
-      setSearchError("Add a departure date to search live fares.");
-      setActiveDropdown("depart");
-      return;
-    }
-    if (tripType === "Return" && !returnDate) {
-      setSearchError("Add a return date, or switch trip type to One way.");
-      setActiveDropdown("return");
-      return;
-    }
-    if (typeof onSearchTriggered === "function") onSearchTriggered();
-    setIsSearching(true);
-  }, [from, to, departDate, returnDate, tripType, onSearchTriggered]);
 
-  const handleSearchComplete = useCallback(() => {
+    const fromCodes = fromAirports.map((a) => a.code).filter(Boolean);
+    const toCodes = toAirports.map((a) => a.code).filter(Boolean);
     const params = new URLSearchParams({
-      from: from?.code || "",
-      to: to?.code || "",
-      fromCity: from?.city || "",
-      toCity: to?.city || "",
+      from: fromCodes.join(","),
+      to: toCodes.join(","),
+      fromCity: fromAirports.map((a) => a.city).filter(Boolean).join(","),
+      toCity: toAirports.map((a) => a.city).filter(Boolean).join(","),
       depart: toYmd(departDate),
       adults: String(adults),
       children: String(children),
       infants: String(infants),
       cabin: cabinClass,
-      trip: tripType,
+      trip: tripType === "One way" ? "oneway" : tripType === "Multi-way" ? "multiway" : "return",
     });
     if (tripType === "Return" && returnDate) {
       params.set("return", toYmd(returnDate));
     }
-    setIsSearching(false);
+    if (tripType === "Multi-way") {
+      const legs = [{ from, to, departDate }, ...multiFlights];
+      legs.forEach((leg, i) => {
+        if (leg.from?.code) params.set(`leg${i}_from`, leg.from.code);
+        if (leg.to?.code) params.set(`leg${i}_to`, leg.to.code);
+        if (leg.departDate) params.set(`leg${i}_depart`, toYmd(leg.departDate));
+      });
+      params.set("legs", String(legs.length));
+    }
+    try {
+      const destCity = to?.city || toAirports[0]?.city || "";
+      if (destCity) {
+        trackInterestEvent("search", {
+          city: destCity,
+          destination: destCity,
+          country: to?.country || toAirports[0]?.country || "",
+          product: "flights",
+        });
+      }
+    } catch {
+      /* optional */
+    }
     navigate(`/flights?${params.toString()}`);
-  }, [from, to, departDate, returnDate, adults, children, infants, cabinClass, tripType, navigate]);
+  }, [
+    from,
+    to,
+    fromAirports,
+    toAirports,
+    departDate,
+    returnDate,
+    adults,
+    children,
+    infants,
+    cabinClass,
+    tripType,
+    multiFlights,
+    onSearchTriggered,
+    navigate,
+  ]);
 
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
@@ -137,31 +340,82 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
-        dropdownRef.current && 
+        dropdownRef.current &&
         !dropdownRef.current.contains(event.target) &&
-        !event.target.closest('.special-fares-dropdown')
+        !event.target.closest(".special-fares-dropdown") &&
+        !event.target.closest(".trip-type-dropdown")
       ) {
         setActiveDropdown(null);
         setSearchQuery("");
       }
     };
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setActiveDropdown(null);
+        setSearchQuery("");
+      }
+    };
+    const handleScrollClose = (event) => {
+      const t = event.target;
+      if (t?.closest?.("[data-airport-dropdown]")) return;
+      setActiveDropdown((cur) => (cur ? null : cur));
+      setSearchQuery("");
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    window.addEventListener("scroll", handleScrollClose, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("scroll", handleScrollClose, true);
+    };
   }, []);
 
-  const filteredAirports = AIRPORTS.filter(
-    (airport) =>
-      airport.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      airport.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      airport.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (airport.state && airport.state.toLowerCase().includes(searchQuery.toLowerCase()))
+  const { airports: filteredAirports, isLoading: airportSuggestLoading } = useAirportSuggest(
+    searchQuery,
+    { enabled: activeDropdown === 'from' || activeDropdown === 'to' }
   );
 
   const handleSwap = (e) => {
     e.stopPropagation();
-    const temp = from;
-    setFrom(to);
-    setTo(temp);
+    setFromAirports(toAirports);
+    setToAirports(fromAirports);
+  };
+
+  const pickFromAirport = (airport) => {
+    const code = airport?.code?.toUpperCase();
+    const alreadyOnly =
+      fromAirports.length === 1 && fromAirports[0]?.code === code;
+    setFromAirports((prev) =>
+      toggleAirportInList(prev, airport, { single: !allowMultiAirport })
+    );
+    setSearchQuery("");
+    if (!allowMultiAirport || alreadyOnly) {
+      setActiveDropdown("to");
+    }
+  };
+
+  const pickToAirport = (airport) => {
+    const code = airport?.code?.toUpperCase();
+    const alreadyOnly =
+      toAirports.length === 1 && toAirports[0]?.code === code;
+    setToAirports((prev) =>
+      toggleAirportInList(prev, airport, { single: !allowMultiAirport })
+    );
+    setSearchQuery("");
+    if (!allowMultiAirport || alreadyOnly) {
+      setActiveDropdown("depart");
+    }
+  };
+
+  const removeFromChip = (code, e) => {
+    e?.stopPropagation?.();
+    setFromAirports((prev) => (prev.length <= 1 ? prev : prev.filter((a) => a.code !== code)));
+  };
+
+  const removeToChip = (code, e) => {
+    e?.stopPropagation?.();
+    setToAirports((prev) => (prev.length <= 1 ? prev : prev.filter((a) => a.code !== code)));
   };
 
   const renderCalendar = (monthOffset) => {
@@ -204,7 +458,12 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
              if (activeDropdown === 'depart') {
                setDepartDate(dateObj);
                if (returnDate && dateObj > returnDate) setReturnDate(null);
-               setActiveDropdown('return');
+               // One-way / multi-way: don't force the return date picker open
+               if (tripType === 'Return') {
+                 setActiveDropdown('return');
+               } else {
+                 setActiveDropdown(null);
+               }
              } else if (activeDropdown === 'return') {
                setReturnDate(dateObj);
                setActiveDropdown('travelers');
@@ -252,7 +511,7 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
   };
 
   const datePickerUI = (
-    <div className="fixed inset-0 md:absolute md:top-full md:mt-3 lg:top-[108px] lg:mt-0 md:bottom-auto md:right-auto md:left-[-30px] w-full h-full md:w-[780px] md:h-auto bg-white md:rounded-[24px] shadow-2xl z-[100] md:z-50 cursor-default overflow-hidden md:overflow-visible animate-slide-up-modal md:animate-dropdown-fade-up flex flex-col md:block md:p-6" onClick={e => e.stopPropagation()}>
+    <div className={`${PANEL_SHEET} md:w-[min(780px,calc(100vw-32px))]`} style={datesPanelStyle} onClick={e => e.stopPropagation()}>
       
       {/* Mobile Header */}
       <div className="md:hidden flex items-center p-4 border-b border-gray-100 flex-none bg-white z-10">
@@ -267,13 +526,13 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
             <span className="text-[13px] font-bold text-gray-900 border-b-[3px] border-gray-900 pb-1">DATES</span>
             <span
               className="text-[13px] font-bold text-gray-400 pb-1 cursor-not-allowed"
-              title="Weekend / flexible-month search isn’t available on LiteAPI yet"
+              title="Weekend / flexible-month search isn’t available yet"
             >
               WEEKEND
             </span>
             <span
               className="text-[13px] font-bold text-gray-400 pb-1 cursor-not-allowed"
-              title="Weekend / flexible-month search isn’t available on LiteAPI yet"
+              title="Weekend / flexible-month search isn’t available yet"
             >
               MONTH
             </span>
@@ -321,7 +580,7 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
   );
 
   const travelersUI = (
-    <div className="fixed inset-0 md:absolute md:top-full md:mt-3 lg:top-[108px] lg:mt-0 md:bottom-auto md:right-0 md:left-auto w-full h-full md:w-[380px] md:h-auto bg-white md:rounded-[24px] shadow-2xl z-[100] md:z-50 cursor-default overflow-hidden md:overflow-visible animate-slide-up-modal md:animate-dropdown-fade-up flex flex-col md:block md:p-6" onClick={e => e.stopPropagation()}>
+    <div className={`${PANEL_SHEET} md:w-[380px]`} style={travelersPanelStyle} onClick={e => e.stopPropagation()}>
       {/* Mobile Header */}
       <div className="md:hidden flex items-center p-4 border-b border-gray-100 flex-none bg-white">
         <button onClick={() => setActiveDropdown(null)} className="p-2 -ml-2 mr-2">
@@ -403,8 +662,9 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
     <div className="shared-flight-search-bar w-full relative z-10">
       <ScrollReveal delay={0.3} className="w-full">
         <div className={`flex items-center mb-4 max-w-[1600px] w-full mx-auto gap-3 px-4 lg:px-8 flex-wrap relative ${['tripType', 'specialFare'].includes(activeDropdown) ? 'z-[130]' : 'z-10'}`}>
-          <div className="relative">
+          <div className="relative trip-type-dropdown">
           <button 
+            type="button"
             onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'tripType' ? null : 'tripType'); }}
             className="flex items-center bg-[#FFFFFF1A] backdrop-blur-sm py-[7px] px-4 gap-2 rounded-full border border-white/10 cursor-pointer hover:bg-[#FFFFFF26] transition-colors"
           >
@@ -413,27 +673,49 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
           </button>
           
           {activeDropdown === 'tripType' && (
-            <div className="absolute top-[110%] left-0 w-[200px] bg-white rounded-xl shadow-2xl z-50 py-2 cursor-default" onClick={e => e.stopPropagation()}>
-              {['Return', 'One way'].map(type => (
-                <div 
+            <div
+              className="absolute top-[110%] left-0 w-[200px] bg-white rounded-xl shadow-2xl z-[140] py-2 cursor-default"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {['Return', 'One way', 'Multi-way'].map(type => (
+                <button
+                  type="button"
                   key={type} 
-                  className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors ${tripType === type ? 'text-orange-500 font-bold bg-orange-50/50' : 'text-gray-700'}`}
-                  onClick={() => {
+                  className={`w-full text-left px-4 py-2.5 text-sm cursor-pointer hover:bg-gray-50 transition-colors border-0 bg-transparent ${tripType === type ? 'text-orange-500 font-bold bg-orange-50/50' : 'text-gray-700'}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setTripType(type);
-                    if (type === "One way") setReturnDate(null);
+                    if (type === "One way") {
+                      setReturnDate(null);
+                      setMultiFlights([{ id: 1, from: null, to: null, departDate: null }]);
+                    }
+                    if (type === "Multi-way") {
+                      setReturnDate(null);
+                      // Multi-city uses one airport per field
+                      setFromAirports((prev) => (prev[0] ? [prev[0]] : prev));
+                      setToAirports((prev) => (prev[0] ? [prev[0]] : prev));
+                      setMultiFlights([
+                        {
+                          id: Date.now(),
+                          from: to || null,
+                          to: null,
+                          departDate: departDate
+                            ? new Date(departDate.getTime() + 3 * 86400000)
+                            : null,
+                        },
+                      ]);
+                    }
+                    if (type === "Return") {
+                      setMultiFlights([{ id: 1, from: null, to: null, departDate: null }]);
+                    }
                     setActiveDropdown(null);
                   }}
                 >
                   {type}
-                </div>
+                </button>
               ))}
-              <div
-                className="px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
-                title="Multi-city isn’t supported by the live LiteAPI search yet"
-              >
-                Multi-way
-                <span className="block text-[11px] text-gray-400">Coming via Vero soon</span>
-              </div>
             </div>
           )}
         </div>
@@ -442,7 +724,7 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
           <button 
             onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'specialFare' ? null : 'specialFare'); }}
             className="flex items-center bg-[#FFFFFF1A] backdrop-blur-sm py-[7px] px-4 gap-2 rounded-full border border-white/10 cursor-pointer hover:bg-[#FFFFFF26] transition-colors"
-            title="Special fares aren’t available on live LiteAPI search yet"
+            title="Special fares aren’t available on live search yet"
           >
             <span className="text-white text-sm font-medium">{specialFare || "Special Fares"}</span>
             <svg className="w-3.5 h-3.5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
@@ -452,7 +734,7 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
             <div className="absolute top-[110%] left-0 w-[240px] bg-white rounded-xl shadow-2xl z-50 py-3 px-4 cursor-default" onClick={e => e.stopPropagation()}>
               <p className="text-sm font-semibold text-gray-900 mb-1">Not on live search yet</p>
               <p className="text-xs text-gray-500 mb-3">
-                Student / Senior / Armed Forces discounts aren’t exposed by LiteAPI. Ask Vero for help finding a fare.
+                Student / Senior / Armed Forces discounts aren’t on live search yet. Ask Vero for help finding a fare.
               </p>
               <button
                 type="button"
@@ -478,36 +760,54 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
       )}
 
       {/* Search bar */}
-      <div className={`w-full px-4 lg:px-6 2xl:px-0 relative ${activeDropdown ? 'z-[120]' : 'z-50'}`}>
-        <div ref={dropdownRef} className="flex flex-col lg:flex-row items-stretch justify-between px-4 lg:px-6 2xl:px-8 max-w-[1600px] w-full lg:h-[80px] 2xl:h-[98px] mb-[40px] lg:mb-[40px] 2xl:mb-[90px] mx-auto rounded-[20px] lg:rounded-[25px] border border-[#525252] py-4 lg:py-0 gap-4 lg:gap-0" style={{ backgroundColor: 'rgba(255, 255, 255, 0.07)' }}>
+      <div className={`w-full px-4 lg:px-6 2xl:px-8 relative ${activeDropdown ? 'z-[120]' : 'z-50'}`}>
+        <div
+          ref={dropdownRef}
+          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-0 px-4 lg:px-4 xl:px-5 2xl:px-6 max-w-[1600px] w-full min-w-0 lg:h-[88px] 2xl:h-[98px] mb-[40px] lg:mb-[40px] 2xl:mb-[90px] mx-auto rounded-[20px] lg:rounded-[24px] border border-white/15 py-4 lg:py-0"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
+        >
 
         {/* From */}
-        <div className="relative flex items-center gap-3 lg:gap-[10px] 2xl:gap-[20px] cursor-pointer group lg:h-full" onClick={() => { if (activeDropdown !== 'from') { setActiveDropdown('from'); setSearchQuery(""); } }}>
-          <svg className="w-6 h-6 lg:w-[22px] lg:h-[22px] 2xl:w-[35px] 2xl:h-[35px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+        <div ref={fromAnchorRef} className="relative flex items-center gap-3 lg:gap-2.5 2xl:gap-3 cursor-pointer group lg:h-full lg:flex-1 lg:min-w-[132px] lg:max-w-[260px] xl:max-w-[300px] 2xl:max-w-none lg:pr-3" onClick={() => { if (activeDropdown !== 'from') { setActiveDropdown('from'); setSearchQuery(""); } }}>
+          <svg className="w-6 h-6 lg:w-[22px] lg:h-[22px] 2xl:w-[28px] 2xl:h-[28px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
             <path d="M2.5 19h19v2h-19v-2zm19.57-9.36c-.21-.8-1.04-1.28-1.84-1.06L14.92 10l-6.9-6.43-1.93.51 4.14 7.17-4.97 1.33-1.97-1.54-1.45.39 2.59 4.49s7.12-1.9 16.57-4.43c.81-.23 1.28-1.05 1.07-1.85z"/>
           </svg>
-          <div className="flex-1 min-w-0 lg:w-[120px] 2xl:w-[180px]">
-            <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[17px] pb-[2px] lg:pb-[3px] 2xl:pb-[5px] font-medium leading-tight">From</span>
+          <div className="flex-1 min-w-0">
+            <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[15px] pb-[2px] lg:pb-[3px] 2xl:pb-[5px] font-medium leading-tight">
+              From{fromAirports.length > 1 ? ` · ${fromAirports.length}` : ""}
+            </span>
             {activeDropdown === 'from' ? (
               <>
                 <input
                   autoFocus
                   type="text"
-                  className="hidden md:block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 bg-transparent border-none outline-none w-full placeholder:text-white/30"
-                  placeholder="Search airport..."
+                  className="hidden md:block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 bg-transparent border-none outline-none w-full placeholder:text-white/50"
+                  placeholder={
+                    formatAirportSummary(fromAirports) ||
+                    (allowMultiAirport ? "Add up to 3 airports…" : "Enter origin airport")
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <span className="md:hidden block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">{from ? `${from.city} (${from.code})` : "Select Origin"}</span>
+                <span className="md:hidden block text-white text-[14px] lg:text-[13px] 2xl:text-[17px] font-semibold leading-tight mt-0.5 truncate">
+                  {formatAirportSummary(fromAirports) || "Enter origin airport"}
+                </span>
               </>
             ) : (
-              <span className="block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">{from ? `${from.city} (${from.code})` : "Select Origin"}</span>
+              <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[17px] font-semibold leading-tight mt-0.5 truncate">
+                {formatAirportSummary(fromAirports) || "Enter origin airport"}
+              </span>
             )}
           </div>
           
           {/* Dropdown UI */}
           {activeDropdown === 'from' && (
-            <div className="fixed inset-0 md:absolute md:top-full md:mt-3 lg:top-[108px] lg:mt-0 md:bottom-auto md:right-auto md:left-0 md:-left-6 w-full h-full md:w-[420px] md:h-auto bg-white md:rounded-[24px] shadow-2xl z-[100] md:z-50 max-h-screen overflow-y-auto md:overflow-visible py-0 md:py-2 md:border border-gray-100 cursor-default [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col md:block animate-slide-up-modal md:animate-dropdown-fade-up" onClick={e => e.stopPropagation()}>
+            <div
+              data-airport-dropdown
+              className={`${PANEL_SHEET} md:w-[420px] md:py-2 md:border md:border-gray-100 max-h-screen overflow-y-auto md:max-h-[360px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
+              style={fromPanelStyle}
+              onClick={e => e.stopPropagation()}
+            >
               
               {/* Mobile Header & Input */}
               <div className="md:hidden flex-none">
@@ -530,29 +830,65 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
                     />
                   </div>
                   
-                  <div className="flex items-center justify-between mt-6 pb-4 border-b border-gray-100 opacity-60">
-                    <span className="text-gray-600 text-[15px]">Include Nearby Airports</span>
-                    <div
-                      className="w-11 h-6 bg-gray-300 rounded-full relative cursor-not-allowed"
-                      title="Nearby airports aren’t supported by live LiteAPI search yet"
-                      aria-disabled="true"
-                    >
-                      <div className="w-5 h-5 bg-white rounded-full absolute top-[2px] left-[2px] shadow-sm"></div>
-                    </div>
+                  <div className="mt-4 pb-3 border-b border-gray-100">
+                    <p className="text-gray-600 text-[13px] font-medium">
+                      {allowMultiAirport
+                        ? `Select up to ${MAX_AIRPORTS} airports to compare (${fromAirports.length}/${MAX_AIRPORTS})`
+                        : "Pick one origin airport"}
+                    </p>
+                    {fromAirports.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {fromAirports.map((a) => (
+                          <button
+                            key={a.code}
+                            type="button"
+                            onClick={(e) => removeFromChip(a.code, e)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-bold"
+                          >
+                            {a.code}
+                            <span aria-hidden>×</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
+              <div className="hidden md:block px-5 pt-3 pb-2 border-b border-gray-50">
+                <p className="text-gray-500 text-[12px] font-semibold uppercase tracking-wide">
+                  {allowMultiAirport
+                    ? `Multi-airport · ${fromAirports.length}/${MAX_AIRPORTS}`
+                    : "Origin airport"}
+                </p>
+                {allowMultiAirport && fromAirports.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {fromAirports.map((a) => (
+                      <button
+                        key={a.code}
+                        type="button"
+                        onClick={(e) => removeFromChip(a.code, e)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 text-[11px] font-bold"
+                      >
+                        {a.code} ×
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex-1 md:flex-none overflow-y-auto md:max-h-[300px] pb-6 md:pb-0">
                 {filteredAirports.length > 0 ? (
-                  filteredAirports.map(airport => (
+                  filteredAirports.map(airport => {
+                    const selected = fromAirports.some((a) => a.code === airport.code);
+                    const atMax = allowMultiAirport && !selected && fromAirports.length >= MAX_AIRPORTS;
+                    return (
                     <div
                       key={airport.id}
-                      className="flex items-center gap-4 px-5 py-4 md:py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0"
+                      className={`flex items-center gap-4 px-5 py-4 md:py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0 ${atMax ? "opacity-40" : ""}`}
                       onClick={() => {
-                        setFrom(airport);
-                        setActiveDropdown('to');
-                        setSearchQuery("");
+                        if (atMax) return;
+                        pickFromAirport(airport);
                       }}
                     >
                       <div className="w-6 h-6 md:w-[44px] md:h-[44px] shrink-0 bg-transparent md:bg-[#F3F4F6] rounded-xl flex items-center justify-center">
@@ -567,29 +903,40 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
                         <div className="text-gray-500 text-[13px] truncate">{airport.name}</div>
                       </div>
                       <div className="text-gray-500 text-[14px] shrink-0 font-medium md:hidden">{airport.code}</div>
-                      <div className={`hidden md:flex w-5 h-5 rounded border items-center justify-center shrink-0 ${from?.id === airport.id ? 'border-orange-500 bg-orange-50' : 'border-gray-300'}`}>
-                        {from?.id === airport.id && (
+                      <div className={`hidden md:flex w-5 h-5 rounded border items-center justify-center shrink-0 ${selected ? 'border-orange-500 bg-orange-50' : 'border-gray-300'}`}>
+                        {selected && (
                           <div className="w-3 h-3 bg-orange-500 rounded-sm"></div>
                         )}
                       </div>
                     </div>
-                  ))
+                  );})
                 ) : (
-                  <div className="px-5 py-6 text-gray-500 text-sm text-center">No airports found</div>
+                  <div className="px-5 py-6 text-gray-500 text-sm text-center">
+                    {airportSuggestLoading ? "Searching airports…" : "No airports found"}
+                  </div>
+                )}
+
+                {allowMultiAirport && (
+                  <div className="sticky bottom-0 md:static px-5 py-3 bg-white border-t border-gray-100 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!fromAirports.length}
+                      onClick={() => {
+                        setActiveDropdown("to");
+                        setSearchQuery("");
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-[#F04F23] text-white font-bold text-sm disabled:opacity-40"
+                    >
+                      Done · Going to
+                    </button>
+                  </div>
                 )}
                 
                 {/* Mobile Footer */}
-                <div className="md:hidden px-6 pt-10 pb-6">
+                <div className="md:hidden px-6 pt-6 pb-6">
                   <p className="text-center text-[#4A4A4A] text-[15px] mb-4">
-                    Sign-in isn’t enabled yet — ask Vero to help plan this trip.
+                    Tip: select multiple nearby airports to compare fares.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/vero")}
-                    className="w-full py-3.5 border border-gray-900 rounded-[12px] font-bold text-gray-900 hover:bg-gray-50 transition-colors"
-                  >
-                    Ask Vero
-                  </button>
                 </div>
               </div>
             </div>
@@ -597,7 +944,7 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
         </div>
 
         {/* Swap */}
-        <div className="relative flex justify-center lg:block lg:w-auto z-10 -my-2 lg:my-0 lg:self-center">
+        <div className="relative flex justify-center lg:block lg:w-auto z-10 -my-2 lg:my-0 lg:self-center lg:shrink-0 lg:px-1">
           <button onClick={handleSwap} className="flex items-center justify-center w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 cursor-pointer hover:bg-white/[0.12] transition-colors shrink-0 rotate-90 lg:rotate-0">
             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path fillRule="evenodd" d="M15.97 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 010 1.06l-4.5 4.5a.75.75 0 11-1.06-1.06l3.22-3.22H7.5a.75.75 0 010-1.5h11.69l-3.22-3.22a.75.75 0 010-1.06zm-7.94 9a.75.75 0 010 1.06l-3.22 3.22H16.5a.75.75 0 010 1.5H4.81l3.22 3.22a.75.75 0 11-1.06 1.06l-4.5-4.5a.75.75 0 010-1.06l4.5-4.5a.75.75 0 011.06 0z" clipRule="evenodd" />
@@ -606,32 +953,46 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
         </div>
 
         {/* Going To */}
-        <div className="relative flex items-center gap-3 lg:gap-[10px] 2xl:gap-[20px] cursor-pointer group lg:h-full" onClick={() => { if (activeDropdown !== 'to') { setActiveDropdown('to'); setSearchQuery(""); } }}>
-          <svg className="w-6 h-6 lg:w-[22px] lg:h-[22px] 2xl:w-[35px] 2xl:h-[35px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+        <div ref={toAnchorRef} className="relative flex items-center gap-3 lg:gap-2.5 2xl:gap-3 cursor-pointer group lg:h-full lg:flex-1 lg:min-w-[132px] lg:max-w-[260px] xl:max-w-[300px] 2xl:max-w-none lg:px-3" onClick={() => { if (activeDropdown !== 'to') { setActiveDropdown('to'); setSearchQuery(""); } }}>
+          <svg className="w-6 h-6 lg:w-[22px] lg:h-[22px] 2xl:w-[28px] 2xl:h-[28px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
             <path d="M2.5 19h19v2h-19v-2zm7.18-5.73l4.35 1.16 5.31 1.42c.8.21 1.62-.26 1.84-1.06.21-.8-.26-1.62-1.06-1.84l-5.31-1.42-2.76-9.02L10.12 2v8.28L5.15 8.95l-.93-2.32-1.45-.39v5.17l6.91 1.86z"/>
           </svg>
-          <div className="flex-1 min-w-0 lg:w-[120px] 2xl:w-[180px]">
-            <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[17px] pb-[2px] lg:pb-[3px] 2xl:pb-[5px] font-medium leading-tight">Going To</span>
+          <div className="flex-1 min-w-0">
+            <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[15px] pb-[2px] lg:pb-[3px] 2xl:pb-[5px] font-medium leading-tight">
+              Going To{toAirports.length > 1 ? ` · ${toAirports.length}` : ""}
+            </span>
             {activeDropdown === 'to' ? (
               <>
                 <input
                   autoFocus
                   type="text"
-                  className="hidden md:block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 bg-transparent border-none outline-none w-full placeholder:text-white/30"
-                  placeholder="Search airport..."
+                  className="hidden md:block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 bg-transparent border-none outline-none w-full placeholder:text-white/50"
+                  placeholder={
+                    formatAirportSummary(toAirports) ||
+                    (allowMultiAirport ? "Add up to 3 airports…" : "Enter destination airport")
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <span className="md:hidden block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">{to ? `${to.city} (${to.code})` : "Select Destination"}</span>
+                <span className="md:hidden block text-white text-[14px] lg:text-[13px] 2xl:text-[17px] font-semibold leading-tight mt-0.5 truncate">
+                  {formatAirportSummary(toAirports) || "Enter destination airport"}
+                </span>
               </>
             ) : (
-              <span className="block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">{to ? `${to.city} (${to.code})` : "Select Destination"}</span>
+              <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[17px] font-semibold leading-tight mt-0.5 truncate">
+                {formatAirportSummary(toAirports) || "Enter destination airport"}
+              </span>
             )}
           </div>
 
           {/* Dropdown UI */}
           {activeDropdown === 'to' && (
-            <div className="fixed inset-0 md:absolute md:top-full md:mt-3 lg:top-[108px] lg:mt-0 md:bottom-auto md:right-auto md:left-0 md:-left-6 w-full h-full md:w-[420px] md:h-auto bg-white md:rounded-[24px] shadow-2xl z-[100] md:z-50 max-h-screen overflow-y-auto md:overflow-visible py-0 md:py-2 md:border border-gray-100 cursor-default [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col md:block animate-slide-up-modal md:animate-dropdown-fade-up" onClick={e => e.stopPropagation()}>
+            <div
+              data-airport-dropdown
+              className={`${PANEL_SHEET} md:w-[420px] md:py-2 md:border md:border-gray-100 max-h-screen overflow-y-auto md:max-h-[360px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
+              style={toPanelStyle}
+              onClick={e => e.stopPropagation()}
+            >
               
               {/* Mobile Header & Input */}
               <div className="md:hidden flex-none">
@@ -654,29 +1015,65 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
                     />
                   </div>
                   
-                  <div className="flex items-center justify-between mt-6 pb-4 border-b border-gray-100 opacity-60">
-                    <span className="text-gray-600 text-[15px]">Include Nearby Airports</span>
-                    <div
-                      className="w-11 h-6 bg-gray-300 rounded-full relative cursor-not-allowed"
-                      title="Nearby airports aren’t supported by live LiteAPI search yet"
-                      aria-disabled="true"
-                    >
-                      <div className="w-5 h-5 bg-white rounded-full absolute top-[2px] left-[2px] shadow-sm"></div>
-                    </div>
+                  <div className="mt-4 pb-3 border-b border-gray-100">
+                    <p className="text-gray-600 text-[13px] font-medium">
+                      {allowMultiAirport
+                        ? `Select up to ${MAX_AIRPORTS} airports to compare (${toAirports.length}/${MAX_AIRPORTS})`
+                        : "Pick one destination airport"}
+                    </p>
+                    {toAirports.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {toAirports.map((a) => (
+                          <button
+                            key={a.code}
+                            type="button"
+                            onClick={(e) => removeToChip(a.code, e)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-bold"
+                          >
+                            {a.code}
+                            <span aria-hidden>×</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
+              <div className="hidden md:block px-5 pt-3 pb-2 border-b border-gray-50">
+                <p className="text-gray-500 text-[12px] font-semibold uppercase tracking-wide">
+                  {allowMultiAirport
+                    ? `Multi-airport · ${toAirports.length}/${MAX_AIRPORTS}`
+                    : "Destination airport"}
+                </p>
+                {allowMultiAirport && toAirports.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {toAirports.map((a) => (
+                      <button
+                        key={a.code}
+                        type="button"
+                        onClick={(e) => removeToChip(a.code, e)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 text-[11px] font-bold"
+                      >
+                        {a.code} ×
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex-1 md:flex-none overflow-y-auto md:max-h-[300px] pb-6 md:pb-0">
                 {filteredAirports.length > 0 ? (
-                  filteredAirports.map(airport => (
+                  filteredAirports.map(airport => {
+                    const selected = toAirports.some((a) => a.code === airport.code);
+                    const atMax = allowMultiAirport && !selected && toAirports.length >= MAX_AIRPORTS;
+                    return (
                     <div
                       key={airport.id}
-                      className="flex items-center gap-4 px-5 py-4 md:py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0"
+                      className={`flex items-center gap-4 px-5 py-4 md:py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0 ${atMax ? "opacity-40" : ""}`}
                       onClick={() => {
-                        setTo(airport);
-                        setActiveDropdown('depart');
-                        setSearchQuery("");
+                        if (atMax) return;
+                        pickToAirport(airport);
                       }}
                     >
                       <div className="w-6 h-6 md:w-[44px] md:h-[44px] shrink-0 bg-transparent md:bg-[#F3F4F6] rounded-xl flex items-center justify-center">
@@ -691,29 +1088,40 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
                         <div className="text-gray-500 text-[13px] truncate">{airport.name}</div>
                       </div>
                       <div className="text-gray-500 text-[14px] shrink-0 font-medium md:hidden">{airport.code}</div>
-                      <div className={`hidden md:flex w-5 h-5 rounded border items-center justify-center shrink-0 ${to?.id === airport.id ? 'border-orange-500 bg-orange-50' : 'border-gray-300'}`}>
-                        {to?.id === airport.id && (
+                      <div className={`hidden md:flex w-5 h-5 rounded border items-center justify-center shrink-0 ${selected ? 'border-orange-500 bg-orange-50' : 'border-gray-300'}`}>
+                        {selected && (
                           <div className="w-3 h-3 bg-orange-500 rounded-sm"></div>
                         )}
                       </div>
                     </div>
-                  ))
+                  );})
                 ) : (
-                  <div className="px-5 py-6 text-gray-500 text-sm text-center">No airports found</div>
+                  <div className="px-5 py-6 text-gray-500 text-sm text-center">
+                    {airportSuggestLoading ? "Searching airports…" : "No airports found"}
+                  </div>
+                )}
+
+                {allowMultiAirport && (
+                  <div className="sticky bottom-0 md:static px-5 py-3 bg-white border-t border-gray-100 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!toAirports.length}
+                      onClick={() => {
+                        setActiveDropdown("depart");
+                        setSearchQuery("");
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-[#F04F23] text-white font-bold text-sm disabled:opacity-40"
+                    >
+                      Done · Pick dates
+                    </button>
+                  </div>
                 )}
                 
                 {/* Mobile Footer */}
-                <div className="md:hidden px-6 pt-10 pb-6">
+                <div className="md:hidden px-6 pt-6 pb-6">
                   <p className="text-center text-[#4A4A4A] text-[15px] mb-4">
-                    Sign-in isn’t enabled yet — ask Vero to help plan this trip.
+                    Tip: add alternate arrival airports to spot cheaper routes.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/vero")}
-                    className="w-full py-3.5 border border-gray-900 rounded-[12px] font-bold text-gray-900 hover:bg-gray-50 transition-colors"
-                  >
-                    Ask Vero
-                  </button>
                 </div>
               </div>
             </div>
@@ -742,76 +1150,95 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
         </div>
 
         {/* Desktop Depart */}
-        <div className="hidden lg:relative lg:flex items-center gap-[10px] 2xl:gap-[20px] cursor-pointer group lg:h-full" onClick={() => setActiveDropdown('depart')}>
-          <svg className="w-[22px] h-[22px] 2xl:w-[35px] 2xl:h-[35px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+        <div ref={datesAnchorRef} className="hidden lg:relative lg:flex items-center gap-2.5 2xl:gap-3 cursor-pointer group lg:h-full lg:shrink-0 lg:px-3 xl:px-4" onClick={() => setActiveDropdown('depart')}>
+          <svg className="w-[22px] h-[22px] 2xl:w-[28px] 2xl:h-[28px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
             <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
           </svg>
-          <div className="w-[90px] 2xl:w-[120px]">
-            <span className="block text-white text-[13px] 2xl:text-[17px] pb-[3px] 2xl:pb-[5px] font-medium leading-tight">Depart</span>
-            <span className="block text-white text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">{formatDate(departDate) || "Add Date"}</span>
+          <div className="min-w-[104px] xl:min-w-[112px] 2xl:min-w-[128px]">
+            <span className="block text-white text-[13px] 2xl:text-[15px] pb-[3px] 2xl:pb-[5px] font-medium leading-tight">Depart</span>
+            <span className="block text-white text-[13px] 2xl:text-[15px] font-semibold leading-tight mt-0.5 whitespace-nowrap">{formatDate(departDate) || "Add Date"}</span>
           </div>
-          {(activeDropdown === 'depart' || activeDropdown === 'return') && datePickerUI}
+          {(activeDropdown === 'depart' || (activeDropdown === 'return' && tripType === 'Return')) && datePickerUI}
         </div>
 
         {/* Divider */}
+        {tripType === "Return" && (
         <div className="hidden lg:block w-px h-10 bg-white/[0.12] shrink-0 lg:self-center" />
-
-        {/* Return - Desktop only */}
-        {tripType === "Return" ? (
-        <div className="hidden lg:flex items-center gap-[10px] 2xl:gap-[20px] cursor-pointer group lg:h-full" onClick={() => setActiveDropdown('return')}>
-          <svg className="w-[22px] h-[22px] 2xl:w-[35px] 2xl:h-[35px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
-            <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
-          </svg>
-          <div className="w-[90px] 2xl:w-[120px]">
-            <span className="block text-white text-[13px] 2xl:text-[17px] pb-[3px] 2xl:pb-[5px] font-medium leading-tight">Return</span>
-            <span className="block text-white text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">{formatDate(returnDate) || "Add Date"}</span>
-          </div>
-        </div>
-        ) : (
-        <div className="hidden lg:flex items-center gap-[10px] 2xl:gap-[20px] lg:h-full opacity-50 cursor-not-allowed" title="Switch to Return trip to pick a return date">
-          <div className="w-[90px] 2xl:w-[120px]">
-            <span className="block text-white text-[13px] 2xl:text-[17px] pb-[3px] 2xl:pb-[5px] font-medium leading-tight">Return</span>
-            <span className="block text-white text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">One way</span>
-          </div>
-        </div>
         )}
 
-        {/* Divider */}
+        {/* Return - Desktop only (hidden for one-way / multi-way) */}
+        {tripType === "Return" ? (
+        <div className="hidden lg:flex items-center gap-2.5 2xl:gap-3 cursor-pointer group lg:h-full lg:shrink-0 lg:px-3 xl:px-4" onClick={() => setActiveDropdown('return')}>
+          <svg className="w-[22px] h-[22px] 2xl:w-[28px] 2xl:h-[28px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+            <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
+          </svg>
+          <div className="min-w-[104px] xl:min-w-[112px] 2xl:min-w-[128px]">
+            <span className="block text-white text-[13px] 2xl:text-[15px] pb-[3px] 2xl:pb-[5px] font-medium leading-tight">Return</span>
+            <span className="block text-white text-[13px] 2xl:text-[15px] font-semibold leading-tight mt-0.5 whitespace-nowrap">{formatDate(returnDate) || "Add Date"}</span>
+          </div>
+        </div>
+        ) : null}
+
+        {/* Divider - always before travelers so spacing stays even on one-way */}
         <div className="hidden lg:block w-px h-10 bg-white/[0.12] shrink-0 lg:self-center" />
 
         {/* Travelers & Class */}
-        <div className="relative flex items-center gap-3 lg:gap-[10px] 2xl:gap-[20px] cursor-pointer group mt-2 lg:mt-0 lg:h-full" onClick={() => setActiveDropdown('travelers')}>
-          <svg className="w-6 h-6 lg:w-[22px] lg:h-[22px] 2xl:w-[35px] 2xl:h-[35px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+        <div ref={travelersAnchorRef} className="relative flex items-center gap-3 lg:gap-2.5 2xl:gap-3 cursor-pointer group mt-2 lg:mt-0 lg:h-full lg:shrink-0 lg:min-w-[148px] xl:min-w-[168px] 2xl:min-w-[190px] lg:px-3 xl:px-4" onClick={() => setActiveDropdown('travelers')}>
+          <svg className="w-6 h-6 lg:w-[22px] lg:h-[22px] 2xl:w-[28px] 2xl:h-[28px] text-white shrink-0 group-hover:text-orange-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
             <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM17.25 19.128l-.001.144a2.25 2.25 0 01-.233.96 10.088 10.088 0 005.06-1.01.75.75 0 00.42-.643 4.875 4.875 0 00-6.957-4.611 8.586 8.586 0 011.71 5.157v.003z" />
           </svg>
-          <div className="flex-1 min-w-0">
-            <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[17px] pb-[2px] lg:pb-[3px] 2xl:pb-[5px] font-medium leading-tight">Travelers &amp; Class</span>
-            <span className="block text-white text-[13px] lg:text-[12px] 2xl:text-[16px] font-medium leading-tight mt-0.5 truncate">{adults + children + infants} Pax, {cabinClass}</span>
+          <div className="flex-1 min-w-0 lg:flex-none">
+            <span className="block text-white text-[14px] lg:text-[13px] 2xl:text-[15px] pb-[2px] lg:pb-[3px] 2xl:pb-[5px] font-medium leading-tight whitespace-nowrap">Travelers</span>
+            <span className="block text-white text-[13px] lg:text-[13px] 2xl:text-[15px] font-semibold leading-tight mt-0.5 whitespace-nowrap">{adults + children + infants} Pax · {cabinClass}</span>
           </div>
           
           {activeDropdown === 'travelers' && travelersUI}
         </div>
 
-        {/* Search button */}
+        {/* Search button - reserved width so the label never clips */}
         <button 
           type="button"
           onClick={handleSearch}
-          disabled={isSearching}
-          className="flex items-center justify-center w-full lg:w-auto bg-gradient-to-r from-[#F97316] to-[#EA580C] py-2.5 lg:py-2.5 2xl:py-3 px-4 lg:px-4 2xl:px-6 gap-2 rounded-[14px] lg:rounded-[14px] 2xl:rounded-[18px] border-0 cursor-pointer hover:from-[#FB923C] hover:to-[#F97316] transition-all shadow-[0_4px_15px_rgba(249,115,22,0.4)] hover:shadow-[0_4px_20px_rgba(249,115,22,0.6)] mt-2 lg:mt-0 lg:self-center disabled:opacity-70 disabled:cursor-wait">
-          <svg className="w-4 h-4 lg:w-4 lg:h-4 2xl:w-5 2xl:h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+          aria-label="Search"
+          className="flex items-center justify-center shrink-0 w-full lg:w-auto bg-gradient-to-r from-[#F97316] to-[#EA580C] py-2.5 2xl:py-3 px-4 xl:px-5 2xl:px-6 gap-1.5 xl:gap-2 rounded-[14px] 2xl:rounded-[16px] border-0 cursor-pointer hover:from-[#FB923C] hover:to-[#F97316] transition-all shadow-[0_4px_15px_rgba(249,115,22,0.4)] hover:shadow-[0_4px_20px_rgba(249,115,22,0.6)] mt-2 lg:mt-0 lg:self-center lg:ml-2 disabled:opacity-70 disabled:cursor-wait whitespace-nowrap">
+          <svg className="w-4 h-4 2xl:w-5 2xl:h-5 text-white shrink-0" fill="currentColor" viewBox="0 0 24 24">
             <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z" clipRule="evenodd" />
           </svg>
-          <span className="text-white text-[13px] lg:text-[14px] 2xl:text-[19px] font-semibold">{isSearching ? "Searching…" : "Search"}</span>
+          <span className="text-white text-[13px] lg:text-[14px] 2xl:text-[16px] font-semibold">Search</span>
         </button>
 
       </div>
       </div>
-      {isSearching && (
-        <FlightSearchAnimation
-          from={from}
-          to={to}
-          onComplete={handleSearchComplete}
-        />
+
+      {tripType === "Multi-way" && (
+        <>
+          {multiFlights.map((flight, index) => (
+            <MultiWayFlightRow
+              key={flight.id}
+              flight={flight}
+              index={index}
+              onUpdate={updateMultiFlight}
+              onRemove={removeMultiFlight}
+              canRemove={multiFlights.length > 1}
+            />
+          ))}
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center max-w-[1600px] w-full mx-auto mb-[40px] px-4 lg:px-6 2xl:px-8 gap-3">
+            <button
+              type="button"
+              onClick={addMultiFlight}
+              disabled={multiFlights.length >= 4}
+              className="flex items-center justify-center gap-2 text-white/90 hover:text-white font-medium bg-white/5 hover:bg-white/10 px-6 py-3 rounded-full transition-colors border border-white/10 disabled:opacity-40"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add another flight
+            </button>
+            <p className="text-white/60 text-xs sm:text-sm text-center sm:text-right">
+              Multi-city searches each leg live.
+            </p>
+          </div>
+        </>
       )}
     </div>
   );

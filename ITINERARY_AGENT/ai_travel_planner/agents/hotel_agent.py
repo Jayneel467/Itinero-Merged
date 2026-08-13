@@ -12,12 +12,7 @@ Architecture
 ------------
 The Hotel Agent is a *worker* agent.  It never speaks to the user directly.
 It receives a rich natural-language instruction from the Itinerary Agent,
-reasons about it, generates realistic dummy hotel data, applies filters and
-ranking, and returns a structured HotelAgentResponse / HotelPrebookResponse.
-
-Replacing the dummy data layer with a real API (e.g. LiteAPI) requires only
-swapping out the internal LLM data-generation logic with real API calls while
-keeping all public method signatures identical.
+searches live LiteAPI rates, and returns a structured HotelAgentResponse.
 """
 
 from __future__ import annotations
@@ -63,7 +58,7 @@ You are an expert Hotel Search Agent for an AI Travel Planning system.
 
 Your responsibilities:
 1. Parse the natural-language instruction you receive from the Itinerary Agent.
-2. Generate realistic dummy hotel data that matches the location, dates, budget, and preferences.
+2. Work only with live hotel rates already provided — never invent prices or names.
 3. Apply the requested filters (budget, star rating, meal plan, amenities, cancellation policy).
 4. Rank results by value score (price + rating + amenities + location + user preferences).
 5. Identify the single best-value recommendation.
@@ -313,28 +308,138 @@ class HotelAgent:
         check_out: date,
         guests: dict[str, int],
         day_label: str = "",
+        *,
+        allowed_offer_ids: set[str] | list[str] | None = None,
     ) -> HotelPrebookResponse:
-        """Pre-book the selected hotel and return a pre-booking record."""
+        """Hold the selected hotel on LiteAPI. Never invent a fake HPB- id.
+
+        Offer must be in ``allowed_offer_ids`` (this day's search results).
+        Agency CREDIT holds are blocked unless sandbox key + explicit allow flag.
+        """
         logger.info("HotelAgent.prebook_hotel: %s [%s]", hotel.hotel_id, day_label)
 
         nights = max((check_out - check_in).days, 1)
         total = hotel.price_per_night * nights
+        offer_id = (getattr(hotel, "offer_id", None) or "").strip()
 
-        prebook_instruction = (
-            f"{instruction}\n\n"
-            f"Pre-book the following hotel.\n"
-            f"Hotel details: {json.dumps(hotel.model_dump(mode='json'), default=str)}\n"
-            f"Check-in: {check_in.isoformat()}\n"
-            f"Check-out: {check_out.isoformat()}\n"
-            f"Nights: {nights}\n"
-            f"Guests: {guests}\n"
-            f"Total price: ₹{total:,.0f}\n"
-            f"Current timestamp: {datetime.now().isoformat()}"
-        )
+        allowed = {
+            str(x).strip()
+            for x in (allowed_offer_ids or [])
+            if str(x).strip()
+        }
+        if not offer_id:
+            return HotelPrebookResponse(
+                status=AgentResponseStatus.ERROR,
+                action_performed="prebook_hotel",
+                summary=f"I couldn't hold {hotel.name} — missing a live offer id from search.",
+                errors=["Missing offer_id"],
+                suggested_next_action="Search hotels again",
+            )
+        if not allowed or offer_id not in allowed:
+            logger.warning(
+                "HotelAgent: rejecting unbound offer_id=%s day=%s (allowed=%s)",
+                offer_id[:24],
+                day_label,
+                len(allowed),
+            )
+            return HotelPrebookResponse(
+                status=AgentResponseStatus.ERROR,
+                action_performed="prebook_hotel",
+                summary=(
+                    "That hotel offer is not from this search session. "
+                    "Please search again and pick a listed option."
+                ),
+                errors=["offer_id not bound to session search"],
+                suggested_next_action="Search hotels again",
+            )
 
-        raw_json = self._call_llm(_HOTEL_PREBOOK_SYSTEM_PROMPT, prebook_instruction)
-        return self._parse_prebook_response(
-            raw_json, hotel, check_in, check_out, guests, total, day_label
+        try:
+            import os
+            from general_agent.providers import liteapi_provider
+
+            app_env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or "").lower()
+            use_sdk = (os.getenv("LITEAPI_USE_PAYMENT_SDK") or "true").lower() in {
+                "1",
+                "true",
+                "yes",
+            }
+            # Production always captures via Payment SDK — never agency CREDIT holds.
+            if app_env in {"production", "prod"}:
+                use_sdk = True
+            elif not use_sdk:
+                # Non-prod CREDIT only with sandbox LiteAPI key + explicit opt-in.
+                key = (
+                    os.getenv("LITEAPI_KEY")
+                    or os.getenv("LITEAPI_API_KEY")
+                    or os.getenv("API_KEY")
+                    or ""
+                ).strip()
+                allow_credit = (os.getenv("ITINERO_ALLOW_AGENCY_CREDIT") or "").lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                }
+                if not (key.startswith("sand_") and allow_credit):
+                    logger.warning(
+                        "HotelAgent: blocked agency CREDIT prebook "
+                        "(set LITEAPI_USE_PAYMENT_SDK=true or sand_* + ITINERO_ALLOW_AGENCY_CREDIT=1)"
+                    )
+                    return HotelPrebookResponse(
+                        status=AgentResponseStatus.ERROR,
+                        action_performed="prebook_hotel",
+                        summary=(
+                            "Hotel hold is blocked in this environment without Payment SDK. "
+                            "Enable LITEAPI_USE_PAYMENT_SDK=true, or use a sandbox key with "
+                            "ITINERO_ALLOW_AGENCY_CREDIT=1 for local testing only."
+                        ),
+                        errors=["agency CREDIT prebook blocked"],
+                        suggested_next_action="Enable Payment SDK or sandbox credit flag",
+                    )
+
+            body = liteapi_provider.prebook_hotel_rate(
+                {"offerId": offer_id, "usePaymentSdk": use_sdk}
+            )
+            data = body.get("data") if isinstance(body, dict) else body
+            if not isinstance(data, dict):
+                data = {}
+            prebook_id = str(data.get("prebookId") or data.get("id") or offer_id)
+            expiry = datetime.now() + timedelta(minutes=45)
+            updated = hotel.model_copy(update={"total_price": total, "nights": nights})
+            prebook = HotelPrebook(
+                prebook_id=prebook_id,
+                hotel=updated,
+                check_in=check_in,
+                check_out=check_out,
+                room_type=hotel.room_type,
+                guests=guests,
+                total_price=total,
+                currency="INR",
+                booking_status="Held (Pending Confirmation)",
+                booking_expiry=expiry,
+                day_label=day_label,
+            )
+            return HotelPrebookResponse(
+                status=AgentResponseStatus.SUCCESS,
+                action_performed="prebook_hotel",
+                summary=(
+                    f"{hotel.name} held for {nights} night(s). "
+                    f"Hold id: {prebook.prebook_id}."
+                ),
+                prebook=prebook,
+                suggested_next_action="Proceed to final itinerary",
+            )
+        except Exception as exc:
+            logger.warning("HotelAgent: live hotel prebook failed: %s", exc)
+
+        return HotelPrebookResponse(
+            status=AgentResponseStatus.ERROR,
+            action_performed="prebook_hotel",
+            summary=(
+                f"I couldn't hold {hotel.name} just now. "
+                "Complete booking on the left — I won't invent a fake hold."
+            ),
+            errors=["Live hotel prebook unavailable"],
+            suggested_next_action="Book on the hotels page or retry",
         )
 
     def _call_llm(self, system_prompt: str, user_instruction: str) -> str:
@@ -378,11 +483,17 @@ class HotelAgent:
             if not location or not params.check_in or not params.check_out:
                 return []
 
-            # Parse "City, Country" or just "City" from location string
-            parts = [p.strip() for p in location.split(",")]
-            city_name = parts[0]
-            # We need a country code — best-effort: leave blank and let API resolve
-            country_code = parts[-1] if len(parts) > 1 else ""
+            parts = [p.strip() for p in location.split(",") if p.strip()]
+            city_name = parts[0] if parts else location
+            country_code = ""
+            if len(parts) > 1 and len(parts[-1]) == 2 and parts[-1].isalpha():
+                country_code = parts[-1].upper()
+            if not country_code:
+                try:
+                    from general_agent.services import location_resolver
+                except ImportError:
+                    from services import location_resolver
+                country_code = location_resolver.resolve_country_code(location) or "IN"
 
             nights = max((params.check_out - params.check_in).days, 1)
 
@@ -417,6 +528,7 @@ class HotelAgent:
 
                 cheapest = None
                 for rt in room_types:
+                    rt_offer = rt.get("offerId") or rt.get("offer_id")
                     for rate in rt.get("rates", []):
                         total_arr = rate.get("retailRate", {}).get("total", [])
                         amount = total_arr[0].get("amount") if total_arr else None
@@ -428,6 +540,12 @@ class HotelAgent:
                                 "room_name": rate.get("name", "Room"),
                                 "board": rate.get("boardName", ""),
                                 "refundable": rate.get("cancellationPolicies", {}).get("refundableTag") == "RFN",
+                                "offer_id": (
+                                    rt_offer
+                                    or rate.get("offerId")
+                                    or rate.get("offer_id")
+                                    or rate.get("rateId")
+                                ),
                             }
                 if cheapest is None:
                     continue
@@ -445,6 +563,14 @@ class HotelAgent:
                     "room_name": cheapest["room_name"],
                     "board": cheapest["board"],
                     "refundable": cheapest["refundable"],
+                    "offer_id": cheapest.get("offer_id"),
+                    "liteapi_hotel_id": hotel_id,
+                    "image_url": meta.get("main_photo") or meta.get("thumbnail") or "",
+                    "hotel_images": [
+                        img.get("urlHd") or img.get("url")
+                        for img in (meta.get("hotelImages") or [])[:6]
+                        if isinstance(img, dict) and (img.get("urlHd") or img.get("url"))
+                    ],
                 })
 
             if not raw_results:
@@ -493,12 +619,14 @@ class HotelAgent:
 
             rank_score = round(10 * (1 - price / max_price), 2)
 
+            hid = str(h.get("liteapi_hotel_id") or "").strip()
             options.append(HotelOption(
+                hotel_id=hid or f"HT-{uuid.uuid4().hex[:8].upper()}",
                 name=h.get("name", "Hotel"),
                 star_rating=min(max(rating, 1.0), 5.0),
                 location=h.get("address", params.location or ""),
                 area=params.location.split(",")[0] if params.location else "City Center",
-                distance_from_center_km=1.5,  # LiteAPI doesn't return this
+                distance_from_center_km=1.5,
                 amenities=["Free WiFi", "Air Conditioning", "Room Service"],
                 room_type=h.get("room_name", "Standard Room"),
                 meal_plan=meal_plan,
@@ -510,6 +638,9 @@ class HotelAgent:
                 nights=nights,
                 rank_score=rank_score,
                 recommended=(i == 0),
+                image_url=str(h.get("image_url") or ""),
+                hotel_images=[str(u) for u in (h.get("hotel_images") or []) if u],
+                offer_id=h.get("offer_id"),
             ))
 
         return options

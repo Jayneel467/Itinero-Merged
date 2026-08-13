@@ -1,0 +1,38 @@
+{
+  "id": "portland",
+  "slug": "portland",
+  "city": "Portland",
+  "country": "USA",
+  "continent": "americas",
+  "iata": "PDX",
+  "themes": [
+    "city",
+    "food",
+    "hills"
+  ],
+  "imageId": "photo-1469474968028-56623f02e42e",
+  "blurb": "Coffee, forests, and Cascades weekend escapes.",
+  "trendingScore": 81,
+  "minTripDays": 3,
+  "lat": 45.59,
+  "lng": -122.6,
+  "markets": [
+    "US",
+    "*"
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "US",
+    "authoredAt": "2026-08-12T16:42:39Z",
+    "author": "explore_factory.author.seed",
+    "checkedAt": "2026-08-12T16:42:39Z",
+    "checker": "explore_factory.checker",
+    "checkIssues": [],
+    "reverifiedAt": "2026-08-12T16:42:39Z",
+    "reverifier": "explore_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

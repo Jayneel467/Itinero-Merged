@@ -3,6 +3,19 @@
   height: 100%;
   border-radius: 16px 0 0 16px;
   overflow: hidden;
+  background: #eef2f6;
+}
+
+.mapEmpty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  color: #667085;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .priceMarker {
@@ -10,7 +23,7 @@
   border: 1.5px solid #d1d5db;
   border-radius: 20px;
   padding: 4px 10px;
-  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-family: var(--font-sans);
   font-weight: 600;
   font-size: 14px;
   color: #111827;
@@ -146,7 +159,7 @@
 }
 
 .popupName {
-  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
   color: #000;
@@ -170,7 +183,7 @@
 }
 
 .ratingText {
-  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   color: #333;
 }
@@ -192,7 +205,7 @@
 }
 
 .currency {
-  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
 }
@@ -203,7 +216,7 @@
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
-  font-family: 'TT Hoves Pro Trial Variable', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

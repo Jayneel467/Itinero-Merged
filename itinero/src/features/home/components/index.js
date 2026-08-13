@@ -9,6 +9,8 @@ export { default as FlightDeals } from './FlightDeals';
 export { default as TrustedBy } from './TrustedBy';
 export { default as WhyChoose } from './WhyChoose';
 export { default as Testimonials } from './Testimonials';
+export { default as ReadyTrips } from './ReadyTrips';
+export { default as ExploreVibes } from './ExploreVibes/ExploreVibes';
 export { default as TravelLinks } from './TravelLinks';
 export { default as CategoryTabs } from './CategoryTabs';
 export { default as DealCard } from './DealCard';

@@ -1,21 +1,100 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ScrollReveal from "../../../../components/ScrollReveal";
+import { PlacesPhotoImg } from "@/components/shared";
+import { useCurrency } from "@/context/CurrencyContext";
+import { useHomeLocation } from "@/context/HomeLocationContext";
+import useLiveRoutePrices, {
+  routeKey,
+  sampleNearTermDates,
+} from "@/features/flights/hooks/useLiveRoutePrices";
 
-function defaultDepartYmd() {
-  const d = new Date();
-  d.setDate(d.getDate() + 14);
-  return d.toISOString().slice(0, 10);
-}
+const DESTINATIONS = [
+  {
+    id: 1,
+    image:
+      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2950kkhg_expires_30_days.png",
+    title: "Bali",
+    subtitle: "Indonesia",
+    code: "DPS",
+  },
+  {
+    id: 2,
+    image:
+      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fmqxgcdt_expires_30_days.png",
+    title: "New York",
+    subtitle: "USA",
+    code: "JFK",
+  },
+  {
+    id: 3,
+    image:
+      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/jq3ahus7_expires_30_days.png",
+    title: "Darjeeling",
+    subtitle: "Bagdogra",
+    code: "IXB",
+  },
+  {
+    id: 4,
+    image:
+      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/r1oo6x2k_expires_30_days.png",
+    title: "Japan",
+    subtitle: "Tokyo",
+    code: "NRT",
+  },
+  {
+    id: 5,
+    image:
+      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2b6x2epp_expires_30_days.png",
+    title: "Paris",
+    subtitle: "France",
+    code: "CDG",
+  },
+  {
+    id: 6,
+    image:
+      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fmqxgcdt_expires_30_days.png",
+    title: "London",
+    subtitle: "UK",
+    code: "LHR",
+  },
+  {
+    id: 7,
+    image:
+      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/jq3ahus7_expires_30_days.png",
+    title: "Dubai",
+    subtitle: "UAE",
+    code: "DXB",
+  },
+];
 
 /**
- * Trending Destinations — cards open a live flight search (BOM → destination).
+ * Trending Destinations - live LiteAPI from-fares (user home → dest).
  */
 export default function TrendingDestinations() {
   const navigate = useNavigate();
+  const { formatMoney } = useCurrency();
+  const { airportCode, city, originLabel, hasOrigin } = useHomeLocation();
+  const originCode = airportCode || "";
+  const originCity = city || originLabel;
   const scrollRef = useRef(null);
   const wrapperRef = useRef(null);
   const [cardWidth, setCardWidth] = useState(0);
+
+  const routes = useMemo(
+    () =>
+      hasOrigin
+        ? DESTINATIONS.filter((d) => d.code !== originCode).map((d) => ({
+            from: originCode,
+            to: d.code,
+          }))
+        : [],
+    [hasOrigin, originCode]
+  );
+  const { byKey, loading } = useLiveRoutePrices({
+    routes,
+    enabled: hasOrigin && routes.length > 0,
+  });
 
   useEffect(() => {
     const updateWidth = () => {
@@ -51,13 +130,28 @@ export default function TrendingDestinations() {
     }
   };
 
-  const openSearch = (toCode, toCity) => {
+  const openSearch = (dest) => {
+    if (!hasOrigin) {
+      navigate("/explore");
+      return;
+    }
+    const key = routeKey(originCode, dest.code);
+    const fare = byKey[key];
+    const depart =
+      fare?.bestDate ||
+      sampleNearTermDates(1)[0] ||
+      (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 14);
+        return d.toISOString().slice(0, 10);
+      })();
+
     const params = new URLSearchParams({
-      from: "BOM",
-      to: toCode,
-      fromCity: "Mumbai",
-      toCity,
-      depart: defaultDepartYmd(),
+      from: originCode,
+      to: dest.code,
+      fromCity: originCity,
+      toCity: dest.title,
+      depart,
       adults: "1",
       children: "0",
       infants: "0",
@@ -67,64 +161,15 @@ export default function TrendingDestinations() {
     navigate(`/flights?${params.toString()}`);
   };
 
-  const destinations = [
-    {
-      id: 1,
-      image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2950kkhg_expires_30_days.png",
-      title: "Bali",
-      subtitle: "Indonesia",
-      code: "DPS",
-      hint: "Search live fares",
-    },
-    {
-      id: 2,
-      image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fmqxgcdt_expires_30_days.png",
-      title: "New York",
-      subtitle: "USA",
-      code: "JFK",
-      hint: "Search live fares",
-    },
-    {
-      id: 3,
-      image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/jq3ahus7_expires_30_days.png",
-      title: "Darjeeling",
-      subtitle: "Bagdogra",
-      code: "IXB",
-      hint: "Search live fares",
-    },
-    {
-      id: 4,
-      image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/r1oo6x2k_expires_30_days.png",
-      title: "Japan",
-      subtitle: "Tokyo",
-      code: "NRT",
-      hint: "Search live fares",
-    },
-    {
-      id: 5,
-      image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2b6x2epp_expires_30_days.png",
-      title: "Paris",
-      subtitle: "France",
-      code: "CDG",
-      hint: "Search live fares",
-    },
-    {
-      id: 6,
-      image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fmqxgcdt_expires_30_days.png",
-      title: "London",
-      subtitle: "UK",
-      code: "LHR",
-      hint: "Search live fares",
-    },
-    {
-      id: 7,
-      image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/jq3ahus7_expires_30_days.png",
-      title: "Dubai",
-      subtitle: "UAE",
-      code: "DXB",
-      hint: "Search live fares",
-    },
-  ];
+  const priceLabel = (dest) => {
+    if (!hasOrigin) return "Set home city";
+    const key = routeKey(originCode, dest.code);
+    if (loading[key]) return null;
+    const min = byKey[key]?.minPrice;
+    if (typeof min === "number" && min > 0) return `From ${formatMoney(Math.round(min))}`;
+    if (byKey[key] && byKey[key].minPrice == null) return "See fares";
+    return null;
+  };
 
   return (
     <div className="flex flex-col self-stretch max-w-[1600px] mb-16 md:mb-[120px] mx-auto gap-6 md:gap-[40px]">
@@ -135,16 +180,18 @@ export default function TrendingDestinations() {
               Trending Destinations
             </span>
             <span className="text-[#F97211] text-[16px] md:text-xl lg:text-[18px] 2xl:text-2xl font-medium">
-              Most loved places by travelers around the world
+              {hasOrigin
+                ? `Live from-fares from ${originCity} - tap to search`
+                : "Set your home city (flag in the header) to see live fares"}
             </span>
           </div>
           <div className="flex w-full md:w-auto shrink-0 items-center justify-between md:justify-end">
             <button
               type="button"
-              onClick={() => navigate("/vero")}
+              onClick={() => navigate("/explore")}
               className="text-black text-[16px] md:text-xl font-medium mr-4 md:mr-[29px] cursor-pointer hover:underline bg-transparent border-0 p-0"
             >
-              Ask Vero for ideas
+              Explore more
             </button>
             <div className="flex items-center">
               <button
@@ -175,45 +222,78 @@ export default function TrendingDestinations() {
             ref={scrollRef}
             className="flex items-stretch overflow-x-auto gap-5 pb-8 px-4 md:px-[53px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
           >
-            {destinations.map((dest) => (
-              <button
-                type="button"
-                key={dest.id}
-                onClick={() => openSearch(dest.code, dest.title)}
-                className="flex flex-col shrink-0 bg-white rounded-[23px] overflow-hidden group cursor-pointer transition-transform hover:-translate-y-1 text-left border-0 p-0"
-                style={{ width: cardWidth || "calc(20% - 16px)", boxShadow: "0px 15px 30px #0000001F" }}
-              >
-                <div className="relative w-full h-[182px]">
-                  <img src={dest.image} className="w-full h-full object-cover" alt={dest.title} />
-                </div>
-
-                <div className="flex flex-col flex-1 p-4 md:p-5">
-                  <div className="flex flex-col items-start mb-4 md:mb-6">
-                    <span className="text-black text-[18px] md:text-[22px] font-bold">{dest.title}</span>
-                    <span className="text-[#777777] text-[12px] md:text-[14px] font-medium mt-0.5">{dest.subtitle}</span>
+            {DESTINATIONS.filter((d) => d.code !== originCode).map((dest) => {
+              const label = priceLabel(dest);
+              const key = hasOrigin ? routeKey(originCode, dest.code) : "";
+              const isLoading = hasOrigin && (Boolean(loading[key]) || label === null);
+              return (
+                <button
+                  type="button"
+                  key={dest.id}
+                  onClick={() => openSearch(dest)}
+                  className="flex flex-col shrink-0 bg-white rounded-[23px] overflow-hidden group cursor-pointer transition-transform hover:-translate-y-1 text-left border-0 p-0"
+                  style={{
+                    width: cardWidth || "calc(20% - 16px)",
+                    boxShadow: "0px 15px 30px #0000001F",
+                  }}
+                >
+                  <div className="relative w-full h-[182px]">
+                    <PlacesPhotoImg
+                      city={dest.title === "Japan" ? dest.subtitle : dest.title}
+                      country={dest.title === "Japan" ? "Japan" : dest.subtitle}
+                      query={`${dest.title} ${dest.subtitle} landmark`}
+                      fallback={dest.image}
+                      className="w-full h-full object-cover"
+                      alt={dest.title}
+                      loading="lazy"
+                    />
                   </div>
 
-                  <div className="mt-auto flex items-center justify-between">
-                    <div className="flex flex-col items-start gap-1">
-                      <span className="text-[#777777] text-[10px] md:text-[12px] font-medium whitespace-nowrap">
-                        From Mumbai (BOM)
+                  <div className="flex flex-col flex-1 p-4 md:p-5">
+                    <div className="flex flex-col items-start mb-4 md:mb-6">
+                      <span className="text-black text-[18px] md:text-[22px] font-bold">
+                        {dest.title}
                       </span>
-                      <span className="text-[#F97211] text-[16px] md:text-[20px] font-bold">{dest.hint}</span>
+                      <span className="text-[#777777] text-[12px] md:text-[14px] font-medium mt-0.5">
+                        {dest.subtitle}
+                      </span>
                     </div>
-                    <div className="w-8 h-8 md:w-[35px] md:h-[35px] rounded-full border border-gray-200 flex items-center justify-center bg-white group-hover:bg-[#F97211] transition-colors shrink-0 mt-3 md:mt-3 ml-2">
-                      <svg
-                        className="w-4 h-4 text-black group-hover:text-white transition-colors"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                      </svg>
+
+                    <div className="mt-auto flex items-center justify-between">
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="text-[#777777] text-[10px] md:text-[12px] font-medium whitespace-nowrap">
+                          {hasOrigin
+                            ? `From ${originCity}${originCode ? ` (${originCode})` : ""}`
+                            : "Home city not set"}
+                        </span>
+                        {isLoading ? (
+                          <span className="inline-block h-5 w-24 rounded-md bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
+                        ) : (
+                          <span className="text-[#F97211] text-[16px] md:text-[20px] font-bold">
+                            {label}
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-8 h-8 md:w-[35px] md:h-[35px] rounded-full border border-gray-200 flex items-center justify-center bg-white group-hover:bg-[#F97211] transition-colors shrink-0 mt-3 md:mt-3 ml-2">
+                        <svg
+                          className="w-4 h-4 text-black group-hover:text-white transition-colors"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 5l7 7-7 7"
+                          ></path>
+                        </svg>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
       </ScrollReveal>

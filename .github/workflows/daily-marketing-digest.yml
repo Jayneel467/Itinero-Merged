@@ -1,0 +1,50 @@
+# Daily marketing digests + due journey steps
+name: Daily marketing digest
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      digests:
+        description: "Also run daily digests"
+        required: false
+        default: "true"
+
+jobs:
+  marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install -q fastapi uvicorn psycopg[binary] psycopg_pool pydantic python-dotenv
+      - name: Run marketing jobs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          PUBLIC_SITE_URL: ${{ secrets.PUBLIC_SITE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -z "${DATABASE_URL:-}" ]; then echo "::error::DATABASE_URL missing"; missing=1; fi
+          if [ -z "${SMTP_HOST:-}" ] || [ -z "${SMTP_USER:-}" ] || [ -z "${SMTP_PASSWORD:-}" ]; then
+            echo "::error::SMTP secrets missing"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then exit 1; fi
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
+            echo "::warning::GEMINI_API_KEY missing — search_curate author steps will fail"
+          fi
+          if [ "${{ github.event.inputs.digests || 'true' }}" = "true" ]; then
+            python -m supervisor.marketing_runner --digests --drain
+          else
+            python -m supervisor.marketing_runner --drain
+          fi

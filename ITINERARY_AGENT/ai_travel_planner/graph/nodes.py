@@ -28,6 +28,7 @@ the OpenAI API at import time.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ai_travel_planner.agents.flight_agent import FlightAgent
@@ -132,16 +133,84 @@ def node_collect_requirements(state_dict: dict[str, Any]) -> dict[str, Any]:
 def node_flight_search_confirmation(state_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Interpret the user's yes/no response to the flight search prompt.
-    Routes to flight search (yes) or back to requirement collection (no/modify).
+    Routes to flight search (yes), draft itinerary (skip flights), or
+    requirement collection (modify details).
     """
     logger.info("NODE: flight_search_confirmation")
     state = _load(state_dict)
     agent = _get_itinerary_agent()
 
-    intent = agent.interpret_user_intent(state.last_user_input)
-    logger.debug("Intent: %s", intent)
+    raw = (state.last_user_input or "").strip().lower()
+    # Skip flights → day plan (and hotels later if wanted). Never send users
+    # to REQUIREMENT_COLLECTION from the HTTP bridge — that stage isn't wired.
+    skip_flights = any(
+        p in raw
+        for p in (
+            "skip flight",
+            "skip flights",
+            "no flight",
+            "no flights",
+            "without flight",
+            "without flights",
+            "hotels only",
+            "hotel only",
+            "just itinerary",
+            "only itinerary",
+            "itinerary only",
+            "no hotel no flight",
+            "no flight no hotel",
+            "day plan only",
+            "just the itinerary",
+            "activities only",
+        )
+    )
 
-    if intent["intent"] == "yes":
+    if skip_flights:
+        state.clear_pending_action()
+        itinerary_only = any(
+            p in raw
+            for p in (
+                "just itinerary",
+                "only itinerary",
+                "itinerary only",
+                "no hotel",
+                "no hotels",
+                "day plan only",
+                "no hotel no flight",
+                "no flight no hotel",
+                "activities only",
+                "plan only",
+            )
+        )
+        if itinerary_only:
+            state.planning_scope = "itinerary_only"
+        elif any(p in raw for p in ("hotels only", "hotel only", "skip flight")):
+            if state.planning_scope != "itinerary_only":
+                state.planning_scope = "hotels_only"
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
+        state.add_assistant_message(
+            "Got it — skipping flights. Building your day-by-day itinerary now…"
+        )
+        return _dump(state)
+
+    # Explicit confirm only — word-bounded so "yesterday" / "already" don't match.
+    go_search = bool(
+        re.search(
+            r"\b("
+            r"yes|yep|yeah|"
+            r"search flights?|"
+            r"go ahead|"
+            r"please search|"
+            r"looks good"
+            r")\b",
+            raw,
+        )
+    )
+
+    intent = agent.interpret_user_intent(state.last_user_input)
+    logger.debug("Intent: %s | skip_flights=%s | go_search=%s", intent, skip_flights, go_search)
+
+    if go_search or intent["intent"] == "yes":
         state.confirm_pending_action()
         state.set_stage(WorkflowStage.FLIGHT_SEARCH)
         state.add_assistant_message(
@@ -149,22 +218,25 @@ def node_flight_search_confirmation(state_dict: dict[str, Any]) -> dict[str, Any
             "(This may take a moment.)"
         )
     elif intent["intent"] in ("no", "cancel"):
+        # Treat plain "no" as skip flights (users rarely want to re-collect slots
+        # after Vero already gathered them).
         state.clear_pending_action()
-        state.set_stage(WorkflowStage.REQUIREMENT_COLLECTION)
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
         state.add_assistant_message(
-            "No problem! Let's adjust the details. What would you like to change?"
+            "No flights — I'll build the day-by-day itinerary for your trip now…"
         )
     elif intent["intent"] == "modify":
         state.clear_pending_action()
-        state.set_stage(WorkflowStage.REQUIREMENT_COLLECTION)
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
         mod = intent.get("modification_request", "")
         state.add_assistant_message(
-            f"Sure, let's update that. {mod or 'What would you like to change?'}"
+            f"Sure — {mod or 'updating the plan.'} Building your itinerary…"
         )
     else:
         # Re-ask
         state.add_assistant_message(
-            "Would you like me to search for flights? Please reply with yes or no."
+            "Would you like me to search for flights? Reply **yes**, or **skip flights** "
+            "to go straight to the day-by-day itinerary."
         )
 
     return _dump(state)
@@ -184,6 +256,21 @@ def node_flight_search(state_dict: dict[str, Any]) -> dict[str, Any]:
     itinerary_agent = _get_itinerary_agent()
     flight_agent = _get_flight_agent()
 
+    params = state.trip.search_params
+    origin = str(getattr(params, "origin", "") or "").strip()
+    dest = str(getattr(params, "destination", "") or "").strip()
+    if not origin or not dest or not getattr(params, "departure_date", None):
+        logger.warning(
+            "Flight search skipped — missing route/date: %s → %s on %s",
+            origin, dest, getattr(params, "departure_date", None),
+        )
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
+        state.add_assistant_message(
+            "I don't have a full flight route yet, so I'll build the day-by-day plan first. "
+            "Tell me the departure city if you want live fares too."
+        )
+        return _dump(state)
+
     instruction = itinerary_agent.build_flight_search_instruction(state)
     logger.debug("Flight instruction: %s", instruction[:120])
 
@@ -196,13 +283,14 @@ def node_flight_search(state_dict: dict[str, Any]) -> dict[str, Any]:
     state.flights.search_performed = True
 
     if response.status == AgentResponseStatus.ERROR or not response.flights:
-        state.set_stage(WorkflowStage.ERROR)
-        state.error_message = (
-            f"Flight search failed: {'; '.join(response.errors) or 'No flights found.'}"
+        logger.warning(
+            "Flight search empty/error for %s → %s: %s",
+            origin, dest, "; ".join(response.errors or []) or "no results",
         )
+        state.set_stage(WorkflowStage.DRAFT_ITINERARY)
         state.add_assistant_message(
-            "I'm sorry, I couldn't find any flights matching your criteria. "
-            "Would you like to adjust the dates or budget?"
+            f"Live fares for **{origin} → {dest}** didn't come back just now — "
+            "I'll keep building the day-by-day plan. You can also search that route on the left."
         )
     else:
         state.flights.search_results = response.flights
@@ -315,11 +403,17 @@ def node_flight_prebook(state_dict: dict[str, Any]) -> dict[str, Any]:
         "adults": state.trip.search_params.adults,
         "children": state.trip.search_params.children,
     }
+    allowed_offer_ids = {
+        (getattr(f, "offer_id", None) or "").strip()
+        for f in (state.flights.search_results or [])
+        if (getattr(f, "offer_id", None) or "").strip()
+    }
 
     response = flight_agent.prebook_flight(
         instruction=instruction,
         flight=state.flights.selected_flight,
         passengers=passengers,
+        allowed_offer_ids=allowed_offer_ids,
     )
 
     if response.status == AgentResponseStatus.ERROR or not response.prebook:
@@ -359,17 +453,62 @@ def node_draft_itinerary(state_dict: dict[str, Any]) -> dict[str, Any]:
 def node_draft_itinerary_review(state_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Interpret user's response to the draft itinerary:
-      - approve  → proceed to hotel search
+      - approve  → hotel search (or final if hotels skipped)
       - modify   → apply changes and regenerate
+      - no hotels / itinerary only → finalize draft as the plan
     """
     logger.info("NODE: draft_itinerary_review")
     state = _load(state_dict)
     agent = _get_itinerary_agent()
 
+    raw = (state.last_user_input or "").strip().lower()
+    skip_hotels = any(
+        p in raw
+        for p in (
+            "no hotel",
+            "no hotels",
+            "skip hotel",
+            "skip hotels",
+            "without hotel",
+            "without hotels",
+            "just itinerary",
+            "only itinerary",
+            "itinerary only",
+            "day plan only",
+            "no flight no hotel",
+            "no hotel no flight",
+            "activities only",
+            "just the plan",
+            "plan only",
+        )
+    )
+    scope = (state.planning_scope or "full").lower().strip()
+
+    if skip_hotels or scope == "itinerary_only":
+        state.itinerary.draft_approved = True
+        state.clear_pending_action()
+        state.planning_scope = "itinerary_only"
+        state.set_stage(WorkflowStage.FINAL_ITINERARY)
+        state.add_assistant_message(
+            "Perfect — locking in this day-by-day plan (no hotel booking). Finalizing…"
+        )
+        return _dump(state)
+
     intent = agent.interpret_user_intent(state.last_user_input)
 
-    if intent["intent"] == "yes":
-        # User approves the draft
+    if (
+        intent["intent"] == "yes"
+        and any(w in raw for w in ("itinerary", "plan only", "no hotel", "skip hotel"))
+    ):
+        state.itinerary.draft_approved = True
+        state.clear_pending_action()
+        state.planning_scope = "itinerary_only"
+        state.set_stage(WorkflowStage.FINAL_ITINERARY)
+        state.add_assistant_message(
+            "Perfect — locking in this day-by-day plan (no hotel booking). Finalizing…"
+        )
+    elif intent["intent"] == "yes":
+        # User approves the draft → hotels (unless hotels_only already skipped flights)
         state.itinerary.draft_approved = True
         state.clear_pending_action()
         state.set_stage(WorkflowStage.HOTEL_SEARCH)
@@ -387,7 +526,7 @@ def node_draft_itinerary_review(state_dict: dict[str, Any]) -> dict[str, Any]:
             "Regenerating..."
         )
     elif intent["intent"] in ("no",):
-        # Treat as "make changes"
+        # Treat as "make changes" unless they clearly want to skip hotels
         state.set_stage(WorkflowStage.DRAFT_ITINERARY)
         state.add_assistant_message(
             "No problem! What changes would you like to make to the itinerary?"
@@ -636,6 +775,11 @@ def node_hotel_prebook(state_dict: dict[str, Any]) -> dict[str, Any]:
         instruction = itinerary_agent.build_hotel_prebook_instruction(
             hotel, check_in, check_out, day_label
         )
+        allowed_offer_ids = {
+            (getattr(h, "offer_id", None) or "").strip()
+            for h in (state.hotels.search_results_by_day.get(day_label) or [])
+            if (getattr(h, "offer_id", None) or "").strip()
+        }
 
         response = hotel_agent.prebook_hotel(
             instruction=instruction,
@@ -644,6 +788,7 @@ def node_hotel_prebook(state_dict: dict[str, Any]) -> dict[str, Any]:
             check_out=check_out,
             guests=guests,
             day_label=day_label,
+            allowed_offer_ids=allowed_offer_ids,
         )
 
         if response.status == AgentResponseStatus.ERROR or not response.prebook:

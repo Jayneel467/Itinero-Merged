@@ -1,0 +1,243 @@
+.page {
+  --ink: #001438;
+  --accent: #f97211;
+  --muted: #637588;
+  --line: #e8edf2;
+  --nav-offset: 76px;
+  background: #ffffff;
+  min-height: 100vh;
+  padding: 0 16px 80px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 900px) {
+  .page {
+    padding: 0 40px 96px;
+  }
+}
+
+.hero {
+  position: relative;
+  margin-top: 8px;
+  min-height: min(48vh, 400px);
+  border-radius: 24px;
+  overflow: visible;
+  background-image: linear-gradient(
+      105deg,
+      rgba(0, 20, 57, 0.78) 0%,
+      rgba(0, 20, 57, 0.4) 55%,
+      rgba(0, 20, 57, 0.18) 100%
+    ),
+    url("https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=2000&q=80");
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  color: #fff;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 36px 28px 28px;
+}
+
+.brand {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fdba74;
+}
+
+.headline {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.1;
+  font-weight: 700;
+  max-width: 16ch;
+}
+
+.headlineAccent {
+  color: #f97316;
+}
+
+.sub {
+  margin: 12px 0 22px;
+  max-width: 48ch;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.heroSearch {
+  width: 100%;
+  max-width: none;
+  position: relative;
+  z-index: 5;
+}
+
+.controls {
+  position: sticky;
+  top: var(--nav-offset);
+  z-index: 40;
+  margin: 0 -16px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+@media (min-width: 900px) {
+  .controls {
+    margin: 0 -40px;
+    padding: 0 40px;
+  }
+}
+
+.controlsInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.themeRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.themeRow::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: #fdba74;
+}
+
+.chipActive {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.metaRow {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.resultCount {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.honesty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.gridSection {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 0 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    --nav-offset: 64px;
+  }
+
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heroInner {
+    padding: 28px 18px 20px;
+  }
+}
+
+.state {
+  padding: 48px 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.klookHint {
+  margin: 10px auto 14px;
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.klookBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  background: #001438;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 999px;
+}
+
+.klookBtn:hover {
+  background: #002056;
+}
+
+.veroCompact .hero {
+  min-height: 180px;
+}
+
+.veroCompact .headline {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}

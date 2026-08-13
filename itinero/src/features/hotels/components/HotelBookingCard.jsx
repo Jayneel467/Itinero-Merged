@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Calendar as CalendarIcon, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
 import CustomDatePicker from '@/components/ui/DatePicker/CustomDatePicker';
 import { hotelService } from '../services/hotelService';
+import { useCurrency } from '@/context/CurrencyContext';
 import styles from '../HotelDetailPage.module.css';
 
 const CustomDateInput = React.forwardRef(({ value, onClick, isOpen }, ref) => (
@@ -26,6 +27,7 @@ export default function HotelBookingCard() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const { currency, formatMoney } = useCurrency();
 
   const [checkIn, setCheckIn] = useState(() => {
     const v = searchParams.get('checkIn');
@@ -66,7 +68,7 @@ export default function HotelBookingCard() {
         check_out: toYmd(checkOut),
         guests: adults + children,
         rooms,
-        currency: 'INR',
+        currency,
       });
       if (cancelled) return;
       const first = (res.rooms || [])[0];
@@ -81,7 +83,7 @@ export default function HotelBookingCard() {
     }
     load();
     return () => { cancelled = true; };
-  }, [id, checkIn, checkOut, adults, children, rooms]);
+  }, [id, checkIn, checkOut, adults, children, rooms, currency]);
 
   const handleBookRoom = () => {
     const qs = new URLSearchParams({
@@ -109,7 +111,7 @@ export default function HotelBookingCard() {
     <div className={styles.HotelBookingCard_card}>
       <div className={styles.HotelBookingCard_bestPrice}>
         <ShieldCheck size={18} className={styles.HotelBookingCard_shieldIcon} />
-        <span className={styles.HotelBookingCard_bestPriceText}>Live LiteAPI rates</span>
+        <span className={styles.HotelBookingCard_bestPriceText}>Live rates</span>
       </div>
 
       <div className={styles.HotelBookingCard_dateInputs}>
@@ -181,12 +183,12 @@ export default function HotelBookingCard() {
       <div className={styles.HotelBookingCard_priceSection}>
         <div className={styles.HotelBookingCard_priceRow}>
           <span className={styles.HotelBookingCard_price}>
-            {loadingPrice ? '…' : minNight != null ? `₹${Number(minNight).toLocaleString()}` : '—'}
+            {loadingPrice ? '…' : minNight != null ? formatMoney(minNight) : '-'}
           </span>
           <span className={styles.HotelBookingCard_perNight}>per night from</span>
         </div>
         <div className={styles.HotelBookingCard_totalPrice}>
-          {total != null ? `₹${Number(total).toLocaleString()} total` : 'Select dates for live total'}
+          {total != null ? `${formatMoney(total)} total` : 'Select dates for live total'}
           <br />
           Includes taxes & Fees
         </div>
@@ -197,7 +199,7 @@ export default function HotelBookingCard() {
       </button>
       
       <div className={styles.HotelBookingCard_freeCancellation}>
-        Prices from LiteAPI — never invented
+        Live prices - never invented
       </div>
     </div>
   );

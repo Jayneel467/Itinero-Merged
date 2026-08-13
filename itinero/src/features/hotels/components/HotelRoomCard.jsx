@@ -1,8 +1,10 @@
 import React from 'react';
 import { Wifi, Tv, Monitor, Wind, Coffee, Check, Clock } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
 import styles from './HotelRoomCard.module.css';
 
 export default function HotelRoomCard({ room, onSelect, isSelected }) {
+  const { formatMoney, symbol } = useCurrency();
   return (
     <div className={styles.card}>
       <div className={styles.imageWrapper}>
@@ -13,22 +15,40 @@ export default function HotelRoomCard({ room, onSelect, isSelected }) {
         <div className={styles.topRow}>
           <div className={styles.infoSection}>
             <h3 className={styles.roomTitle}>{room.title}</h3>
+            {room.board && room.board !== room.title && (
+              <div className={styles.specsRow} style={{ marginTop: 4, color: '#666', fontSize: 13 }}>
+                Meal plan: {room.board}
+              </div>
+            )}
             
             <div className={styles.specsRow}>
               <span>{room.bedType}</span>
               <span className={styles.specsDot}>•</span>
               <span>{room.capacity} Adults</span>
-              <span className={styles.specsDot}>•</span>
-              <span>{room.size}</span>
+              {room.size && room.size !== '-' && (
+                <>
+                  <span className={styles.specsDot}>•</span>
+                  <span>{room.size}</span>
+                </>
+              )}
             </div>
             
-            <div className={styles.specsRow}>
-              <span>{room.view}</span>
-              <span className={styles.specsDot}>•</span>
-              <span>{room.floor}</span>
-            </div>
+            {(room.view && room.view !== 'Standard view') || (room.floor && room.floor !== '-') ? (
+              <div className={styles.specsRow}>
+                {room.view && <span>{room.view}</span>}
+                {room.view && room.floor && room.floor !== '-' && (
+                  <span className={styles.specsDot}>•</span>
+                )}
+                {room.floor && room.floor !== '-' && <span>{room.floor}</span>}
+              </div>
+            ) : null}
             
             <div className={styles.tagsRow}>
+              {room.board && (
+                <div className={`${styles.tag} ${styles.tagBlue}`}>
+                  {room.board}
+                </div>
+              )}
               {room.freeCancellation && (
                 <div className={`${styles.tag} ${styles.tagGreen}`}>
                   <Check size={14} /> Free cancellation
@@ -53,13 +73,13 @@ export default function HotelRoomCard({ room, onSelect, isSelected }) {
             )}
             
             <div className={styles.priceBlock}>
-              <span className={styles.priceCurrency}>₹</span>
+              <span className={styles.priceCurrency}>{symbol}</span>
               <span className={styles.priceAmount}>{Number(room.price || 0).toLocaleString()}</span>
               <span className={styles.pricePerNight}>/ night</span>
             </div>
             
             <div className={styles.taxesText}>
-              +₹{Number(room.taxes || 0).toLocaleString()} taxes & fees
+              +{formatMoney(room.taxes || 0)} taxes & fees
             </div>
             
             {room.freeCancellation && (

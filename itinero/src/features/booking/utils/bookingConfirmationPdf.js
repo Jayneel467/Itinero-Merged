@@ -1,20 +1,29 @@
 import { jsPDF } from "jspdf";
+import { describeAirport } from "@/constants/airports";
+import {
+  inferAirlineCode,
+  airlineLogoFallbacks,
+} from "@/features/flights/utils/airlineIdentity";
+import { formatFlightClock } from "@/features/flights/utils/flightCheckout";
+import { likelyTerminal } from "@/features/vero/utils/airlineFacts";
 
 /**
- * Booking confirmation PDF from the LiteAPI complete/book payload.
- * Uses Helvetica (WinAnsi) only — all user-facing strings are ASCII-sanitized
- * so Unicode (₹, →, ·, en-dash) never garbles glyph mapping.
+ * Itinero confirmed e-ticket PDF.
+ * Matches the passenger itinerary layout: wordmark header, airline row,
+ * navy booking-reference bar, route, airport cards, pax/contact,
+ * cream amount + barcode, navy Vero strip. Helvetica + ASCII-safe strings.
  */
 
-const COLORS = {
-  navy: [0, 20, 56], // #001438
-  navySoft: [11, 42, 111], // #0b2a6f
-  orange: [249, 114, 17], // #f97211
-  ink: [26, 29, 33], // #1a1d21
-  muted: [107, 114, 128], // #6b7280
-  line: [232, 235, 239], // #e8ebef
-  surface: [247, 248, 250],
+const C = {
+  navy: [0, 20, 57],
+  orange: [233, 110, 51],
+  ink: [17, 24, 39],
+  muted: [107, 114, 128],
+  line: [229, 231, 235],
+  gray: [245, 247, 250],
+  cream: [255, 247, 237],
   white: [255, 255, 255],
+  green: [5, 150, 105],
 };
 
 function hasValue(val) {
@@ -25,7 +34,6 @@ function hasValue(val) {
   return true;
 }
 
-/** Coerce to a single plain string; never pass arrays/objects into doc.text. */
 function asPlainString(val) {
   if (val == null) return "";
   if (typeof val === "string") return val;
@@ -34,20 +42,16 @@ function asPlainString(val) {
   return "";
 }
 
-/**
- * Map common Unicode punctuation/currency to Helvetica-safe ASCII.
- * jsPDF standard fonts cannot encode ₹ / → / –; unsupported chars corrupt draws.
- */
 function pdfSafe(val) {
   let s = asPlainString(val);
   if (!s) return "";
   s = s
-    .replace(/\u20B9/g, "Rs.") // ₹
+    .replace(/\u20B9/g, "Rs.")
     .replace(/\u20AC/g, "EUR ")
     .replace(/\u00A3/g, "GBP ")
-    .replace(/\u2192|\u2794|\u279E|\u00BB/g, "->") // arrows
-    .replace(/[\u2013\u2014\u2212]/g, "-") // en/em/minus dashes
-    .replace(/[\u00B7\u2022\u2023\u2219]/g, "|") // middle dots / bullets
+    .replace(/\u2192|\u2794|\u279E|\u00BB/g, "->")
+    .replace(/[\u2013\u2014\u2212]/g, "-")
+    .replace(/[\u00B7\u2022\u2023\u2219]/g, "|")
     .replace(/[\u2018\u2019\u201A]/g, "'")
     .replace(/[\u201C\u201D\u201E]/g, '"')
     .replace(/\u00A0/g, " ")
@@ -69,6 +73,42 @@ function fmtMoney(amount, currency) {
   return `${cur} ${num}`;
 }
 
+function parseDate(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const [y, m, d] = s.slice(0, 10).split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+  const dt = new Date(s);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function prettyTravelDate(raw) {
+  const dt = parseDate(raw);
+  if (!dt) return pdfSafe(raw);
+  return dt.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function prettyIssued(raw) {
+  const dt = raw ? new Date(raw) : null;
+  if (!dt || Number.isNaN(dt.getTime())) return "";
+  return dt.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function paxName(p) {
   const parts = [p.title, p.first_name || p.firstName, p.last_name || p.lastName].filter(Boolean);
   return pdfSafe(parts.join(" ")) || null;
@@ -82,356 +122,472 @@ function airlineLabel(seg) {
   return pdfSafe(raw);
 }
 
-/** e.g. "1. BOM -> DEL | Air India 2402 | 06:35 - 08:35" */
-function segmentLine(seg) {
-  if (!seg || typeof seg !== "object") return null;
-  const route = [seg.from, seg.to].filter(Boolean).map(pdfSafe).filter(Boolean).join(" -> ");
-  const flight = [airlineLabel(seg), pdfSafe(seg.flight_number)].filter(Boolean).join(" ");
-  const times = [seg.departure, seg.arrival].filter(Boolean).map(pdfSafe).filter(Boolean).join(" - ");
-  return [route, flight, times].filter(Boolean).join(" | ") || null;
+function imageFormat(dataUrl) {
+  if (typeof dataUrl !== "string") return "PNG";
+  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
+  return "PNG";
 }
 
-function drawLogoMark(doc, x, y, size = 28) {
-  const r = 6;
-  doc.setFillColor(...COLORS.orange);
-  doc.roundedRect(x, y, size, size, r, r, "F");
-  doc.setTextColor(...COLORS.white);
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function loadPublicImage(fileName) {
+  try {
+    const base = String(import.meta.env.BASE_URL || "/itinero/").replace(/\/?$/, "/");
+    const res = await fetch(`${base}${fileName}`);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (!blob.type.startsWith("image/")) return null;
+    return await blobToDataUrl(blob);
+  } catch {
+    return null;
+  }
+}
+
+async function loadRemoteImage(url) {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (!blob.type.startsWith("image/")) return null;
+    return await blobToDataUrl(blob);
+  } catch {
+    return null;
+  }
+}
+
+async function loadAirlineLogo(code, stored) {
+  const urls = airlineLogoFallbacks(code, stored);
+  for (const url of urls) {
+    const img = await loadRemoteImage(url);
+    if (img) return img;
+  }
+  return null;
+}
+
+function text(doc, str, x, y, opts = {}) {
+  const safe = pdfSafe(str);
+  if (!safe) return y;
+  doc.setFont("helvetica", opts.style || "normal");
+  doc.setFontSize(opts.size || 10);
+  doc.setTextColor(...(opts.color || C.ink));
+  const maxW = opts.maxW;
+  if (maxW) {
+    const lines = doc.splitTextToSize(safe, maxW);
+    const lh = (opts.size || 10) + (opts.lh || 3);
+    lines.forEach((ln, i) => {
+      doc.text(ln, x, y + i * lh, { align: opts.align || "left" });
+    });
+    return y + lines.length * lh;
+  }
+  doc.text(safe, x, y, { align: opts.align || "left" });
+  return y + (opts.size || 10) + 4;
+}
+
+function safeImage(doc, dataUrl, x, y, w, h) {
+  if (!dataUrl) return false;
+  try {
+    doc.addImage(dataUrl, imageFormat(dataUrl), x, y, w, h);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function drawWordmark(doc, x, y, size = 18) {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(size * 0.72);
-  doc.text("i", x + size / 2, y + size * 0.72, { align: "center" });
+  doc.setFontSize(size);
+  doc.setTextColor(...C.navy);
+  doc.text("itin", x, y);
+  const w = doc.getTextWidth("itin");
+  doc.setTextColor(...C.orange);
+  doc.text("ero", x + w, y);
+  return w + doc.getTextWidth("ero");
 }
 
-function drawHeader(doc, pageW, margin) {
-  const headerH = 72;
-  doc.setFillColor(...COLORS.navy);
-  doc.rect(0, 0, pageW, headerH, "F");
-  doc.setFillColor(...COLORS.orange);
-  doc.rect(0, headerH, pageW, 3, "F");
-
-  drawLogoMark(doc, margin, 22, 28);
-  doc.setTextColor(...COLORS.white);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Itinero", margin + 36, 40);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(200, 210, 220);
-  doc.text("Flight booking confirmation", margin + 36, 54);
-  return headerH + 20;
+function drawBarcode(doc, seed, x, y, w, h) {
+  const src = String(seed || "ITINERO").toUpperCase().replace(/[^A-Z0-9]/g, "") || "ITINERO";
+  let bits = "";
+  for (let i = 0; i < src.length; i += 1) {
+    const n = src.charCodeAt(i);
+    bits += (n % 2 ? "11010" : "10110") + (n % 3 ? "001" : "100");
+  }
+  bits = `1101${bits}${bits.slice(0, 18)}1101`;
+  const unit = w / bits.length;
+  let cx = x;
+  doc.setFillColor(...C.ink);
+  for (let i = 0; i < bits.length; i += 1) {
+    const barW = unit * (bits[i] === "1" ? 1.15 : 0.55);
+    if (bits[i] === "1") doc.rect(cx, y, Math.max(0.55, barW), h, "F");
+    cx += unit;
+  }
 }
 
-function drawFooter(doc, pageW, pageH, margin, pageNum, pageCount) {
-  const y = pageH - 28;
-  doc.setDrawColor(...COLORS.line);
-  doc.setLineWidth(0.6);
-  doc.line(margin, y - 10, pageW - margin, y - 10);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...COLORS.muted);
-  doc.text(
-    "Generated from your live booking confirmation. Fields shown only when returned by the provider.",
-    margin,
-    y
-  );
-  doc.text(`Page ${pageNum} of ${pageCount}`, pageW - margin, y, { align: "right" });
+function airportFromSeg(seg, side) {
+  const code = side === "from" ? seg.from || seg.origin : seg.to || seg.destination;
+  const extra = side === "from" ? seg.from_airport : seg.to_airport;
+  const d = extra && extra.code ? extra : describeAirport(code);
+  return {
+    code: pdfSafe(d.code || code),
+    name: pdfSafe(d.name || d.fullName || code),
+    fullName: pdfSafe(d.fullName || d.name || code),
+    city: pdfSafe(d.city || ""),
+    location: pdfSafe(d.location || d.region || ""),
+    terminals: pdfSafe(d.terminals || ""),
+    tip: pdfSafe(d.tip || ""),
+    time: formatFlightClock(
+      side === "from" ? seg.departure || seg.dep_time : seg.arrival || seg.arr_time
+    ),
+  };
+}
+
+function stopsLabel(stops) {
+  if (stops == null || stops === "") return "";
+  if (typeof stops === "number") return stops === 0 ? "Direct" : `${stops} stop${stops === 1 ? "" : "s"}`;
+  const s = String(stops).toLowerCase();
+  if (s === "0" || s === "nonstop" || s === "non-stop" || s === "direct") return "Direct";
+  return pdfSafe(stops);
 }
 
 /**
- * @param {object} booking Normalized booking from POST /api/flights/complete
- * @returns {{ blob: Blob, filename: string }}
+ * @param {object} booking
+ * @param {{ veroImg?: string|null, itineroImg?: string|null, airlineImg?: string|null }} [opts]
  */
-export function buildBookingConfirmationPdf(booking) {
+export function buildBookingConfirmationPdf(booking, opts = {}) {
   const b = booking && typeof booking === "object" ? booking : {};
   const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const margin = 48;
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const contentW = pageW - margin * 2;
-  const bottomLimit = pageH - 48;
+  const m = 36;
+  const contentW = pageW - m * 2;
 
-  let y = drawHeader(doc, pageW, margin);
-
-  const ensureSpace = (need = 24) => {
-    if (y + need > bottomLimit) {
-      doc.addPage();
-      y = margin;
-    }
-  };
-
-  const writeText = (text, opts = {}) => {
-    const safe = pdfSafe(text);
-    if (!safe) return;
-    const size = opts.size || 10;
-    const style = opts.style || "normal";
-    const color = opts.color || COLORS.ink;
-    const x = opts.x != null ? opts.x : margin;
-    const maxW = opts.maxW != null ? opts.maxW : contentW;
-    doc.setFont("helvetica", style);
-    doc.setFontSize(size);
-    doc.setTextColor(...color);
-    const lines = doc.splitTextToSize(safe, maxW);
-    for (let i = 0; i < lines.length; i += 1) {
-      const ln = typeof lines[i] === "string" ? lines[i] : pdfSafe(lines[i]);
-      ensureSpace(size + 6);
-      doc.text(ln, x, y, { baseline: "top" });
-      y += size + (opts.lineGap != null ? opts.lineGap : 4);
-    }
-  };
-
-  const sectionCard = (title, bodyFn) => {
-    ensureSpace(52);
-    const cardTop = y;
-    const padX = 14;
-    const headerH = 28;
-
-    // Header wash + accent + title, then body, then outer stroke sized to content.
-    doc.setFillColor(...COLORS.surface);
-    doc.roundedRect(margin, cardTop, contentW, headerH, 4, 4, "F");
-    doc.setFillColor(...COLORS.orange);
-    doc.rect(margin, cardTop, 4, headerH, "F");
-
-    y = cardTop + 10;
-    writeText(title, {
-      size: 11,
-      style: "bold",
-      color: COLORS.navy,
-      x: margin + padX,
-      maxW: contentW - padX * 2,
+  const segs = Array.isArray(b.segments_summary) ? b.segments_summary : [];
+  const first = segs[0] || {};
+  const origin = airportFromSeg(first, "from");
+  const dest = airportFromSeg(first, "to");
+  if (b.origin_airport?.code) {
+    Object.assign(origin, {
+      code: pdfSafe(b.origin_airport.code) || origin.code,
+      name: pdfSafe(b.origin_airport.name) || origin.name,
+      fullName: pdfSafe(b.origin_airport.fullName || b.origin_airport.name) || origin.fullName,
+      city: pdfSafe(b.origin_airport.city) || origin.city,
+      location: pdfSafe(b.origin_airport.location) || origin.location,
+      terminals: pdfSafe(b.origin_airport.terminals) || origin.terminals,
+      tip: pdfSafe(b.origin_airport.tip) || origin.tip,
     });
-    y = cardTop + headerH + 10;
-    bodyFn();
-    const cardH = y + 10 - cardTop;
+  }
+  if (b.dest_airport?.code) {
+    Object.assign(dest, {
+      code: pdfSafe(b.dest_airport.code) || dest.code,
+      name: pdfSafe(b.dest_airport.name) || dest.name,
+      fullName: pdfSafe(b.dest_airport.fullName || b.dest_airport.name) || dest.fullName,
+      city: pdfSafe(b.dest_airport.city) || dest.city,
+      location: pdfSafe(b.dest_airport.location) || dest.location,
+      terminals: pdfSafe(b.dest_airport.terminals) || dest.terminals,
+      tip: pdfSafe(b.dest_airport.tip) || dest.tip,
+    });
+  }
 
-    doc.setDrawColor(...COLORS.line);
-    doc.setLineWidth(0.9);
-    doc.roundedRect(margin, cardTop, contentW, cardH, 4, 4, "S");
-    doc.setFillColor(...COLORS.orange);
-    doc.rect(margin, cardTop, 4, cardH, "F");
+  const airline = pdfSafe(b.airline || airlineLabel(first) || "Airline");
+  const airlineCode = inferAirlineCode(
+    airline,
+    first.flight_number || b.flight_number,
+    b.airline_code || first.airline_code
+  );
+  const flightNo = pdfSafe(first.flight_number || b.flight_number || airlineCode);
+  const duration = pdfSafe(b.duration || first.duration || "");
+  const cabin = pdfSafe(b.cabin || first.cabin || "Economy");
+  const stops = stopsLabel(b.stops ?? first.stops) || "Direct";
+  const travelDate = prettyTravelDate(b.travel_date || first.date || "");
+  const bookingId = pdfSafe(
+    b.airline_pnr || b.booking_ref || b.booking_id || "ITN"
+  );
+  const rawStatus = pdfSafe(b.status || "PAID").toUpperCase();
+  const payStatus = pdfSafe(b.payment_status || "");
+  const status =
+    /PAID|COMPLETED|TICKETED|CONFIRMED/.test(`${rawStatus} ${payStatus}`.toUpperCase())
+      ? "PAID"
+      : rawStatus === "CREATED"
+        ? "PAID"
+        : rawStatus;
+  const money = fmtMoney(
+    b.total_price ?? b.price ?? b.payment?.amount,
+    b.currency || b.payment?.currency
+  );
+  const issued = prettyIssued(b.timestamp);
+  const depUsual = likelyTerminal(airlineCode, origin.code);
+  const arrUsual = likelyTerminal(airlineCode, dest.code);
 
-    y = cardTop + cardH + 14;
-  };
+  doc.setFillColor(...C.white);
+  doc.rect(0, 0, pageW, pageH, "F");
 
-  writeText("Booking Confirmation", { size: 20, style: "bold", color: COLORS.navy });
-  y += 4;
-  writeText("Thank you for booking with Itinero.", { size: 10, color: COLORS.muted });
-  y += 12;
+  /* ----- Header ----- */
+  drawWordmark(doc, m, 48, 22);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...C.ink);
+  doc.text("CONFIRMED E-TICKET", pageW - m, 40, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...C.muted);
+  doc.text("Passenger itinerary  |  Show at check-in", pageW - m, 54, { align: "right" });
+  if (issued) {
+    doc.text(`Issued ${issued}`, pageW - m, 66, { align: "right" });
+  }
 
-  sectionCard("Booking", () => {
-    const rows = [
-      hasValue(b.booking_id) ? `Booking ID: ${pdfSafe(b.booking_id)}` : null,
-      hasValue(b.status) ? `Status: ${pdfSafe(b.status)}` : null,
-      hasValue(b.payment_status) ? `Payment status: ${pdfSafe(b.payment_status)}` : null,
-      hasValue(b.booking_ref) ? `Booking reference: ${pdfSafe(b.booking_ref)}` : null,
-      hasValue(b.airline_pnr) ? `Airline PNR: ${pdfSafe(b.airline_pnr)}` : null,
-      hasValue(b.timestamp) ? `Booked at: ${pdfSafe(b.timestamp)}` : null,
-      hasValue(b.order_status) ? `Order status: ${pdfSafe(b.order_status)}` : null,
-    ].filter(Boolean);
-    if (!rows.length) {
-      writeText("No booking details returned by the provider.", {
-        size: 10,
-        color: COLORS.muted,
-        x: margin + 14,
-        maxW: contentW - 28,
-      });
-      return;
-    }
-    rows.forEach((row) =>
-      writeText(row, { size: 10, x: margin + 14, maxW: contentW - 28 })
-    );
-    const st = String(b.status || "").toUpperCase();
-    if (st.includes("HOLD") || st.includes("SANDBOX") || st.includes("TEST")) {
-      y += 4;
-      writeText(
-        "Note: This booking is in a HOLD / sandbox state and may not be a final ticketed itinerary.",
-        {
-          size: 9,
-          style: "bold",
-          color: COLORS.orange,
-          x: margin + 14,
-          maxW: contentW - 28,
-        }
-      );
-    }
+  doc.setDrawColor(...C.orange);
+  doc.setLineWidth(3);
+  doc.line(m, 78, pageW - m, 78);
+
+  let y = 94;
+
+  /* ----- Airline row ----- */
+  const airH = 58;
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  doc.setLineWidth(0.9);
+  doc.roundedRect(m, y, contentW, airH, 10, 10, "FD");
+
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  doc.roundedRect(m + 12, y + 10, 38, 38, 8, 8, "FD");
+  if (!safeImage(doc, opts.airlineImg, m + 13, y + 11, 36, 36)) {
+    doc.setFillColor(...C.orange);
+    doc.roundedRect(m + 13, y + 11, 36, 36, 8, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(...C.white);
+    doc.text((airlineCode || "FL").slice(0, 2), m + 31, y + 34, { align: "center" });
+  }
+  text(doc, airline, m + 62, y + 26, { size: 13, style: "bold", color: C.ink });
+  text(doc, [flightNo, cabin, stops].filter(Boolean).join("  |  "), m + 62, y + 44, {
+    size: 10,
+    color: C.muted,
+  });
+  if (!safeImage(doc, opts.itineroImg, pageW - m - 92, y + 18, 78, 22)) {
+    drawWordmark(doc, pageW - m - 78, y + 36, 14);
+  }
+  y += airH + 12;
+
+  /* ----- Booking reference bar ----- */
+  const barH = 54;
+  doc.setFillColor(...C.navy);
+  doc.roundedRect(m, y, contentW, barH, 10, 10, "F");
+  text(doc, "BOOKING REFERENCE", m + 18, y + 18, { size: 8, style: "bold", color: [196, 210, 232] });
+  text(doc, bookingId, m + 18, y + 40, { size: 18, style: "bold", color: C.white });
+
+  const pillW = 58;
+  const pillX = pageW / 2 - pillW / 2;
+  doc.setFillColor(...C.white);
+  doc.roundedRect(pillX, y + 18, pillW, 20, 10, 10, "F");
+  text(doc, status || "PAID", pageW / 2, y + 32, {
+    size: 9,
+    style: "bold",
+    color: status === "PAID" ? C.green : C.orange,
+    align: "center",
   });
 
-  const locators = Array.isArray(b.airline_locators) ? b.airline_locators : [];
-  if (locators.length) {
-    sectionCard("Airline locators", () => {
-      locators.forEach((loc) => {
-        if (!loc || typeof loc !== "object") return;
-        const bits = [loc.airline_code || loc.airline_name, loc.airline_pnr]
-          .map(pdfSafe)
-          .filter(Boolean);
-        if (bits.length) {
-          writeText(bits.join(" | "), { size: 10, x: margin + 14, maxW: contentW - 28 });
-        }
-      });
+  if (travelDate) {
+    text(doc, travelDate, pageW - m - 18, y + 32, {
+      size: 11,
+      style: "bold",
+      color: C.white,
+      align: "right",
     });
   }
+  y += barH + 22;
 
-  const tickets = Array.isArray(b.ticket_numbers) ? b.ticket_numbers.filter(hasValue) : [];
-  const td = b.ticket_data && typeof b.ticket_data === "object" ? b.ticket_data : {};
-  if (tickets.length || hasValue(td.confirmation_id) || hasValue(td.ticketed_at)) {
-    sectionCard("Tickets", () => {
-      tickets.forEach((t) =>
-        writeText(`Ticket number: ${pdfSafe(t)}`, {
-          size: 10,
-          x: margin + 14,
-          maxW: contentW - 28,
-        })
-      );
-      if (hasValue(td.confirmation_id)) {
-        writeText(`Ticket confirmation ID: ${pdfSafe(td.confirmation_id)}`, {
-          size: 10,
-          x: margin + 14,
-          maxW: contentW - 28,
-        });
-      }
-      if (hasValue(td.ticketed_at)) {
-        writeText(`Ticketed at: ${pdfSafe(td.ticketed_at)}`, {
-          size: 10,
-          x: margin + 14,
-          maxW: contentW - 28,
-        });
-      }
-      if (hasValue(td.provider)) {
-        writeText(`Ticketing provider: ${pdfSafe(td.provider)}`, {
-          size: 10,
-          x: margin + 14,
-          maxW: contentW - 28,
-        });
-      }
-    });
+  /* ----- Route ----- */
+  text(doc, "DEPART", m, y, { size: 8, style: "bold", color: C.orange });
+  text(doc, "ARRIVE", pageW - m, y, { size: 8, style: "bold", color: C.orange, align: "right" });
+
+  text(doc, (origin.time || "--:--").slice(0, 5), m, y + 28, { size: 28, style: "bold", color: C.ink });
+  text(doc, (dest.time || "--:--").slice(0, 5), pageW - m, y + 28, {
+    size: 28,
+    style: "bold",
+    color: C.ink,
+    align: "right",
+  });
+
+  const midX = pageW / 2;
+  if (duration) {
+    text(doc, duration, midX, y + 10, { size: 10, style: "bold", color: C.ink, align: "center" });
   }
+  doc.setDrawColor(...C.orange);
+  doc.setLineWidth(2);
+  doc.line(midX - 78, y + 28, midX - 8, y + 28);
+  doc.line(midX + 8, y + 28, midX + 78, y + 28);
+  doc.setFillColor(...C.orange);
+  doc.circle(midX, y + 28, 4.2, "F");
+  text(doc, stops, midX, y + 46, { size: 9, color: C.muted, align: "center" });
 
-  if (hasValue(b.eticket_url)) {
-    sectionCard("E-ticket", () => {
-      writeText(b.eticket_url, {
+  text(doc, origin.code, m, y + 56, { size: 16, style: "bold", color: C.ink });
+  text(doc, dest.code, pageW - m, y + 56, { size: 16, style: "bold", color: C.ink, align: "right" });
+  text(doc, origin.city || origin.name, m, y + 74, { size: 11, color: C.muted, maxW: 200 });
+  text(doc, dest.city || dest.name, pageW - m, y + 74, {
+    size: 11,
+    color: C.muted,
+    align: "right",
+    maxW: 200,
+  });
+  text(doc, origin.name, m, y + 90, { size: 9, color: C.muted, maxW: 210 });
+  text(doc, dest.name, pageW - m, y + 90, { size: 9, color: C.muted, align: "right", maxW: 210 });
+  y += 108;
+
+  /* ----- Airport cards ----- */
+  const cardW = (contentW - 12) / 2;
+  const cardH = 126;
+  const drawAirportCard = (x, title, ap, usual) => {
+    doc.setFillColor(...C.gray);
+    doc.roundedRect(x, y, cardW, cardH, 10, 10, "F");
+    text(doc, title, x + 14, y + 18, { size: 8, style: "bold", color: C.orange });
+    text(doc, ap.fullName || ap.name, x + 14, y + 36, { size: 11, style: "bold", color: C.ink, maxW: cardW - 28 });
+    text(doc, ap.location || ap.city, x + 14, y + 52, { size: 9, color: C.muted, maxW: cardW - 28 });
+    let ty = y + 68;
+    if (ap.terminals) {
+      ty = text(doc, `Terminals: ${ap.terminals}`, x + 14, ty, {
         size: 9,
-        color: COLORS.navySoft,
-        x: margin + 14,
-        maxW: contentW - 28,
-      });
-    });
-  }
-
-  const passengers = Array.isArray(b.passengers) ? b.passengers : [];
-  if (passengers.length) {
-    sectionCard("Passengers", () => {
-      passengers.forEach((p, i) => {
-        const name = paxName(p);
-        const extras = [
-          p.passenger_type != null ? `type ${pdfSafe(p.passenger_type)}` : null,
-          pdfSafe(p.date_of_birth || p.dob) || null,
-          p.ticket_number ? `ticket ${pdfSafe(p.ticket_number)}` : null,
-        ].filter(Boolean);
-        writeText(
-          `${i + 1}. ${name || "Passenger"}${extras.length ? ` | ${extras.join(" | ")}` : ""}`,
-          { size: 10, x: margin + 14, maxW: contentW - 28 }
-        );
-      });
-    });
-  }
-
-  const contact = b.contact && typeof b.contact === "object" ? b.contact : {};
-  if (hasValue(contact.email) || hasValue(contact.phone)) {
-    sectionCard("Contact", () => {
-      if (hasValue(contact.email)) {
-        writeText(`Email: ${pdfSafe(contact.email)}`, {
-          size: 10,
-          x: margin + 14,
-          maxW: contentW - 28,
-        });
-      }
-      if (hasValue(contact.phone)) {
-        const cc = contact.phone_country_code ? `+${pdfSafe(contact.phone_country_code)} ` : "";
-        writeText(`Phone: ${cc}${pdfSafe(contact.phone)}`, {
-          size: 10,
-          x: margin + 14,
-          maxW: contentW - 28,
-        });
-      }
-    });
-  }
-
-  const segments = Array.isArray(b.segments_summary) ? b.segments_summary : [];
-  if (segments.length) {
-    sectionCard("Flight segments", () => {
-      segments.forEach((seg, i) => {
-        const s = segmentLine(seg);
-        if (s) {
-          writeText(`${i + 1}. ${s}`, {
-            size: 10,
-            x: margin + 14,
-            maxW: contentW - 28,
-          });
-        }
-      });
-    });
-  }
-
-  const total =
-    b.total_price != null
-      ? b.total_price
-      : b.price != null
-        ? b.price
-        : b.payment?.amount != null
-          ? b.payment.amount
-          : b.pricing?.total ?? b.pricing?.totalAmount;
-  const currency = b.currency || b.payment?.currency || b.pricing?.currency;
-  const money = fmtMoney(total, currency);
-  if (money) {
-    sectionCard("Payment", () => {
-      writeText(`Total paid: ${money}`, {
-        size: 12,
         style: "bold",
-        color: COLORS.navy,
-        x: margin + 14,
-        maxW: contentW - 28,
+        color: C.ink,
+        maxW: cardW - 28,
+        lh: 3,
       });
-      const pricing = b.pricing && typeof b.pricing === "object" ? b.pricing : {};
-      if (hasValue(pricing.base) || hasValue(pricing.subtotal)) {
-        const base = fmtMoney(pricing.base ?? pricing.subtotal, currency);
-        if (base) {
-          writeText(`Base / subtotal: ${base}`, {
-            size: 10,
-            x: margin + 14,
-            maxW: contentW - 28,
-          });
-        }
-      }
-      if (hasValue(pricing.taxes)) {
-        const taxes = fmtMoney(pricing.taxes, currency);
-        if (taxes) {
-          writeText(`Taxes: ${taxes}`, { size: 10, x: margin + 14, maxW: contentW - 28 });
-        }
-      }
-      if (hasValue(b.payment_status)) {
-        writeText(`Payment status: ${pdfSafe(b.payment_status)}`, {
-          size: 10,
-          x: margin + 14,
-          maxW: contentW - 28,
-        });
-      }
+    }
+    if (usual) {
+      ty = text(doc, `Usual for this airline: ${usual}`, x + 14, ty + 2, {
+        size: 8,
+        style: "bold",
+        color: C.ink,
+        maxW: cardW - 28,
+        lh: 3,
+      });
+    }
+    if (ap.tip) {
+      text(doc, ap.tip, x + 14, ty + 4, { size: 8, color: C.muted, maxW: cardW - 28, lh: 3 });
+    }
+  };
+  drawAirportCard(m, "DEPARTURE AIRPORT", origin, depUsual);
+  drawAirportCard(m + cardW + 12, "ARRIVAL AIRPORT", dest, arrUsual);
+  y += cardH + 12;
+
+  /* ----- Passenger + contact ----- */
+  const passengers = Array.isArray(b.passengers) ? b.passengers : [];
+  const contact = b.contact && typeof b.contact === "object" ? b.contact : {};
+  const paxH = 78;
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  doc.setLineWidth(0.9);
+  doc.roundedRect(m, y, contentW, paxH, 10, 10, "FD");
+  text(doc, "PASSENGER(S)", m + 16, y + 18, { size: 8, style: "bold", color: C.orange });
+  if (passengers.length) {
+    passengers.slice(0, 2).forEach((p, i) => {
+      const extra = [p.passenger_type || p.type, p.date_of_birth || p.dob].filter(Boolean).map(pdfSafe);
+      text(
+        doc,
+        `${i + 1}. ${paxName(p) || "Passenger"}${extra.length ? `  |  ${extra.join("  |  ")}` : ""}`,
+        m + 16,
+        y + 38 + i * 16,
+        { size: 10, color: C.ink, maxW: contentW / 2 - 28 }
+      );
+    });
+  } else {
+    text(doc, "Lead passenger on file", m + 16, y + 38, { size: 10, color: C.muted });
+  }
+  text(doc, "CONTACT", m + contentW / 2 + 12, y + 18, { size: 8, style: "bold", color: C.orange });
+  if (hasValue(contact.email)) {
+    text(doc, contact.email, m + contentW / 2 + 12, y + 38, {
+      size: 10,
+      color: C.ink,
+      maxW: contentW / 2 - 28,
     });
   }
-
-  const pageCount = doc.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p += 1) {
-    doc.setPage(p);
-    drawFooter(doc, pageW, pageH, margin, p, pageCount);
+  if (hasValue(contact.phone)) {
+    const cc = contact.phone_country_code ? `+${pdfSafe(contact.phone_country_code)} ` : "+91 ";
+    text(doc, `${cc}${pdfSafe(contact.phone)}`, m + contentW / 2 + 12, y + 56, { size: 10, color: C.ink });
   }
+  y += paxH + 12;
+
+  /* ----- Amount + barcode ----- */
+  const payH = 68;
+  const payW = contentW * 0.58 - 6;
+  doc.setFillColor(...C.cream);
+  doc.roundedRect(m, y, payW, payH, 10, 10, "F");
+  text(doc, "AMOUNT PAID", m + 16, y + 18, { size: 8, style: "bold", color: C.orange });
+  text(doc, money || "Rs. --", m + 16, y + 42, { size: 18, style: "bold", color: C.ink });
+  text(doc, payStatus || "Card · Stripe", m + 16, y + 58, { size: 8, color: C.muted, maxW: payW - 28 });
+
+  const barX = m + payW + 12;
+  const barW = contentW - payW - 12;
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  doc.roundedRect(barX, y, barW, payH, 10, 10, "FD");
+  drawBarcode(doc, bookingId, barX + 14, y + 12, barW - 28, 32);
+  text(doc, bookingId, barX + barW / 2, y + 56, { size: 9, style: "bold", color: C.ink, align: "center" });
+  y += payH + 14;
+
+  /* ----- Vero ----- */
+  const veroH = 58;
+  doc.setFillColor(...C.navy);
+  doc.roundedRect(m, y, contentW, veroH, 10, 10, "F");
+  if (opts.veroImg) safeImage(doc, opts.veroImg, m + 12, y + 8, 42, 42);
+  const veroX = opts.veroImg ? m + 66 : m + 18;
+  text(doc, "Need help? Ask Vero", veroX, y + 22, { size: 12, style: "bold", color: C.white });
+  text(
+    doc,
+    "Open Itinero and tap Vero for terminals, baggage, a hotel near arrival, or a cab.",
+    veroX,
+    y + 40,
+    { size: 9, color: [210, 220, 236], maxW: contentW - (opts.veroImg ? 90 : 36) }
+  );
+  y += veroH + 18;
+
+  /* ----- Fine print ----- */
+  text(
+    doc,
+    "Issued by Itinero. Gate numbers appear on airport screens - we never invent them.",
+    m,
+    Math.min(y + 6, pageH - 28),
+    { size: 8, color: C.muted, maxW: contentW - 90 }
+  );
+  text(doc, "itinero + Vero", pageW - m, Math.min(y + 6, pageH - 28), {
+    size: 8,
+    style: "bold",
+    color: C.muted,
+    align: "right",
+  });
 
   const id = b.booking_id || b.airline_pnr || "booking";
   const safeName = String(id).replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40);
   return {
     blob: doc.output("blob"),
-    filename: `itinero-booking-${safeName}.pdf`,
+    filename: `itinero-eticket-${safeName}.pdf`,
   };
 }
 
-export function downloadBookingConfirmationPdf(booking) {
-  const { blob, filename } = buildBookingConfirmationPdf(booking);
+export async function downloadBookingConfirmationPdf(booking, opts = {}) {
+  const code = inferAirlineCode(
+    booking?.airline,
+    booking?.segments_summary?.[0]?.flight_number || booking?.flight_number,
+    booking?.airline_code || booking?.segments_summary?.[0]?.airline_code
+  );
+  const storedLogo = booking?.airline_logo || booking?.segments_summary?.[0]?.airline_logo;
+  const [veroImg, itineroImg, airlineImg] = await Promise.all([
+    opts.veroImage === false ? null : opts.veroImage || loadPublicImage("vero-chatbot.png"),
+    opts.itineroImage === false ? null : opts.itineroImage || loadPublicImage("itinero-logo.png"),
+    opts.airlineImage === false ? null : opts.airlineImage || loadAirlineLogo(code, storedLogo),
+  ]);
+  const { blob, filename } = buildBookingConfirmationPdf(booking, {
+    ...opts,
+    veroImg,
+    itineroImg,
+    airlineImg,
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -442,4 +598,171 @@ export function downloadBookingConfirmationPdf(booking) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
   return filename;
+}
+
+/** Branded hotel stay voucher PDF (matches email voucher layout). */
+export async function downloadHotelVoucherPdf(data = {}) {
+  const [veroImg, itineroImg] = await Promise.all([
+    loadPublicImage("vero-chatbot.png"),
+    loadPublicImage("itinero-logo.png"),
+  ]);
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const m = 40;
+  const contentW = pageW - m * 2;
+  const bookingId = pdfSafe(data.bookingId || data.bookingRef || "stay");
+  const money = fmtMoney(data.totalPrice, data.currency);
+
+  doc.setFillColor(...C.navy);
+  doc.rect(0, 0, pageW, 78, "F");
+  doc.setFillColor(...C.orange);
+  doc.rect(0, 78, pageW, 4, "F");
+  if (itineroImg) {
+    try {
+      doc.addImage(itineroImg, imageFormat(itineroImg), m, 22, 110, 24);
+    } catch {
+      text(doc, "itinero", m, 40, { size: 16, style: "bold", color: C.white });
+    }
+  } else {
+    text(doc, "itinero", m, 40, { size: 16, style: "bold", color: C.white });
+  }
+  text(doc, "HOTEL VOUCHER", pageW - m, 42, {
+    size: 10,
+    style: "bold",
+    color: [253, 186, 116],
+    align: "right",
+  });
+
+  let y = 110;
+  text(doc, pdfSafe(data.hotelName || "Hotel stay"), m, y, {
+    size: 18,
+    style: "bold",
+    color: C.ink,
+    maxW: contentW,
+  });
+  y += 18;
+  if (data.roomName || data.location) {
+    text(doc, pdfSafe(data.roomName || data.location || ""), m, y, {
+      size: 11,
+      color: C.muted,
+      maxW: contentW,
+    });
+    y += 16;
+  }
+  y += 10;
+
+  doc.setFillColor(...C.navy);
+  doc.roundedRect(m, y, contentW, 52, 10, 10, "F");
+  text(doc, "BOOKING REFERENCE", m + 14, y + 16, { size: 8, style: "bold", color: [196, 210, 232] });
+  text(doc, bookingId, m + 14, y + 36, { size: 14, style: "bold", color: C.white });
+  text(doc, "CONFIRMED", pageW - m - 14, y + 30, {
+    size: 9,
+    style: "bold",
+    color: C.green,
+    align: "right",
+  });
+  y += 68;
+
+  const cardW = (contentW - 12) / 2;
+  doc.setFillColor(...C.cream);
+  doc.roundedRect(m, y, cardW, 64, 10, 10, "F");
+  text(doc, "CHECK-IN", m + 12, y + 18, { size: 8, style: "bold", color: C.orange });
+  text(doc, pdfSafe(data.checkIn || "-"), m + 12, y + 40, { size: 12, style: "bold", color: C.ink, maxW: cardW - 24 });
+  doc.setFillColor(...C.cream);
+  doc.roundedRect(m + cardW + 12, y, cardW, 64, 10, 10, "F");
+  text(doc, "CHECK-OUT", m + cardW + 24, y + 18, { size: 8, style: "bold", color: C.orange });
+  text(doc, pdfSafe(data.checkOut || "-"), m + cardW + 24, y + 40, {
+    size: 12,
+    style: "bold",
+    color: C.ink,
+    maxW: cardW - 24,
+  });
+  y += 80;
+
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  doc.roundedRect(m, y, contentW, 70, 10, 10, "FD");
+  text(doc, "GUEST", m + 14, y + 18, { size: 8, style: "bold", color: C.orange });
+  text(doc, "CONTACT", m + contentW / 2 + 8, y + 18, { size: 8, style: "bold", color: C.orange });
+  text(doc, pdfSafe(data.guestName || "Guest on file"), m + 14, y + 40, {
+    size: 12,
+    style: "bold",
+    color: C.ink,
+    maxW: contentW / 2 - 24,
+  });
+  text(doc, pdfSafe(data.email || ""), m + contentW / 2 + 8, y + 38, {
+    size: 10,
+    color: C.ink,
+    maxW: contentW / 2 - 24,
+  });
+  const guestMeta = [pdfSafe(data.guests || ""), pdfSafe(data.nights || "")]
+    .filter(Boolean)
+    .join(" / ");
+  if (guestMeta) {
+    text(doc, guestMeta, m + 14, y + 56, { size: 9, color: C.muted });
+  }
+  y += 86;
+
+  const payW = contentW * 0.58 - 6;
+  doc.setFillColor(...C.cream);
+  doc.roundedRect(m, y, payW, 62, 10, 10, "F");
+  text(doc, "AMOUNT PAID", m + 14, y + 18, { size: 8, style: "bold", color: C.orange });
+  text(doc, money || "Rs. --", m + 14, y + 42, { size: 16, style: "bold", color: C.ink });
+  text(doc, pdfSafe(data.paymentId || data.paymentLabel || "Card | Stripe"), m + 14, y + 56, {
+    size: 8,
+    color: C.muted,
+    maxW: payW - 28,
+  });
+  const barX = m + payW + 12;
+  const barW = contentW - payW - 12;
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.line);
+  doc.roundedRect(barX, y, barW, 62, 10, 10, "FD");
+  drawBarcode(doc, bookingId, barX + 14, y + 12, barW - 28, 28);
+  text(doc, bookingId, barX + barW / 2, y + 52, {
+    size: 9,
+    style: "bold",
+    color: C.ink,
+    align: "center",
+  });
+  y += 78;
+
+  doc.setFillColor(...C.navy);
+  doc.roundedRect(m, y, contentW, 58, 10, 10, "F");
+  if (veroImg) {
+    try {
+      doc.addImage(veroImg, imageFormat(veroImg), m + 12, y + 8, 42, 42);
+    } catch {
+      /* ignore */
+    }
+  }
+  const veroX = veroImg ? m + 66 : m + 18;
+  text(doc, "Need help? Ask Vero", veroX, y + 22, { size: 12, style: "bold", color: C.white });
+  text(
+    doc,
+    "Open Itinero and tap Vero for late checkout, nearby food, or a cab.",
+    veroX,
+    y + 40,
+    { size: 9, color: [210, 220, 236], maxW: contentW - (veroImg ? 90 : 36) }
+  );
+  y += 72;
+
+  text(
+    doc,
+    "Present this voucher at check-in with a government ID. Issued by Itinero.",
+    m,
+    Math.min(y, pageH - 28),
+    { size: 8, color: C.muted, maxW: contentW - 90 }
+  );
+  text(doc, "itinero + Vero", pageW - m, Math.min(y, pageH - 28), {
+    size: 8,
+    style: "bold",
+    color: C.muted,
+    align: "right",
+  });
+
+  const safeName = String(bookingId).replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40);
+  doc.save(`itinero-hotel-voucher-${safeName}.pdf`);
+  return `itinero-hotel-voucher-${safeName}.pdf`;
 }

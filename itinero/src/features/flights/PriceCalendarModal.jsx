@@ -1,17 +1,12 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import styles from "./PriceCalendarModal.module.css";
+import { useCurrency } from "@/context/CurrencyContext";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
-
-function formatShortPrice(price) {
-  if (typeof price !== "number" || !(price > 0)) return null;
-  if (price >= 100000) return `₹${Math.round(price / 1000)}k`;
-  return `₹${Math.round(price).toLocaleString("en-IN")}`;
-}
 
 /**
  * Price calendar with live LiteAPI min fares per day (manual search path only).
@@ -27,6 +22,13 @@ export default function PriceCalendarModal({
   origin = "",
   destination = "",
 }) {
+  const { formatMoney, symbol } = useCurrency();
+
+  const formatShortPrice = (price) => {
+    if (typeof price !== "number" || !(price > 0)) return null;
+    if (price >= 100000) return `${symbol}${Math.round(price / 1000)}k`;
+    return formatMoney(price);
+  };
   const initial = departDate ? new Date(`${departDate}T00:00:00`) : new Date();
   const [currentDate, setCurrentDate] = useState(
     new Date(initial.getFullYear(), initial.getMonth(), 1)
@@ -98,7 +100,7 @@ export default function PriceCalendarModal({
             <div>
               <h2 className={styles["header-title"]}>Price calendar</h2>
               <p className={styles["header-subtitle"]}>
-                {routeLabel} — live LiteAPI lowest fares (empty days have no offers).
+                {routeLabel} - live lowest fares (empty days have no offers).
               </p>
             </div>
           </div>
@@ -188,7 +190,7 @@ export default function PriceCalendarModal({
                         {priceLabel}
                       </span>
                     ) : (
-                      <span className={styles["price-text"]}>—</span>
+                      <span className={styles["price-text"]}>-</span>
                     )}
                   </button>
                 );

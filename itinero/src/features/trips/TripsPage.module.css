@@ -1,0 +1,351 @@
+.page {
+  --ink: #001438;
+  --accent: #f97211;
+  --accent-deep: #e5670f;
+  --muted: #5b6b7f;
+  --line: #e8edf2;
+
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 18px 100px;
+  font-family: Outfit, var(--font-sans), system-ui, sans-serif;
+  color: var(--ink);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 20px;
+  margin-bottom: 22px;
+}
+
+.kicker {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.9rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.lede {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 4px;
+  background: #f4f7fb;
+  border-radius: 999px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.tab,
+.tabOn {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabOn {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 20, 56, 0.08);
+}
+
+.tab span,
+.tabOn span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--accent);
+  background: #fff7ed;
+  border-radius: 999px;
+  min-width: 1.25rem;
+  padding: 1px 6px;
+  text-align: center;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px 16px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: #fdba74;
+  box-shadow: 0 8px 22px rgba(0, 20, 56, 0.06);
+  outline: none;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.status {
+  font-size: 0.72rem;
+  font-weight: 750;
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.tonePaid {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.toneHold {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.toneDraft {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.toneMuted {
+  background: #f2f4f7;
+  color: #64748b;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.cardDetail {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.cardFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.meta strong {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.pnr {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btnPrimary,
+.btnSoft,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 750;
+  cursor: pointer;
+  text-decoration: none;
+  border: 0;
+}
+
+.btnPrimary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: var(--accent-deep);
+}
+
+.btnSoft {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.btnSoft:hover {
+  border-color: #fdba74;
+  background: #fffaf5;
+}
+
+.btnGhost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+}
+
+.btnGhost:hover {
+  color: var(--ink);
+  border-color: #cbd5e1;
+}
+
+.btnGhost:disabled,
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.empty {
+  border: 1px dashed #d5dde6;
+  border-radius: 18px;
+  padding: 36px 22px;
+  text-align: center;
+  background: #fafbfc;
+}
+
+.empty h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.empty p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.emptyLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.emptyLinks a {
+  color: var(--accent);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.emptyLinks a:hover {
+  text-decoration: underline;
+}
+
+.msgOk,
+.msgErr {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  font-weight: 650;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.msgOk {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.msgErr {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+/* Keep unused legacy classnames from blowing up if referenced elsewhere */
+.headline,
+.sub,
+.chip,
+.typeChip,
+.timeline,
+.dateGroup,
+.cardAccent,
+.cardInner,
+.tripHead,
+.legs,
+.leg,
+.emptyWrap,
+.startGrid,
+.ideas {
+  /* no-op placeholders removed in JSX */
+}

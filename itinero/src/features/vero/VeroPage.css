@@ -1,27 +1,36 @@
-/* Vero chat — sidebar shell, empty-state tiles, pill composer */
+/* Vero chat - sidebar shell, empty-state tiles, pill composer */
 
 .vero-shell-main {
   min-height: 100vh;
+  height: 100vh;
+  max-height: 100dvh;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0 !important;
+  overflow: hidden;
 }
 
 .vero-shell {
-  --vero-ink: #1a1d21;
-  --vero-muted: #6b7280;
+  --vero-ink: #001438;
+  --vero-muted: #5b6573;
   --vero-accent: #f97211;
   --vero-accent-soft: #fff4eb;
-  --vero-line: #e8ebef;
+  --vero-line: #e6eaef;
   --vero-surface: #ffffff;
-  --vero-bg: #f2f2f2;
-  --vero-sidebar: #f7f7f8;
-  --vero-nav-active: #e8eef6;
-  --vero-nav-width: 248px;
+  --vero-bg: #f3f5f8;
+  --vero-sidebar: #fafbfc;
+  --vero-nav-active: #fff1e6;
+  --vero-nav-width: 280px;
+  font-family: var(--font-sans);
 
   display: flex;
   min-height: 100vh;
   height: 100vh;
   max-height: 100dvh;
-  background: var(--vero-bg);
+  background:
+    radial-gradient(900px 420px at 72% -8%, rgba(249, 114, 17, 0.1), transparent 55%),
+    radial-gradient(700px 360px at 0% 100%, rgba(0, 20, 56, 0.05), transparent 50%),
+    var(--vero-bg);
   color: var(--vero-ink);
   overflow: hidden;
   position: relative;
@@ -31,106 +40,32 @@
   display: none;
 }
 
-/* ── Sidebar ── */
-.vero-sidebar {
-  width: var(--vero-nav-width);
-  flex-shrink: 0;
-  background: var(--vero-sidebar);
-  border-right: 1px solid #eceef1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px 14px 24px;
-  gap: 28px;
-  z-index: 30;
-}
-
-.vero-sidebar__brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 8px;
-}
-
-.vero-sidebar__avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #ffe8d6;
-  flex-shrink: 0;
-}
-
-.vero-sidebar__brand-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.vero-sidebar__name {
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--vero-ink);
-  letter-spacing: -0.02em;
-}
-
-.vero-sidebar__tag {
-  font-size: 12px;
-  color: var(--vero-muted);
-  margin-top: 2px;
-}
-
-.vero-sidebar__nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.vero-sidebar__item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: #4b5563;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-  border-radius: 12px;
-  padding: 11px 14px;
-  min-height: 44px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.vero-sidebar__item:hover {
-  background: #eef1f4;
-  color: var(--vero-ink);
-}
-
-.vero-sidebar__item--active {
-  background: var(--vero-nav-active);
-  color: var(--vero-ink);
-  font-weight: 600;
-}
-
-.vero-sidebar__item svg {
-  flex-shrink: 0;
-  opacity: 0.85;
-}
-
 /* ── Main column ── */
 .vero-page {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--vero-bg);
+  background: transparent;
   position: relative;
   height: 100%;
+}
+
+.vero-page.is-voice {
+  background: #f8f9fa;
+}
+
+.vero-page.is-voice .vero-page__thread,
+.vero-page.is-voice .vero-page__composer,
+.vero-page.is-voice .vero-page__dock,
+.vero-page.is-voice .vero-page__error,
+.vero-page.is-voice .vero-page__reopen-picker {
+  display: none;
+}
+
+.vero-page.is-voice .vero-page__topbar {
+  background: #fff;
+  border-bottom-color: #ebebeb;
 }
 
 .vero-page__topbar {
@@ -140,6 +75,7 @@
   justify-content: space-between;
   padding: 14px 18px 8px;
   gap: 12px;
+  background: transparent;
 }
 
 .vero-page__topbar-actions {
@@ -152,9 +88,9 @@
 .vero-page__icon-btn {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 12px;
   border: 1px solid #e3e6ea;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
   color: #374151;
   display: grid;
   place-items: center;
@@ -194,91 +130,113 @@
 .vero-page__thread {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 8px 24px 12px;
+  padding: 8px 24px 20px;
   scroll-behavior: smooth;
 }
 
 .vero-page__thread--empty {
   justify-content: center;
   align-items: center;
-  padding-bottom: 8vh;
+  padding: 28px 24px 12px;
 }
 
 .vero-page__empty {
-  width: min(560px, 100%);
+  width: 100%;
+  max-width: 640px;
+  box-sizing: border-box;
+  padding: 0 8px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: vero-in 0.35s ease;
+  gap: 28px;
+  animation: vero-in 0.4s ease;
+}
+
+.vero-page__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .vero-page__hero-avatar {
-  width: 88px;
-  height: 88px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center center;
   background: #ffe8d6;
-  box-shadow: 0 8px 28px rgba(17, 24, 39, 0.08);
-  margin-bottom: 18px;
+  box-shadow:
+    0 0 0 6px rgba(255, 255, 255, 0.85),
+    0 14px 36px rgba(0, 20, 56, 0.1);
+  margin: 0 0 18px;
+  flex-shrink: 0;
 }
 
 .vero-page__hello {
   margin: 0;
-  font-size: clamp(1.75rem, 3.5vw, 2.15rem);
-  font-weight: 750;
-  letter-spacing: -0.03em;
+  font-size: clamp(2rem, 4vw, 2.55rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
   color: var(--vero-ink);
-  line-height: 1.15;
+  line-height: 1.05;
 }
 
 .vero-page__role {
-  margin: 8px 0 0;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #6b7280;
+  margin: 10px 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #475467;
 }
 
 .vero-page__hint {
-  margin: 14px 0 0;
-  color: #7b8494;
-  font-size: 0.92rem;
+  margin: 12px 0 0;
+  color: #667085;
+  font-size: 0.95rem;
   line-height: 1.55;
-  max-width: 26rem;
+  max-width: 28rem;
 }
 
 .vero-page__tiles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  width: min(520px, 100%);
-  margin-top: 28px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 580px;
+  box-sizing: border-box;
 }
 
 .vero-tile {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #eceff3;
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px 10px 14px;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid rgba(0, 20, 56, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  padding: 14px 14px 13px;
   cursor: pointer;
-  min-height: 108px;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  min-height: 0;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .vero-tile:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
-  border-color: #ffd4b5;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+  border-color: rgba(249, 114, 17, 0.35);
+}
+
+.vero-tile:focus-visible {
+  outline: 3px solid #f97211;
+  outline-offset: 2px;
 }
 
 .vero-tile:disabled {
@@ -287,25 +245,34 @@
 }
 
 .vero-tile__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--vero-accent-soft);
   color: var(--vero-accent);
   display: grid;
   place-items: center;
-  margin-bottom: 2px;
+}
+
+.vero-tile__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .vero-tile__title {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 750;
   color: var(--vero-ink);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .vero-tile__subtitle {
-  font-size: 10.5px;
-  line-height: 1.3;
-  color: #9aa3af;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #667085;
   font-weight: 500;
-  max-width: 9.5em;
 }
 
 /* Follow-up chips under the latest assistant reply */
@@ -317,12 +284,19 @@
   max-width: 100%;
 }
 
+.vero-page__dock .vero-page__followups {
+  justify-content: center;
+  margin: 0 auto 10px;
+  max-width: min(720px, 100%);
+  padding: 0 4px;
+}
+
 .vero-page__followup {
   border: 1px solid #ffd4b5;
-  background: var(--vero-accent-soft);
-  color: #b45309;
-  border-radius: 999px;
-  padding: 8px 13px;
+  background: #fff;
+  color: #c2410c;
+  border-radius: 10px;
+  padding: 8px 12px;
   font-size: 12.5px;
   font-weight: 600;
   line-height: 1.3;
@@ -334,7 +308,7 @@
 
 .vero-page__followup:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: #ffe8d6;
+  background: var(--vero-accent-soft);
   border-color: #ffc08a;
 }
 
@@ -344,7 +318,6 @@
 }
 
 .vero-page__icon-btn:focus-visible,
-.vero-sidebar__item:focus-visible,
 .vero-tile:focus-visible,
 .vero-page__followup:focus-visible,
 .vero-page__composer input:focus-visible,
@@ -559,26 +532,32 @@
   border: 1px solid #fecdca;
 }
 
-/* ── Pill composer ── */
-.vero-page__composer {
+/* ── Composer dock ── */
+.vero-page__dock {
   flex-shrink: 0;
-  padding: 8px 24px 22px;
+  padding: 4px 24px 20px;
+  background: linear-gradient(180deg, transparent 0%, rgba(243, 245, 248, 0.92) 32%, #f3f5f8 100%);
+}
+
+.vero-page__composer {
   display: flex;
   justify-content: center;
-  background: linear-gradient(180deg, transparent 0%, var(--vero-bg) 28%);
+  padding: 0;
 }
 
 .vero-page__composer-shell {
   width: min(720px, 100%);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 999px;
+  border: 1px solid #e4e7ec;
+  border-radius: 18px;
   padding: 8px 10px 8px 8px;
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
-  min-height: 58px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px rgba(15, 23, 42, 0.06);
+  min-height: 56px;
 }
 
 .vero-page__composer input {
@@ -593,16 +572,16 @@
 }
 
 .vero-page__composer input::placeholder {
-  color: #9ca3af;
+  color: #98a2b3;
 }
 
 .vero-page__composer-tool {
   width: 40px;
   height: 40px;
   border: none;
-  border-radius: 50%;
+  border-radius: 12px;
   background: transparent;
-  color: #6b7280;
+  color: #667085;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -610,41 +589,64 @@
 }
 
 .vero-page__composer-tool:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: #f2f4f7;
   color: var(--vero-ink);
-}
-
-.vero-page__composer-tool.is-listening {
-  background: var(--vero-accent-soft);
-  color: var(--vero-accent);
-}
-
-.vero-page__composer-tool:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .vero-page__send {
   width: 40px;
   height: 40px;
   border: none;
-  border-radius: 50%;
-  background: #111827;
+  border-radius: 12px;
+  background: var(--vero-accent);
   color: #fff;
   display: grid;
   place-items: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .vero-page__send:hover:not(:disabled) {
-  background: #000;
+  background: #e5670f;
 }
 
 .vero-page__send:disabled {
-  opacity: 1;
-  background: #1f2937;
+  opacity: 0.45;
+  background: #98a2b3;
+  cursor: not-allowed;
+}
+
+.vero-page__voice-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.vero-page__composer .vero-voice-call {
+  padding: 12px 0 4px;
+}
+
+.vero-page__composer-tool.is-listening {
+  background: #fee2e2;
+  color: #b91c1c;
+  animation: vero-page-mic-pulse 1.1s ease-in-out infinite;
+}
+
+.vero-page__composer-tool.is-thinking,
+.vero-page__composer-tool.is-speaking {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+@keyframes vero-page-mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(185, 28, 28, 0); }
+}
+
+.vero-page__composer-tool:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -948,6 +950,189 @@
 }
 
 /* ── In-chat place / restaurant cards ── */
+.vero-trains {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  width: min(100%, 520px);
+}
+
+.vero-trains__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vero-ink);
+}
+
+.vero-trains__head strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.vero-trains__head span {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vero-muted);
+  text-transform: capitalize;
+}
+
+.vero-trains__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vero-train-card {
+  background: #fff;
+  border: 1px solid var(--vero-line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 6px rgba(11, 31, 51, 0.04);
+}
+
+.vero-train-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.vero-train-card__id em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #f97211;
+}
+
+.vero-train-card__id strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--vero-ink);
+  letter-spacing: -0.01em;
+}
+
+.vero-train-card__badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #b45309;
+  background: #fff4eb;
+  border: 1px solid #ffd4b5;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.vero-train-card__badge--kind {
+  color: #334155;
+  background: #f8fafc;
+  border-color: #e8ecf0;
+}
+
+.vero-train-card__row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.vero-train-card__row b {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--vero-ink);
+  letter-spacing: -0.03em;
+}
+
+.vero-train-card__row span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--vero-muted);
+}
+
+.vero-train-card__row > div:last-child {
+  text-align: right;
+}
+
+.vero-train-card__mid {
+  min-width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.vero-train-card__mid em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vero-muted);
+}
+
+.vero-train-card__mid i {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #c5ced8, transparent);
+}
+
+.vero-train-card__days {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.vero-train-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vero-train-card__actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #fff4eb;
+  border: 1px solid #ffd4b5;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.vero-train-card__actions a.is-ghost {
+  background: #f8fafc;
+  border-color: #e8ecf0;
+  color: #334155;
+}
+
+.vero-trains__more {
+  border: 1px solid var(--vero-line);
+  background: #fff;
+  color: var(--vero-ink);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 38px;
+}
+
 .vero-places {
   margin-top: 10px;
   display: flex;
@@ -978,11 +1163,48 @@
   background: #fff;
   border: 1px solid var(--vero-line);
   border-radius: 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(11, 31, 51, 0.04);
+}
+
+.vero-place-card__media {
+  flex: 0 0 96px;
+  width: 96px;
+  min-height: 96px;
+  background: #eef2f6;
+}
+
+.vero-place-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vero-place-card__body {
+  flex: 1;
+  min-width: 0;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 1px 6px rgba(11, 31, 51, 0.04);
+}
+
+@media (max-width: 480px) {
+  .vero-place-card {
+    flex-direction: column;
+  }
+  .vero-place-card__media {
+    flex-basis: auto;
+    width: 100%;
+    height: 140px;
+    min-height: 140px;
+  }
 }
 
 .vero-place-card__title-row {
@@ -1345,7 +1567,7 @@
 @media (max-width: 900px) {
   .vero-page__tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(360px, 100%);
+    max-width: 420px;
   }
 }
 
@@ -1364,34 +1586,24 @@
     cursor: pointer;
   }
 
-  .vero-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    height: 100%;
-    transform: translateX(-105%);
-    transition: transform 0.28s ease;
-    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.12);
-    background: #fff;
-  }
-
-  .vero-shell--nav-open .vero-sidebar {
-    transform: translateX(0);
-  }
-
   .vero-page__thread {
-    padding: 4px 14px 8px;
+    padding: 12px 16px 8px;
   }
 
   .vero-page__thread--empty {
-    padding-bottom: 4vh;
-    justify-content: flex-start;
-    padding-top: 6vh;
+    padding: 16px 16px 12px;
+  }
+
+  .vero-page__empty {
+    padding: 4px 8px 0;
   }
 
   .vero-page__composer {
     padding: 8px 12px 16px;
+  }
+
+  .vero-page__dock {
+    padding: 4px 12px 16px;
   }
 
   .vero-page__topbar {
@@ -1423,16 +1635,20 @@
 
 @media (max-width: 420px) {
   .vero-page__tiles {
+    grid-template-columns: 1fr;
     gap: 8px;
+    max-width: 280px;
   }
 
   .vero-tile {
-    min-height: 96px;
-    padding: 12px 8px;
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 14px;
   }
 
   .vero-page__composer-shell {
     min-height: 52px;
     padding: 6px;
+    border-radius: 16px;
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { SEARCH_FORM_IMAGES } from "@/constants/images";
-import { AIRPORTS } from "@/constants/airports";
+import useAirportSuggest from "@/features/flights/hooks/useAirportSuggest";
 import "./FlightSearchForm.css";
 
 // SVG for the airplane icon in dropdown
@@ -39,6 +39,9 @@ const LocationSearch = ({ label, icon, value, onChange, placeholder, onSelect, i
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const wrapperRef = useRef(null);
+  const { airports: filteredAirports, isLoading: airportSuggestLoading } = useAirportSuggest(query, {
+    enabled: isOpen,
+  });
 
   // Sync internal query with prop value
   useEffect(() => {
@@ -54,13 +57,6 @@ const LocationSearch = ({ label, icon, value, onChange, placeholder, onSelect, i
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const filteredAirports = AIRPORTS.filter(
-    (airport) =>
-      airport.city.toLowerCase().includes(query.toLowerCase()) ||
-      airport.code.toLowerCase().includes(query.toLowerCase()) ||
-      airport.name.toLowerCase().includes(query.toLowerCase())
-  );
 
   const handleSelect = (airport) => {
     const newValue = `${airport.city} (${airport.code})`;
@@ -113,7 +109,9 @@ const LocationSearch = ({ label, icon, value, onChange, placeholder, onSelect, i
                 </div>
               ))
             ) : (
-              <div className="search-dropdown__empty">No airports found</div>
+              <div className="search-dropdown__empty">
+                {airportSuggestLoading ? "Searching airports…" : "No airports found"}
+              </div>
             )}
           </div>
           <div className="search-dropdown__footer">

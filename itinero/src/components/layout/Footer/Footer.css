@@ -1,19 +1,52 @@
 /* ═══════════════════════════════════════════════════════
-   Footer — Itinero
+   Footer - Itinero
    Matches the reference design: white bg, 4-col grid,
    brand + socials | Product | Explore | Contact
    ═══════════════════════════════════════════════════════ */
 
 /* ── Shell ─────────────────────────────────────────────── */
 .footer {
-  /* background: #ffffff; */
-  border-top: 1px solid #c4c4c4;
+  background: #001439;
+  color: #e8edf4;
+  border-top: 3px solid #f97211;
 }
 
 .footer__inner {
-  max-width: 1600px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 56px 40px 0;
+  padding: 48px 40px 0;
+}
+
+.footer__inner--simple {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 40px 24px 28px;
+}
+
+.footer__tagline--center {
+  max-width: 420px;
+  margin: 0;
+}
+
+.footer__tagline em {
+  font-style: normal;
+  color: #f97211;
+  font-weight: 800;
+}
+
+.footer__simpleNav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+}
+
+.footer__helpCopy--center {
+  max-width: 420px;
+  margin: 0;
 }
 
 /* ── Top grid ───────────────────────────────────────────── */
@@ -31,26 +64,65 @@
   gap: 0;
 }
 
-.footer__logo {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 38px;
-  letter-spacing: 3px;
-  color: #001438;
-  line-height: 1;
+.footer__logoLink {
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 14px;
+  text-decoration: none;
 }
 
-.footer__logo em {
-  color: #f97211;
-  font-style: normal;
+.footer__logoImg {
+  height: 32px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-sizing: content-box;
 }
 
 .footer__tagline {
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.65;
-  color: #555;
-  margin: 0 0 20px;
-  max-width: 280px;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0 0 18px;
+  max-width: 320px;
+}
+
+.footer__vero {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  color: #fff;
+  max-width: 260px;
+}
+
+.footer__vero img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+}
+
+.footer__vero strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.footer__vero em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: #f7b27a;
+  font-weight: 600;
 }
 
 /* ── Social icons ───────────────────────────────────────── */
@@ -94,21 +166,29 @@
 }
 
 .footer__col-heading {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #111;
+  color: #f97211;
   margin: 0 0 4px;
 }
 
 .footer__col-link {
-  font-size: 15px;
-  font-weight: 500;
-  color: #6b6a6a;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
   text-decoration: none;
   line-height: 1.4;
   transition: color 0.2s;
+}
+
+.footer__helpCopy {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.68);
+  max-width: 280px;
 }
 
 .footer__col-link:hover {
@@ -153,10 +233,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-top: 1px solid #e0e0e0;
-  padding: 18px 0 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 16px 0 20px;
   font-size: 12.5px;
-  color: #444;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.footer__copy {
+  margin: 0;
 }
 
 .footer__bottom nav {

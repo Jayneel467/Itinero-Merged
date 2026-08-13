@@ -191,7 +191,7 @@ export const FLIGHT_DEALS = [
 // ─── Special Fares ───────────────────────────────────────
 export const SPECIAL_FARES = ["Student", "Senior Citizen", "Armed Force"];
 
-// ─── Why Choose Itinero — Features ───────────────────────
+// ─── Why Choose Itinero - Features ───────────────────────
 export const FEATURES = [
   {
     id: "plan-ai",

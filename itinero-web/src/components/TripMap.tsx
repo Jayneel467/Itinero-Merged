@@ -10,7 +10,7 @@ export type TripMapMarker = {
 };
 
 type TripMapProps = {
-  /** Explicit coordinates — preferred when available */
+  /** Explicit coordinates - preferred when available */
   markers?: TripMapMarker[];
   /** Geocode this place name when markers are empty */
   placeQuery?: string | null;
@@ -31,7 +31,7 @@ function hasValidCoords(m: TripMapMarker): boolean {
 
 /**
  * Client-only Google Map. Hides itself when the key is missing or load fails.
- * Does not throw — safe for App Router pages.
+ * Does not throw - safe for App Router pages.
  */
 export function TripMap(props: TripMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
@@ -91,7 +91,7 @@ function TripMapInner({
           },
         ]);
       } else {
-        // ZERO_RESULTS / REQUEST_DENIED / etc. — hide map quietly
+        // ZERO_RESULTS / REQUEST_DENIED / etc. - hide map quietly
         setFailed(true);
       }
     });

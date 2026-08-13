@@ -1,34 +1,60 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuthOptional } from "@/features/auth/context/AuthContext";
+import { Bell, Menu } from "lucide-react";
 import Sidebar from "../Sidebar/Sidebar";
 import LoginModal from "../../../features/auth/components/LoginModal";
 import Switch from "../../ui/sky-toggle";
 import RegionalModal from "../../shared/RegionalModal";
+import { useCurrency } from "@/context/CurrencyContext";
+import { useHomeLocationOptional } from "@/context/HomeLocationContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
+import { listFeed, unreadAlertCount } from "@/features/account/alertService";
 import "./Navbar.css";
 
 /**
- * Top navigation bar — uses Navbar.css class system
+ * Top navigation bar - uses Navbar.css class system
  * with built-in responsive breakpoints (1440 / 1024 / 768 / 480).
  */
 export default function Navbar({ centerContent = null }) {
+  const navigate = useNavigate();
+  const auth = useAuthOptional();
+  const { currency, symbol, setCurrency } = useCurrency();
+  const { language, languageFlag, setLanguage } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
+  const home = useHomeLocationOptional();
+  const regionalFlag = home?.countryFlag || languageFlag;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("en-US");
-  const [selectedLanguageFlag, setSelectedLanguageFlag] = useState("https://flagcdn.com/w40/us.png");
-  const [selectedCurrency, setSelectedCurrency] = useState("USD");
-  const [selectedCurrencySymbol, setSelectedCurrencySymbol] = useState("$");
-  const [defaultRegionalTab, setDefaultRegionalTab] = useState("language");
+  const [defaultRegionalTab, setDefaultRegionalTab] = useState("location");
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
+  const iconColor = isDark ? "#e8edf4" : "#001438";
+  const currencyColor = isDark ? "#e8edf4" : "#001439";
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
+    const refreshBadge = () => setUnreadAlerts(unreadAlertCount(listFeed()));
+    refreshBadge();
+    const onFocus = () => refreshBadge();
+    window.addEventListener("focus", onFocus);
+    const id = window.setInterval(refreshBadge, 15000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    const openRegional = (e) => {
+      const tab = e?.detail?.tab || "location";
+      setDefaultRegionalTab(tab);
+      setIsLanguageModalOpen(true);
+    };
+    window.addEventListener("itinero:open-regional", openRegional);
+    return () => window.removeEventListener("itinero:open-regional", openRegional);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,163 +66,149 @@ export default function Navbar({ centerContent = null }) {
 
   return (
     <>
-      <nav className={`navbar ${isScrolled ? 'navbar--scrolled' : ''}`}>
+      <nav className={`navbar ${isScrolled ? "navbar--scrolled" : ""}`}>
         <div className="navbar__inner relative z-[100]">
-
-          {/* Logo area: hamburger + brand */}
           <div className="navbar__logo">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="navbar__hamburger"
               aria-label="Toggle menu"
             >
-              
-              <img
-                src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/a43ymvp2_expires_30_days.png"
-                className="navbar__logo-icon"
-                alt="Menu"
-              />
+              <Menu size={22} strokeWidth={2.25} color={iconColor} aria-hidden />
             </button>
             <Link to="/">
-
-            <img
-              src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/5mm2143s_expires_30_days.png"
-              className="navbar__logo-text"
-              alt="Itinero Logo"
-            />
+              <img
+                src={`${import.meta.env.BASE_URL}itinero-logo.png`}
+                className="navbar__logo-text"
+                alt="Itinero"
+              />
             </Link>
           </div>
 
-          {/* Flexible spacer */}
           <div className="navbar__spacer"></div>
 
-          {/* Center Content */}
           {centerContent && (
-            <div className="navbar__centerContent hidden lg:flex" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+            <div className="navbar__centerContent hidden lg:flex">
               {centerContent}
             </div>
           )}
 
-          {/* Flexible spacer */}
-          <div className="navbar__spacer"></div>
+          <div className="navbar__actions">
+            <Link
+              to="/notifications"
+              className="navbar__bell"
+              aria-label={
+                unreadAlerts > 0 ? `Notifications, ${unreadAlerts} unread` : "Notifications"
+              }
+              title="Notifications"
+            >
+              <Bell size={20} strokeWidth={2.2} color={iconColor} aria-hidden />
+              {unreadAlerts > 0 ? (
+                <span className="navbar__bellBadge">{unreadAlerts > 9 ? "9+" : unreadAlerts}</span>
+              ) : null}
+            </Link>
 
-          {/* Currency Switcher */}
-          <button 
-            onClick={() => {
-              setDefaultRegionalTab('currency');
-              setIsLanguageModalOpen(true);
-            }}
-            style={{
-              fontSize: '20px',
-              fontWeight: 700,
-              color: '#001439',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              marginRight: '8px'
-            }}
-            className="hidden md:block dark:text-white hover:opacity-80 transition"
-          >
-            {selectedCurrency}
-          </button>
-
-          {/* Language Switcher */}
-          <button 
-            onClick={() => {
-              setDefaultRegionalTab('language');
-              setIsLanguageModalOpen(true);
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: '12px'
-            }}
-            className="hidden md:flex hover:scale-105 transition"
-          >
-            <img 
-              src={selectedLanguageFlag} 
-              alt="Selected Language Flag" 
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                boxShadow: '0px 1px 3px rgba(0,0,0,0.15)'
+            <button
+              type="button"
+              onClick={() => {
+                setDefaultRegionalTab("currency");
+                setIsLanguageModalOpen(true);
               }}
-            />
-          </button>
+              className="navbar__currency hidden md:block"
+              style={{ color: currencyColor }}
+              aria-label={`Currency ${currency}`}
+              title={`${symbol} ${currency}`}
+            >
+              {symbol} {currency}
+            </button>
 
-          {/* Theme Toggle */}
-          <div className="flex items-center" style={{ marginRight: '16px' }}>
-            <Switch isDarkMode={isDarkMode} onToggle={() => setIsDarkMode(!isDarkMode)} />
+            <button
+              type="button"
+              onClick={() => {
+                setDefaultRegionalTab("location");
+                setIsLanguageModalOpen(true);
+              }}
+              className="navbar__flag hidden md:flex"
+              aria-label={
+                home?.originLabel
+                  ? `Home location ${home.originLabel}`
+                  : "Set home location"
+              }
+              title={
+                home?.hasOrigin
+                  ? `${home.originLabel} · ${home.passportLabel}`
+                  : "Set home airport & passport"
+              }
+            >
+              <img src={regionalFlag} alt="" />
+            </button>
+
+            <div className="navbar__theme">
+              <Switch
+                isDarkMode={isDark}
+                onToggle={toggleTheme}
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                auth?.isAuthenticated ? navigate("/profile") : setIsLoginModalOpen(true)
+              }
+              aria-label="Account menu"
+              className="navbar__profile-btn hover:opacity-90 hover:scale-105 transition"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </button>
           </div>
-
-          {/* Primary action button */}
-          <button
-            onClick={() => setIsLoginModalOpen(true)}
-            aria-label="Account menu"
-            style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '50%',
-              background: '#001439',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0px 2px 5px rgba(0,0,0,0.15)'
-            }}
-            className="hover:opacity-90 hover:scale-105 transition navbar__profile-btn"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-          </button>
-
         </div>
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
-          selectedLanguage={selectedLanguage}
-          selectedLanguageFlag={selectedLanguageFlag}
-          selectedCurrency={selectedCurrency}
-          selectedCurrencySymbol={selectedCurrencySymbol}
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          selectedLanguage={language}
+          selectedLanguageFlag={languageFlag}
+          selectedCurrency={currency}
+          selectedCurrencySymbol={symbol}
           onOpenCurrencyModal={() => {
-            setDefaultRegionalTab('currency');
+            setDefaultRegionalTab("currency");
             setIsLanguageModalOpen(true);
             setIsSidebarOpen(false);
           }}
           onOpenLanguageModal={() => {
-            setDefaultRegionalTab('language');
+            setDefaultRegionalTab("language");
             setIsLanguageModalOpen(true);
             setIsSidebarOpen(false);
           }}
         />
       </nav>
-      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
-      
-      <RegionalModal 
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={() => setIsLoginModalOpen(false)}
+      />
+
+      <RegionalModal
         isOpen={isLanguageModalOpen}
         onClose={() => setIsLanguageModalOpen(false)}
         defaultTab={defaultRegionalTab}
-        selectedLanguage={selectedLanguage}
-        onSelectLanguage={(code, flag) => {
-          setSelectedLanguage(code);
-          setSelectedLanguageFlag(flag);
-        }}
-        selectedCurrency={selectedCurrency}
-        onSelectCurrency={(code, symbol) => {
-          setSelectedCurrency(code);
-          setSelectedCurrencySymbol(symbol);
-        }}
+        selectedLanguage={language}
+        onSelectLanguage={(code) => setLanguage(code)}
+        selectedCurrency={currency}
+        onSelectCurrency={setCurrency}
       />
     </>
   );

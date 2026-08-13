@@ -1,0 +1,317 @@
+.vero-cards {
+  margin-top: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.vero-cards__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.vero-cards__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #001439;
+}
+
+.vero-cards__subtitle {
+  font-size: 12px;
+  color: #667085;
+  margin-top: 2px;
+}
+
+.vero-cards__deck {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vero-cards__deck--stack {
+  flex-direction: column;
+  overflow-x: visible;
+  scroll-snap-type: none;
+  gap: 10px;
+}
+
+.vero-cards__deck::-webkit-scrollbar {
+  height: 4px;
+}
+
+.vero-cards__deck::-webkit-scrollbar-thumb {
+  background: #f9c9a8;
+  border-radius: 4px;
+}
+
+.vero-hotel-card,
+.vero-flight-card {
+  flex: 0 0 auto;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #eceff3;
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 6px 18px rgba(0, 20, 57, 0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.vero-hotel-card--rich {
+  flex-direction: row;
+  min-height: 112px;
+}
+
+.vero-hotel-card:hover,
+.vero-flight-card:hover {
+  border-color: #ffd9bf;
+}
+
+.vero-hotel-card__media {
+  position: relative;
+  flex: 0 0 96px;
+  width: 96px;
+  background: #fff4eb;
+}
+
+.vero-hotel-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  min-height: 112px;
+}
+
+.vero-hotel-card__img-fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 800;
+  color: #f97211;
+  background: linear-gradient(145deg, #fff4eb, #ffe4cc);
+}
+
+.vero-hotel-card__opt {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 20, 57, 0.72);
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+.vero-hotel-card__body {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vero-flight-card {
+  padding: 14px;
+  gap: 8px;
+}
+
+.vero-hotel-card__top,
+.vero-flight-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.vero-hotel-card__rating {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b54708;
+  background: #fff6ed;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.vero-chip {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475467;
+  background: #f2f4f7;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.vero-chip--green {
+  color: #067647;
+  background: #ecfdf3;
+}
+
+.vero-hotel-card__name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #001439;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vero-hotel-card__addr,
+.vero-hotel-card__room {
+  margin: 0;
+  font-size: 12px;
+  color: #667085;
+  line-height: 1.35;
+}
+
+.vero-hotel-card__addr {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vero-hotel-card__bottom {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.vero-hotel-card__price {
+  font-size: 15px;
+  font-weight: 800;
+  color: #001439;
+}
+
+.vero-hotel-card__price span {
+  font-size: 11px;
+  font-weight: 500;
+  color: #98a2b3;
+  margin-left: 2px;
+}
+
+.vero-hotel-card__btn {
+  border: none;
+  background: #f97211;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vero-hotel-card__btn:hover {
+  background: #ea580c;
+}
+
+.vero-flight-card__airline {
+  font-size: 14px;
+  font-weight: 700;
+  color: #001439;
+  display: inline;
+}
+
+.vero-flight-card__code {
+  font-size: 12px;
+  color: #98a2b3;
+}
+
+.vero-flight-card__route {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vero-flight-card__time {
+  font-size: 16px;
+  font-weight: 800;
+  color: #001439;
+}
+
+.vero-flight-card__iata {
+  font-size: 12px;
+  color: #667085;
+}
+
+.vero-flight-card__mid {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: #98a2b3;
+}
+
+.vero-flight-card__line {
+  height: 1px;
+  background: #e4e7ec;
+  margin: 4px 0;
+}
+
+.vero-answer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vero-answer-chip {
+  border: 1px solid #ffd9bf;
+  background: #fff7f0;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.3;
+}
+
+.vero-answer-chip:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.vero-answer-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.vero-msg-md p {
+  margin: 0 0 8px;
+}
+
+.vero-msg-md p:last-child {
+  margin-bottom: 0;
+}
+
+.vero-msg-md ul {
+  margin: 6px 0 8px;
+  padding-left: 18px;
+}
+
+.vero-msg-md li {
+  margin: 2px 0;
+}
+
+.vero-msg-md strong {
+  font-weight: 700;
+}

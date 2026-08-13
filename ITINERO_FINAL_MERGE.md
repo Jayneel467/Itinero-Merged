@@ -35,7 +35,7 @@ Manual OTA pages (flights/hotels forms) can still use `supervisor` on `:8000` fo
 |--------|------|
 | `jigar` | Best merged General ↔ Itinerary + card UI (`ui/`) — **base of this branch** |
 | `manish` | Deep itinerary backend (hotels rooms, distance, etc.) — already in jigar ancestry |
-| `amit` | Live Hotels LiteAPI on product Hotels page + `HOTEL_BOOKING_AGENT` |
+| `amit` | Live Hotels LiteAPI on product Hotels page (now in `supervisor/hotel_structured.py`) |
 | `tanu` | Hotel booking agent cleanup |
 | `main` | Supervisor gateway + product `itinero` frontend (older than manish/jigar stack) |
 

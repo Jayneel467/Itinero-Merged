@@ -1,0 +1,311 @@
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 20px 72px;
+  color: #001439;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  color: #f97211;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.wrap h1 {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.meta {
+  margin: 10px 0 4px;
+  color: #637588;
+}
+
+.meta code,
+.refs code {
+  font-size: 12px;
+  background: #f0f4f8;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.honesty {
+  margin: 0 0 16px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.emailBanner {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.docActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.feedbackOk {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #047857;
+  font-weight: 600;
+}
+
+.feedbackErr {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.itineraryDoc {
+  border-color: #fed7aa;
+  background: linear-gradient(180deg, #fffaf5 0%, #fff 120px);
+}
+
+.itineraryDocHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.docEyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f97211;
+}
+
+.docBadge {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #001439;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.cardWide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e8edf2;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 20, 57, 0.05);
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.card ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.card li {
+  margin-bottom: 12px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.card li strong {
+  display: block;
+  color: #001439;
+  margin-bottom: 2px;
+}
+
+.hotel {
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0 0 8px !important;
+  color: #001439 !important;
+}
+
+.refs {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #637588;
+  line-height: 1.6;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 10px 16px;
+  color: #f97211;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 10px;
+}
+
+.link:hover {
+  background: #fff7ed;
+}
+
+.actions {
+  margin-top: 24px;
+}
+
+.summaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 18px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e8edf2;
+}
+
+@media (max-width: 720px) {
+  .summaryStrip {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stripLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #637588;
+  margin-bottom: 4px;
+}
+
+.summaryStrip strong {
+  display: block;
+  color: #001438;
+  font-size: 16px;
+}
+
+.summaryStrip p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #637588;
+}
+
+.cardHint {
+  margin: -4px 0 14px;
+  font-size: 13px;
+  color: #637588;
+  line-height: 1.45;
+}
+
+.subhead {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.bulletList,
+.bulletListMuted {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bulletList {
+  color: #001438;
+}
+
+.bulletListMuted {
+  color: #637588;
+}
+
+.estimateGrid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.estimateGrid dt {
+  color: #637588;
+  font-weight: 600;
+}
+
+.estimateGrid dd {
+  margin: 0;
+  color: #001438;
+  font-weight: 700;
+}
+
+.note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.knowGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.knowItem {
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e8edf2;
+}
+
+.knowItem strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #001438;
+  font-size: 14px;
+}
+
+.knowItem p {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.45;
+}

@@ -55,7 +55,7 @@ from flight_agent.services.flight_service import FlightService
 
 logger = get_logger(__name__)
 
-MAX_OFFERS_SHOWN = 5
+MAX_OFFERS_SHOWN = 12
 
 TOOL_TO_INTENT: dict[str, FlightIntent] = {
     "search_flights": FlightIntent.SEARCH_FLIGHTS,

@@ -1,0 +1,155 @@
+/* Shared Vero chat bubbles - orange user, white bot + avatar, in-bubble time */
+
+.vero-m {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.vero-m--user {
+  justify-content: flex-end;
+}
+
+.vero-m__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.vero-m__col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(88%, 520px);
+}
+
+.vero-m--user .vero-m__col {
+  align-items: flex-end;
+  max-width: min(85%, 480px);
+}
+
+.vero-m--cards .vero-m__col {
+  max-width: min(100%, 420px);
+}
+
+.vero-m__bubble {
+  width: fit-content;
+  max-width: 100%;
+  padding: 12px 16px 8px;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.vero-m--bot .vero-m__bubble {
+  background: #ffffff;
+  border: 1px solid #e6e6e6;
+  color: #2a2a2a;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.vero-m--user .vero-m__bubble {
+  background: #f97211;
+  color: #ffffff;
+  border: none;
+  border-radius: 18px 18px 5px 18px;
+}
+
+.vero-m__text {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.vero-m__bubble .vero-msg-md,
+.vero-m__bubble .vero-msg-md p,
+.vero-m__bubble p {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.vero-m__bubble .vero-msg-md p + p,
+.vero-m__bubble .vero-msg-md .vero-md-h + p,
+.vero-m__bubble .vero-msg-md p + .vero-md-h {
+  margin-top: 0.45em;
+}
+
+.vero-m__bubble .vero-md-h {
+  font-weight: 700;
+}
+
+.vero-m__bubble .vero-msg-md ul {
+  margin: 6px 0 4px;
+  padding-left: 1.15em;
+}
+
+.vero-m__bubble .vero-msg-md li {
+  margin-bottom: 3px;
+}
+
+.vero-m__bubble .vero-msg-md a {
+  color: #c2410c;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.vero-m--user .vero-m__bubble a {
+  color: #fff;
+}
+
+.vero-m__bubble strong {
+  font-weight: 700;
+  color: inherit;
+}
+
+.vero-m__time {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: right;
+  line-height: 1;
+}
+
+.vero-m--bot .vero-m__time {
+  color: #b0b0b0;
+}
+
+.vero-m--user .vero-m__time {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.vero-m__bubble--typing {
+  padding: 12px 16px;
+  min-width: 72px;
+}
+
+.vero-m__bubble--typing .vero-page__typing {
+  padding: 0;
+  color: #555;
+  font-size: 13.5px;
+}
+
+.vero-chat-messages,
+.vero-fs-chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

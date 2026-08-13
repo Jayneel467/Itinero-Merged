@@ -1,0 +1,401 @@
+.page {
+  background:
+    radial-gradient(ellipse 70% 40% at 50% -8%, rgba(249, 114, 17, 0.1), transparent 55%),
+    #f4f6fb;
+  min-height: 100vh;
+  padding: 20px 20px 96px;
+}
+
+.wrap {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.back {
+  display: inline-flex;
+  margin-bottom: 14px;
+  color: #e86a10;
+  font-weight: 800;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.hero {
+  background: #001439;
+  color: #fff;
+  border-radius: 24px;
+  padding: 28px 28px 26px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  top: -60px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(249, 114, 17, 0.35), transparent 70%);
+  pointer-events: none;
+}
+
+.heroTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f7b27a;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.meta {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: capitalize;
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.badgeHeld {
+  background: #fff;
+  color: #001439;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+.badgeDraft {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.badgeCancelled,
+.badgeAbandoned {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.btnPrimary {
+  background: #f97211;
+  color: #fff;
+}
+
+.btnGhost {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.btnLight {
+  background: #fff;
+  color: #001439;
+  border: 1px solid #e4e7ec;
+}
+
+.btnDanger {
+  background: #fff;
+  color: #b42318;
+  border: 1px solid #fecdca;
+}
+
+.msg {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.msgOk {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.msgErr {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e8eaef;
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.06);
+  padding: 22px;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #001439;
+  letter-spacing: -0.02em;
+}
+
+.flightHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.airline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.airlineName {
+  font-weight: 800;
+  color: #001439;
+}
+
+.flightNo {
+  font-size: 13px;
+  color: #667085;
+  font-weight: 600;
+}
+
+.price {
+  font-size: 22px;
+  font-weight: 900;
+  color: #001439;
+  letter-spacing: -0.03em;
+  text-align: right;
+}
+
+.route {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.time {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: #001439;
+}
+
+.iata {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.city {
+  font-size: 13px;
+  color: #667085;
+}
+
+.mid {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #98a2b3;
+}
+
+.refs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.refLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #98a2b3;
+}
+
+.refValue {
+  margin-top: 4px;
+  font-weight: 800;
+  color: #001439;
+  word-break: break-all;
+  font-size: 13px;
+}
+
+.airports {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.airportCard {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.airportCard h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #001439;
+}
+
+.airportCard p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #667085;
+  line-height: 1.4;
+}
+
+.term {
+  font-weight: 800;
+  color: #001439 !important;
+}
+
+.paxList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.paxChip {
+  background: #f8fafc;
+  border: 1px solid #e8eaef;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.contact {
+  margin: 0 0 12px;
+  color: #475467;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.vero {
+  background: #001439;
+  color: #fff;
+  border-radius: 20px;
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.vero img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+}
+
+.veroKicker {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f7b27a;
+}
+
+.vero h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.vero p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.45;
+}
+
+.hotelRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid #f2f4f7;
+}
+
+.hotelRow:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+@media (max-width: 760px) {
+  .route,
+  .refs,
+  .airports,
+  .vero,
+  .heroTop {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .price,
+  .heroTop {
+    text-align: left;
+  }
+}

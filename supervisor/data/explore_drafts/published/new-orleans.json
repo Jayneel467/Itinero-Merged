@@ -1,0 +1,38 @@
+{
+  "id": "new-orleans",
+  "slug": "new-orleans",
+  "city": "New Orleans",
+  "country": "USA",
+  "continent": "americas",
+  "iata": "MSY",
+  "themes": [
+    "city",
+    "food",
+    "culture"
+  ],
+  "imageId": "photo-1569949381669-ecf31ae8e613",
+  "blurb": "Jazz nights, Creole tables, and Mississippi light.",
+  "trendingScore": 86,
+  "minTripDays": 3,
+  "lat": 29.95,
+  "lng": -90.07,
+  "markets": [
+    "US",
+    "*"
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "US",
+    "authoredAt": "2026-08-12T16:42:39Z",
+    "author": "explore_factory.author.seed",
+    "checkedAt": "2026-08-12T16:42:39Z",
+    "checker": "explore_factory.checker",
+    "checkIssues": [],
+    "reverifiedAt": "2026-08-12T16:42:39Z",
+    "reverifier": "explore_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

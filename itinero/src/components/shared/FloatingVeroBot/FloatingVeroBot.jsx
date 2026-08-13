@@ -4,7 +4,7 @@ import { AI_BUDDY_IMAGES } from "@/constants/images";
 import "./FloatingVeroBot.css";
 
 /**
- * Sticky "Ask For Vero" bot — opens the Vero chat page.
+ * Sticky "Ask For Vero" bot - opens the Vero chat page.
  */
 export default function FloatingVeroBot() {
   return (

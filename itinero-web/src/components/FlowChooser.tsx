@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-/** Two clear entry points — Manual vs AI — without mixing UXs. */
+/** Two clear entry points - Manual vs AI - without mixing UXs. */
 export function FlowChooser() {
   return (
     <div
@@ -36,7 +36,7 @@ export function FlowChooser() {
           Vero plans with you
         </p>
         <p className="mt-2 text-[13px] leading-relaxed text-white/75">
-          Chat-first journey: research, flights, hotels, and itineraries —
+          Chat-first journey: research, flights, hotels, and itineraries -
           all through Vero, your AI travel buddy.
         </p>
         <span className="mt-4 inline-flex text-[13px] font-bold text-white group-hover:underline">

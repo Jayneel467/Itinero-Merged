@@ -1,8 +1,36 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, CreditCard, Download, ExternalLink, Smartphone, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, CreditCard, Download, ExternalLink, X } from "lucide-react";
+import {
+  readLocalStripePublishableKey,
+  resolveLiteApiPublishableKey,
+} from "@/features/booking/services/liteApiPaymentSdk";
+import { loadStripeJs, resetStripeJsLoader } from "@/features/booking/services/loadStripeJs";
 import { flightService } from "@/features/flights/services/flightService";
 import { downloadBookingConfirmationPdf } from "@/features/booking/utils/bookingConfirmationPdf";
+import { tripService } from "@/features/trips/tripService";
+import {
+  saveFlightConfirmation,
+  bookingRefFromPayment,
+} from "@/features/flights/utils/flightCheckout";
+import { persistSelectedFlight } from "@/features/flights/utils/persistSelectedFlight";
+import {
+  emptyTraveller,
+  loadSavedPaxStore,
+  saveSavedPaxStore,
+} from "@/features/booking/utils/savedTravellers";
+import FlightExtrasStep from "./FlightExtrasStep";
+import { LoadingDots, LoadingState } from "@/components/shared";
+import { NAVBAR_IMAGES } from "@/constants/images";
 import styles from "./BookingPopup.module.css";
+
+const BOOKING_STEPS = [
+  { id: "form", label: "Passengers" },
+  { id: "review", label: "Review" },
+  { id: "extras", label: "Extras" },
+  { id: "payment", label: "Pay" },
+  { id: "done", label: "Done" },
+];
 
 const INDIAN_AIRPORTS = new Set([
   "BOM", "DEL", "BLR", "MAA", "CCU", "HYD", "PNQ", "GOI", "AMD", "COK",
@@ -11,7 +39,6 @@ const INDIAN_AIRPORTS = new Set([
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[0-9]{8,15}$/;
-const SAVED_PAX_KEY = "itinero_vero_saved_pax";
 const PLACEHOLDER_PHONES = new Set([
   "0000000000",
   "1111111111",
@@ -75,6 +102,7 @@ function ageOnDate(dobIso, onIso) {
   return years;
 }
 
+
 function softenBookingError(message) {
   const raw = String(message || "");
   const lower = raw.toLowerCase();
@@ -88,29 +116,19 @@ function softenBookingError(message) {
     if (lower.includes("birthday") || lower.includes("age") || lower.includes("dob")) {
       return (
         "Date of birth does not match this traveller type. " +
-        "Adults must be 12+ on the travel date — update DOB and try again."
+        "Adults must be 12+ on the travel date - update DOB and try again."
       );
     }
     return (
-      "We couldn't hold this fare. Check name, phone, email, date of birth, and ID — then try again."
+      "We couldn't hold this fare. Check name, phone, email, date of birth, and ID - then try again."
     );
   }
   return raw.replace(/^LiteAPIError:\s*/i, "").trim() || "Booking failed.";
 }
 
 function emptyPassenger(type = 0) {
-  return {
-    title: "Mr",
-    firstName: "",
-    lastName: "",
-    gender: "",
-    dob: "",
-    nationality: "IN",
-    documentNumber: "",
-    documentExpiry: "",
-    documentIssueCountry: "IN",
-    passengerType: type,
-  };
+  const { id: _id, ...rest } = emptyTraveller(type);
+  return rest;
 }
 
 function offerIdOf(flight) {
@@ -119,48 +137,33 @@ function offerIdOf(flight) {
 }
 
 function loadSavedPax() {
-  try {
-    const raw = localStorage.getItem(SAVED_PAX_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  return loadSavedPaxStore();
 }
 
 function savePaxLocal({ passengers, email, phone, phoneCc }) {
+  saveSavedPaxStore({ passengers, email, phone, phoneCc });
+}
+
+/** Prefer local pk_…; otherwise null (caller resolves via LiteAPI Payment SDK). */
+function resolveStripePublishableKey(raw) {
+  return readLocalStripePublishableKey(raw);
+}
+
+async function withResolvedStripeKeys(pb) {
+  if (!pb || typeof pb !== "object") return pb;
+  const existing = resolveStripePublishableKey(pb.publishable_key);
+  if (existing) return { ...pb, publishable_key: existing };
+  if (!pb.client_secret) return pb;
   try {
-    localStorage.setItem(
-      SAVED_PAX_KEY,
-      JSON.stringify({ passengers, email, phone, phoneCc })
-    );
+    const pk = await resolveLiteApiPublishableKey(pb);
+    return { ...pb, publishable_key: pk };
   } catch {
-    /* ignore quota */
+    return pb;
   }
 }
 
-function loadStripeJs() {
-  if (typeof window === "undefined") return Promise.reject(new Error("No window"));
-  if (window.Stripe) return Promise.resolve(window.Stripe);
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[data-itinero-stripe="1"]');
-    if (existing) {
-      existing.addEventListener("load", () => resolve(window.Stripe));
-      existing.addEventListener("error", () => reject(new Error("Stripe.js failed to load")));
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://js.stripe.com/v3/";
-    script.async = true;
-    script.dataset.itineroStripe = "1";
-    script.onload = () => resolve(window.Stripe);
-    script.onerror = () => reject(new Error("Stripe.js failed to load"));
-    document.body.appendChild(script);
-  });
-}
-
 function formatDobDisplay(iso) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     const d = new Date(`${iso}T00:00:00`);
     if (Number.isNaN(d.getTime())) return iso;
@@ -261,7 +264,7 @@ function mergeConfirmationBooking(apiBooking, { passengers, email, phone, phoneC
 
 /**
  * Shared booking modal for manual flights + Vero in-chat Book Now.
- * Steps: passenger details → review → payment (LiteAPI/Stripe) → confirmation.
+ * Steps: passenger → review → hold → extras (seats/bags) → payment → confirmation.
  */
 export default function BookingPopup({
   isOpen,
@@ -275,6 +278,7 @@ export default function BookingPopup({
   destination = "",
   onSuccess,
 }) {
+  const navigate = useNavigate();
   const domestic = useMemo(() => {
     const o = (origin || flight?.departure?.airport || "").toUpperCase();
     const d = (destination || flight?.arrival?.airport || "").toUpperCase();
@@ -303,14 +307,20 @@ export default function BookingPopup({
   const [phoneCc, setPhoneCc] = useState("91");
   const [saveDetails, setSaveDetails] = useState(true);
   const [errors, setErrors] = useState({});
-  const [step, setStep] = useState("form"); // form | review | payment | confirmation
+  const [step, setStep] = useState("form"); // form | review | extras | payment | confirmation
   const [payMethod, setPayMethod] = useState("card"); // upi | card | debit
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [apiError, setApiError] = useState("");
+  const [cardReady, setCardReady] = useState(false);
+  const [cardMountKey, setCardMountKey] = useState(0);
+  /** When Stripe.js is blocked (ad blocker), fall back to sandbox mock card fields. */
+  const [stripeBlocked, setStripeBlocked] = useState(false);
   const [hold, setHold] = useState(null);
   const [booking, setBooking] = useState(null);
   const [pdfError, setPdfError] = useState("");
+  const [selectedExtras, setSelectedExtras] = useState([]);
+  const [voucherCode, setVoucherCode] = useState("");
   const [mockCard, setMockCard] = useState({
     number: "",
     expiry: "",
@@ -322,9 +332,13 @@ export default function BookingPopup({
   const stripeRef = useRef(null);
   const cardRef = useRef(null);
 
+  // Flights use LiteAPI Payment SDK (Stripe) only.
   const useMockCard =
     !!hold &&
-    (hold.payment_mode === "mock_sandbox" || hold.allow_mock_payment === true);
+    (stripeBlocked ||
+      hold.payment_mode === "mock_sandbox" ||
+      hold.allow_mock_payment === true ||
+      (import.meta.env.DEV && !hold.client_secret));
 
   useEffect(() => {
     if (!isOpen) return;
@@ -349,20 +363,64 @@ export default function BookingPopup({
     setHold(null);
     setBooking(null);
     setPdfError("");
+    setSelectedExtras([]);
+    setStripeBlocked(false);
+    setCardReady(false);
+    setCardMountKey(0);
     setMockCard({ number: "", expiry: "", cvc: "", name: "" });
-  }, [isOpen, passengerPlan]);
+
+    // Auto-create / refresh draft trip when booking starts
+    if (flight) {
+      tripService.ensureFlightDraft({
+        flight,
+        sessionId,
+        origin,
+        destination,
+        adults,
+        children: childrenCount,
+        infants,
+        departDate: flight?.departureAt || undefined,
+      });
+    }
+  }, [isOpen, passengerPlan, flight, sessionId, origin, destination, adults, childrenCount, infants]);
 
   useEffect(() => {
-    if (!isOpen || step !== "payment" || useMockCard || !hold?.client_secret || !hold?.publishable_key) {
+    const secret = hold?.client_secret;
+    const pkRaw = hold?.publishable_key;
+    if (
+      !isOpen ||
+      step !== "payment" ||
+      useMockCard ||
+      !secret ||
+      payMethod === "upi"
+    ) {
+      setCardReady(false);
       return undefined;
     }
-    if (payMethod === "upi") return undefined;
 
     let cancelled = false;
+    let card = null;
+
     (async () => {
       try {
+        setCardReady(false);
+        const pk =
+          resolveStripePublishableKey(pkRaw) ||
+          (await resolveLiteApiPublishableKey({
+            publishable_key: pkRaw,
+            sdk_public_key: hold?.sdk_public_key,
+          }));
+        if (cancelled) return;
+        if (!pk) {
+          setApiError("LiteAPI Payment SDK could not load a Stripe key. Try again in a moment.");
+          return;
+        }
+
         const Stripe = await loadStripeJs();
+        // Wait a frame so the mount node is in the DOM after payment step paints.
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         if (cancelled || !cardMountRef.current) return;
+
         if (cardRef.current) {
           try {
             cardRef.current.destroy();
@@ -371,26 +429,66 @@ export default function BookingPopup({
           }
           cardRef.current = null;
         }
-        const stripe = Stripe(hold.publishable_key);
+        // Clear stale Stripe iframe / "Too Many Requests" text from prior mounts.
+        cardMountRef.current.innerHTML = "";
+
+        const stripe = Stripe(pk);
         const elements = stripe.elements();
-        const card = elements.create("card", {
+        card = elements.create("card", {
           style: {
             base: {
               fontSize: "16px",
               color: "#001439",
               "::placeholder": { color: "#98a2b3" },
             },
+            invalid: { color: "#b42318" },
           },
+        });
+        card.on("ready", () => {
+          if (!cancelled) {
+            setCardReady(true);
+            setApiError((prev) =>
+              /Element|Too Many Requests|retrieve data/i.test(String(prev || ""))
+                ? ""
+                : prev
+            );
+          }
+        });
+        card.on("change", (ev) => {
+          if (cancelled) return;
+          if (ev?.error?.message) setApiError(ev.error.message);
+          else {
+            setApiError((prev) =>
+              /Element|incomplete|invalid/i.test(String(prev || "")) ? "" : prev
+            );
+          }
         });
         card.mount(cardMountRef.current);
         stripeRef.current = stripe;
         cardRef.current = card;
       } catch (err) {
-        setApiError(err?.message || "Could not load card payment form.");
+        if (cancelled) return;
+        const msg = String(err?.message || "");
+        if (/429|too many requests|rate-limited/i.test(msg)) {
+          setApiError(
+            "Payment form hit a rate limit. Wait a few seconds, then tap Retry card form."
+          );
+        } else if (/Stripe\.js|ad blocker|js\.stripe\.com/i.test(msg)) {
+          // Opera / ad blockers often block js.stripe.com - keep checkout usable in sandbox.
+          setStripeBlocked(true);
+          setApiError(
+            "Stripe.js was blocked in this browser. Using the sandbox card form instead - enter 4242 4242 4242 4242, or allow js.stripe.com and tap Retry."
+          );
+        } else {
+          setApiError(msg || "Could not load card payment form.");
+        }
+        setCardReady(false);
       }
     })();
+
     return () => {
       cancelled = true;
+      setCardReady(false);
       if (cardRef.current) {
         try {
           cardRef.current.destroy();
@@ -398,9 +496,27 @@ export default function BookingPopup({
           /* ignore */
         }
         cardRef.current = null;
+      } else if (card) {
+        try {
+          card.destroy();
+        } catch {
+          /* ignore */
+        }
       }
+      stripeRef.current = null;
     };
-  }, [isOpen, step, hold, payMethod, useMockCard]);
+    // Depend on stable payment fields + remount key - not the whole hold object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isOpen,
+    step,
+    useMockCard,
+    payMethod,
+    hold?.client_secret,
+    hold?.publishable_key,
+    hold?.sdk_public_key,
+    cardMountKey,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -435,7 +551,7 @@ export default function BookingPopup({
         else if (ptype === 0 && age < 12) {
           e.dob = "Adults must be 12+ on the travel date";
         } else if (ptype === 1 && (age < 2 || age > 11)) {
-          e.dob = "Children must be 2–11 on the travel date";
+          e.dob = "Children must be 2-11 on the travel date";
         } else if (ptype === 2 && age >= 2) {
           e.dob = "Infants must be under 2 on the travel date";
         }
@@ -508,14 +624,64 @@ export default function BookingPopup({
     setStep("review");
   }
 
+  async function openPaymentFromHold(pb, prebookRes) {
+    const resolved = await withResolvedStripeKeys(pb);
+    const hasStripe = Boolean(
+      resolved.prebook_id &&
+        resolved.client_secret &&
+        resolveStripePublishableKey(resolved.publishable_key)
+    );
+    const canMock =
+      Boolean(resolved.prebook_id) &&
+      (resolved.allow_mock_payment ||
+        resolved.payment_mode === "mock_sandbox" ||
+        prebookRes?.payment_ready === true ||
+        (!resolved.client_secret && Boolean(resolved.prebook_id)));
+
+    if (hasStripe || canMock) {
+      if (hasStripe) {
+        setHold((h) => ({
+          ...(h || {}),
+          ...resolved,
+          payment_mode: "stripe",
+          allow_mock_payment: false,
+        }));
+      } else {
+        setHold((h) => ({
+          ...(h || {}),
+          ...resolved,
+          allow_mock_payment: true,
+          payment_mode: "mock_sandbox",
+        }));
+      }
+      setStep("payment");
+      return true;
+    }
+    if (resolved.prebook_id) {
+      throw new Error(
+        "Hold created, but LiteAPI Payment SDK keys are missing. " +
+          "Enable Payment SDK on the LiteAPI account and try again. " +
+          `Hold ID: ${resolved.prebook_id}`
+      );
+    }
+    throw new Error(prebookRes?.message || "Prebook succeeded but no hold ID was returned.");
+  }
+
+  function servicesAvailable(pb) {
+    const svc = pb?.services;
+    if (!svc || svc.available === false) return false;
+    const groups = Array.isArray(svc.groups) ? svc.groups : [];
+    return groups.some((g) => Array.isArray(g.options) && g.options.length > 0);
+  }
+
   async function goToPayment() {
     if (!sessionId) {
-      setApiError("Missing search session — search flights again, then Book Now.");
+      setApiError("Missing search session - search flights again, then Book Now.");
       return;
     }
     const oid = offerIdOf(flight);
     if (!oid) {
-      setApiError("This offer has no ID — pick another flight.");
+      setApiError("This offer has no ID - pick another flight.");
       return;
     }
 
@@ -543,6 +709,7 @@ export default function BookingPopup({
         session_id: sessionId,
         passengers: pax,
         contact,
+        voucher_code: voucherCode.trim() || undefined,
       });
       if (!prebookRes?.ok) {
         const code = prebookRes?.error_code || "";
@@ -557,52 +724,90 @@ export default function BookingPopup({
         throw new Error(msg);
       }
 
-      const pb = {
-        ...(prebookRes.prebook || {}),
-        // Prefer top-level payment_ready from supervisor when nested flags are missing.
+      const rawPb = prebookRes.prebook || {};
+      const pb = withResolvedStripeKeys({
+        ...rawPb,
         allow_mock_payment:
-          prebookRes?.prebook?.allow_mock_payment === true ||
+          rawPb.allow_mock_payment === true ||
           prebookRes?.payment_ready === true ||
-          prebookRes?.prebook?.payment_mode === "mock_sandbox",
+          rawPb.payment_mode === "mock_sandbox",
         payment_mode:
-          prebookRes?.prebook?.payment_mode ||
-          (prebookRes?.prebook?.client_secret ? "stripe" : "mock_sandbox"),
-      };
+          rawPb.payment_mode ||
+          (rawPb.client_secret ? "stripe" : "mock_sandbox"),
+      });
       setHold(pb);
+      setSelectedExtras([]);
       setStatusMsg("");
 
-      const hasStripe = Boolean(pb.prebook_id && pb.client_secret && pb.publishable_key);
-      const canMock =
-        Boolean(pb.prebook_id) &&
-        (pb.allow_mock_payment ||
-          pb.payment_mode === "mock_sandbox" ||
-          prebookRes?.payment_ready === true ||
-          (!pb.client_secret && Boolean(pb.prebook_id)));
+      tripService.markFlightHeld({
+        sessionId,
+        offerId: offerIdOf(flight),
+        prebookId: pb.prebook_id,
+        price: Number(pb.price ?? flight?.price) || null,
+        currency: pb.currency || flight?.currency,
+      });
 
-      if (hasStripe || canMock) {
-        // Ensure mock UI activates when Stripe secrets are absent.
-        if (!hasStripe) {
-          setHold((h) => ({
-            ...h,
-            ...pb,
-            allow_mock_payment: true,
-            payment_mode: "mock_sandbox",
-          }));
-        }
-        setStep("payment");
-      } else if (pb.prebook_id) {
-        throw new Error(
-          "Hold created, but card payment isn’t available for this account yet. " +
-            "In sandbox, Payment SDK keys may be missing — set STRIPE_PUBLISHABLE_KEY or enable LiteAPI Payment SDK. " +
-            `Hold ID: ${pb.prebook_id}`
-        );
+      if (servicesAvailable(pb)) {
+        setStep("extras");
       } else {
-        throw new Error(
-          prebookRes?.message || "Prebook succeeded but no hold ID was returned."
-        );
+        await openPaymentFromHold(pb, prebookRes);
       }
     } catch (err) {
       setApiError(softenBookingError(err?.message || "Booking failed."));
+      setStatusMsg("");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function finishExtras(selections) {
+    if (!hold?.prebook_id || !sessionId) {
+      setApiError("Booking hold expired. Go back and create the hold again.");
+      return;
+    }
+
+    const list = Array.isArray(selections) ? selections : [];
+    setSelectedExtras(list);
+
+    if (!list.length) {
+      try {
+        await openPaymentFromHold(hold, { payment_ready: true });
+      } catch (err) {
+        setApiError(softenBookingError(err?.message || "Could not open payment."));
+      }
+      return;
+    }
+
+    setSubmitting(true);
+    setApiError("");
+    setStatusMsg("Adding extras to your hold…");
+    try {
+      const res = await flightService.attachServices({
+        session_id: sessionId,
+        prebook_id: hold.prebook_id,
+        selected_services: list,
+      });
+      if (!res?.ok && !res?.skipped) {
+        throw new Error(
+          res?.error || res?.message || "Could not add those extras. Try again or skip."
+        );
+      }
+      const pb = await withResolvedStripeKeys({
+        ...hold,
+        ...(res.prebook || {}),
+        allow_mock_payment:
+          res?.prebook?.allow_mock_payment === true ||
+          res?.payment_ready === true ||
+          hold.allow_mock_payment,
+        payment_mode:
+          res?.prebook?.payment_mode ||
+          (res?.prebook?.client_secret ? "stripe" : hold.payment_mode),
+      });
+      setHold(pb);
+      setStatusMsg("");
+      await openPaymentFromHold(pb, res);
+    } catch (err) {
+      setApiError(softenBookingError(err?.message || "Could not attach extras."));
       setStatusMsg("");
     } finally {
       setSubmitting(false);
@@ -620,12 +825,11 @@ export default function BookingPopup({
     }
 
     if (payMethod === "upi") {
-      setApiError(
-        useMockCard
-          ? "UPI isn’t wired in this sandbox demo. Choose Credit or Debit and use test card 4242 4242 4242 4242."
-          : "UPI isn’t available through the live Stripe Payment SDK for this hold. Choose Credit or Debit card to pay securely."
-      );
       setPayMethod("card");
+    }
+
+    if (!useMockCard && !cardReady) {
+      setApiError("Card form is still loading. Wait a second, or tap Retry card form.");
       return;
     }
 
@@ -664,7 +868,7 @@ export default function BookingPopup({
           throw new Error("Use any future expiry (MM/YY).");
         }
         if (!String(mockCard.cvc || "").replace(/\D/g, "").match(/^\d{3,4}$/)) {
-          throw new Error("Enter a 3–4 digit CVC.");
+          throw new Error("Enter a 3-4 digit CVC.");
         }
         mockPayment = true;
       } else if (stripeRef.current && cardRef.current && hold.client_secret) {
@@ -672,17 +876,19 @@ export default function BookingPopup({
           payment_method: { card: cardRef.current },
         });
         if (result.error) {
-          throw new Error(result.error.message || "Card payment failed.");
+          const msg = String(result.error.message || "Card payment failed.");
+          if (/Element|mounted|ready event|Too Many Requests/i.test(msg)) {
+            setCardMountKey((k) => k + 1);
+            throw new Error(
+              "Card form needed a refresh. Enter the card again, then tap Pay."
+            );
+          }
+          throw new Error(msg);
         }
       } else {
-        // Fall back to sandbox mock if Stripe Elements never mounted.
-        mockPayment = true;
-        const digits = String(mockCard.number || "").replace(/\D/g, "");
-        if (digits !== "4242424242424242") {
-          throw new Error(
-            "Card form isn’t ready for live Stripe. Use sandbox test card 4242 4242 4242 4242, or wait a second and try again."
-          );
-        }
+        throw new Error(
+          "Card form isn’t ready yet. Wait for it to load, or tap Retry card form."
+        );
       }
 
       setStatusMsg(mockPayment ? "Finalizing sandbox booking…" : "Issuing ticket…");
@@ -698,25 +904,61 @@ export default function BookingPopup({
             "Payment was recorded but ticketing did not finish. Your fare may still be on hold."
         );
       }
-      setBooking(
-        mergeConfirmationBooking(done.booking || done, {
-          passengers,
+
+      const lite = done.booking || done;
+      const payRef = hold.transaction_id || lite.booking_id || hold.prebook_id;
+      const paidAmount = Number(lite.price ?? hold.price ?? priceNum) || priceNum;
+      const paidCurrency = String(lite.currency || hold.currency || currency || "INR").toUpperCase();
+      const bookingRef =
+        lite.airline_pnr ||
+        lite.booking_ref ||
+        (lite.booking_id && !String(lite.booking_id).includes("-")
+          ? lite.booking_id
+          : null) ||
+        bookingRefFromPayment(payRef);
+      const confirmation = {
+        flight,
+        travelers: passengers,
+        contact: { email: email.trim(), phone: phone.replace(/\D/g, "") },
+        paymentId: payRef,
+        bookingRef,
+        amount: paidAmount,
+        currency: paidCurrency,
+        paidAt: new Date().toISOString(),
+        sessionId,
+        prebookId: hold.prebook_id,
+        liteapi: lite,
+        supplierBookingId: lite.booking_id || null,
+        paymentProvider: mockPayment ? "sandbox" : "stripe",
+      };
+      saveFlightConfirmation(confirmation);
+      try {
+        tripService.recordPaidFlight(confirmation);
+      } catch {
+        /* best-effort */
+      }
+      tripService.markFlightConfirmed({
+        sessionId,
+        offerId: offerIdOf(flight),
+        booking: {
+          ...lite,
+          payment_id: payRef,
+          booking_id: lite.booking_id || bookingRef,
+        },
+        contact: {
           email,
-          phone,
-          phoneCc,
-          flight,
-        })
-      );
-      setStep("confirmation");
-      setStatusMsg("");
-      // Do NOT call onSuccess here — that used to close the modal before
-      // the confirmation screen was visible. Parent cleans up on Done/Close.
-      requestAnimationFrame(() => {
-        document.getElementById("booking-popup-title")?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
+          phone: phoneCc ? `+${phoneCc}${phone}` : phone,
+          name: [passengers[0]?.firstName, passengers[0]?.lastName]
+            .filter(Boolean)
+            .join(" "),
+        },
+        passengers,
       });
+
+      // Same full confirmation page as passenger checkout - not the popup step.
+      const base = String(import.meta.env.BASE_URL || "/itinero/").replace(/\/?$/, "/");
+      window.location.assign(`${base}flights/booking-success`);
+      return;
     } catch (err) {
       setApiError(err?.message || "Payment / ticket issue failed.");
       setStatusMsg("");
@@ -749,11 +991,11 @@ export default function BookingPopup({
     setPayMethod("card");
   }
 
-  function handleDownloadPdf() {
+  async function handleDownloadPdf() {
     if (!booking) return;
     setPdfError("");
     try {
-      downloadBookingConfirmationPdf(booking);
+      await downloadBookingConfirmationPdf(booking);
     } catch (err) {
       setPdfError(err?.message || "Could not generate PDF.");
     }
@@ -769,9 +1011,6 @@ export default function BookingPopup({
     flight.price_taxes != null || flight.price_fees != null
       ? Number(flight.price_taxes || 0) + Number(flight.price_fees || 0)
       : null;
-  const lead = passengers[0] || emptyPassenger();
-  const titleMap = { M: "Mr", F: "Ms" };
-  const displayTitle = lead.title || titleMap[String(lead.gender).toUpperCase()] || "Mr";
 
   const confPassengers = Array.isArray(booking?.passengers) ? booking.passengers : [];
   const confSegments = Array.isArray(booking?.segments_summary) ? booking.segments_summary : [];
@@ -795,12 +1034,39 @@ export default function BookingPopup({
 
   const stepTitle =
     step === "form"
-      ? "Passenger Details"
+      ? "Passenger details"
       : step === "review"
-        ? "Review Your Booking"
-        : step === "payment"
-          ? "Payment Details"
-          : "Booking Confirmation";
+        ? "Review your booking"
+        : step === "extras"
+          ? "Seats & bags"
+          : step === "payment"
+            ? "Payment"
+            : "Booking confirmed";
+
+  const stepSubtitle =
+    step === "form"
+      ? "Names must match the passport or ID you’ll fly with."
+      : step === "review"
+        ? "Confirm the itinerary, then we’ll hold this fare."
+        : step === "extras"
+          ? "Optional add-ons before you pay."
+          : step === "payment"
+            ? "Secure checkout - fare held until you finish."
+            : "You’re set. Keep your reference handy.";
+
+  const visibleSteps = useMemo(() => {
+    const hasExtras = step === "extras" || servicesAvailable(hold);
+    return BOOKING_STEPS.filter((s) => {
+      if (s.id === "extras") return hasExtras || step === "extras";
+      if (s.id === "done") return step === "done";
+      return s.id !== "done";
+    });
+  }, [hold, step]);
+
+  const stepIndex = Math.max(
+    0,
+    visibleSteps.findIndex((s) => s.id === step)
+  );
 
   return (
     <div
@@ -815,25 +1081,79 @@ export default function BookingPopup({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-popup-title"
+        data-step={step}
+        data-holding={submitting && step === "review" ? "1" : "0"}
       >
         <header className={styles.header}>
+          <div className={styles.brandRow}>
+            <img
+              className={styles.brandLogo}
+              src={NAVBAR_IMAGES.logo}
+              alt="itinero"
+              width={120}
+              height={24}
+            />
+            <button
+              type="button"
+              className={styles.close}
+              aria-label="Close"
+              disabled={submitting}
+              onClick={() => onClose?.()}
+            >
+              <X size={18} />
+            </button>
+          </div>
           <div className={styles.headerText}>
             <h2 id="booking-popup-title">{stepTitle}</h2>
+            <p>{stepSubtitle}</p>
           </div>
-          <button
-            type="button"
-            className={styles.close}
-            aria-label="Close"
-            disabled={submitting}
-            onClick={() => onClose?.()}
-          >
-            <X size={18} />
-          </button>
+          {step !== "done" ? (
+            <nav className={styles.stepStrip} aria-label="Booking steps">
+              {visibleSteps
+                .filter((s) => s.id !== "done")
+                .map((s, idx) => {
+                  const active = s.id === step;
+                  const done = idx < stepIndex;
+                  return (
+                    <React.Fragment key={s.id}>
+                      {idx > 0 ? <span className={styles.stepLine} aria-hidden /> : null}
+                      <span
+                        className={[
+                          styles.stepPill,
+                          active ? styles.stepPillActive : "",
+                          done ? styles.stepPillDone : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        aria-current={active ? "step" : undefined}
+                      >
+                        <em>{idx + 1}</em>
+                        {s.label}
+                      </span>
+                    </React.Fragment>
+                  );
+                })}
+            </nav>
+          ) : null}
         </header>
 
         <div className={styles.body}>
-          {apiError ? <div className={`${styles.banner} ${styles.bannerError}`}>{apiError}</div> : null}
-          {statusMsg ? <div className={`${styles.banner} ${styles.bannerInfo}`}>{statusMsg}</div> : null}
+          {apiError && step !== "payment" ? (
+            <div className={`${styles.banner} ${styles.bannerError}`}>{apiError}</div>
+          ) : null}
+          {statusMsg || submitting ? (
+            <div className={styles.holdBanner} role="status" aria-live="polite">
+              <LoadingState
+                variant="inline"
+                title={statusMsg || "Working on your booking…"}
+                message={
+                  submitting
+                    ? "Please keep this window open - don’t refresh until we confirm."
+                    : ""
+                }
+              />
+            </div>
+          ) : null}
 
           {step === "form" && (
             <>
@@ -979,6 +1299,17 @@ export default function BookingPopup({
                 );
               })}
 
+              <div className={styles.field} style={{ marginTop: 12 }}>
+                <label htmlFor="bp-voucher">Voucher code (optional)</label>
+                <input
+                  id="bp-voucher"
+                  value={voucherCode}
+                  disabled={submitting}
+                  placeholder="Promo / voucher"
+                  onChange={(e) => setVoucherCode(e.target.value)}
+                />
+              </div>
+
               <label className={styles.saveCheck}>
                 <input
                   type="checkbox"
@@ -1003,35 +1334,40 @@ export default function BookingPopup({
                     <strong>{flight.airline?.name || "Flight"}</strong>
                     <em>{flight.flightNumber || ""}</em>
                   </div>
+                  <span className={styles.cabinChip}>
+                    {flight.cabin || "Economy"}
+                  </span>
                 </div>
                 <div className={styles.reviewSchedule}>
                   <div>
                     <strong>{flight.departure?.time || "--:--"}</strong>
-                    <span>{flight.departure?.airport || origin || "—"}</span>
+                    <span>{flight.departure?.airport || origin || "-"}</span>
                   </div>
                   <div className={styles.reviewMid}>
-                    <span>{flight.duration || "—"}</span>
+                    <span>{flight.duration || "-"}</span>
                     <i />
                     <span>{flight.stops || "Direct"}</span>
                   </div>
                   <div>
                     <strong>{flight.arrival?.time || "--:--"}</strong>
-                    <span>{flight.arrival?.airport || destination || "—"}</span>
+                    <span>{flight.arrival?.airport || destination || "-"}</span>
                   </div>
                 </div>
                 <p className={styles.reviewMeta}>
                   {flight.departure?.date || ""}
-                  {passengerPlan.length ? ` · ${passengerPlan.length} Traveller${passengerPlan.length > 1 ? "s" : ""}` : ""}
-                  {flight.cabin ? ` · ${flight.cabin}` : " · Economy"}
+                  {passengerPlan.length
+                    ? ` · ${passengerPlan.length} traveller${passengerPlan.length > 1 ? "s" : ""}`
+                    : ""}
                 </p>
               </div>
 
               <div className={styles.reviewBlock}>
-                <h4>
-                  Passenger Details{" "}
+                <div className={styles.reviewBlockHead}>
+                  <h4>Passengers</h4>
                   <button
                     type="button"
                     className={styles.linkBtn}
+                    disabled={submitting}
                     onClick={() => {
                       setApiError("");
                       setStep("form");
@@ -1039,24 +1375,43 @@ export default function BookingPopup({
                   >
                     Edit
                   </button>
-                </h4>
-                <p>
-                  {displayTitle}. {lead.firstName} {lead.lastName}
-                </p>
-                <p className={styles.muted}>
-                  {formatDobDisplay(lead.dob)}
-                  {lead.gender === "M" ? " · Male" : lead.gender === "F" ? " · Female" : ""}
-                </p>
-                <p className={styles.muted}>
-                  +{phoneCc} {phone} · {email}
+                </div>
+                <ul className={styles.paxList}>
+                  {passengers.map((p, idx) => {
+                    const tMap = { M: "Mr", F: "Ms" };
+                    const t = p.title || tMap[String(p.gender).toUpperCase()] || "Mr";
+                    const genderLabel =
+                      p.gender === "M" ? "Male" : p.gender === "F" ? "Female" : "";
+                    return (
+                      <li key={`review-pax-${idx}`}>
+                        <strong>
+                          {t}. {p.firstName} {p.lastName}
+                        </strong>
+                        <span>
+                          {[
+                            formatDobDisplay(p.dob),
+                            genderLabel,
+                            passengerPlan[idx]?.label,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className={styles.contactLine}>
+                  +{phoneCc} {phone}
+                  <span aria-hidden> · </span>
+                  {email}
                 </p>
               </div>
 
-              <div className={styles.reviewBlock}>
-                <h4>Fare Summary</h4>
+              <div className={`${styles.reviewBlock} ${styles.fareBlock}`}>
+                <h4>Fare summary</h4>
                 {baseFare != null && (
                   <div className={styles.fareRow}>
-                    <span>Base Fare</span>
+                    <span>Base fare</span>
                     <span>
                       {currencySym}
                       {baseFare.toLocaleString("en-IN")}
@@ -1065,7 +1420,7 @@ export default function BookingPopup({
                 )}
                 {taxes != null && taxes > 0 && (
                   <div className={styles.fareRow}>
-                    <span>Taxes & Fees</span>
+                    <span>Taxes & fees</span>
                     <span>
                       {currencySym}
                       {taxes.toLocaleString("en-IN")}
@@ -1073,11 +1428,27 @@ export default function BookingPopup({
                   </div>
                 )}
                 <div className={`${styles.fareRow} ${styles.fareTotal}`}>
-                  <span>Total Amount</span>
+                  <span>Total</span>
                   <span>{priceLabel}</span>
                 </div>
+                <p className={styles.fareNote}>
+                  Holding locks this price briefly so you can finish payment.
+                </p>
               </div>
             </div>
+          )}
+
+          {step === "extras" && (
+            <FlightExtrasStep
+              services={hold?.services || {}}
+              passengerLabels={passengerPlan.map((p) => p.label)}
+              currency={currency}
+              currencySym={currencySym}
+              basePrice={priceNum}
+              submitting={submitting}
+              onSkip={() => finishExtras([])}
+              onContinue={(sels) => finishExtras(sels)}
+            />
           )}
 
           {step === "payment" && (
@@ -1087,55 +1458,51 @@ export default function BookingPopup({
                   <span>Total Amount</span>
                   <strong>{priceLabel}</strong>
                 </div>
-                <button type="button" className={styles.linkBtn} onClick={() => setStep("review")}>
-                  View Fare Breakup
+                <button
+                  type="button"
+                  className={styles.linkBtn}
+                  onClick={() =>
+                    setStep(servicesAvailable(hold) ? "extras" : "review")
+                  }
+                >
+                  {servicesAvailable(hold) ? "Edit extras" : "Review booking"}
                 </button>
               </div>
+              {selectedExtras.length > 0 ? (
+                <p className={styles.muted} style={{ marginTop: -4 }}>
+                  Includes {selectedExtras.length} selected add-on
+                  {selectedExtras.length > 1 ? "s" : ""}.
+                </p>
+              ) : null}
 
-              <h4>Select Payment Method</h4>
-              <div className={styles.payMethods} role="radiogroup" aria-label="Payment method">
-                <button
-                  type="button"
-                  className={`${styles.payMethod}${payMethod === "upi" ? ` ${styles.payMethodActive}` : ""}`}
-                  onClick={() => setPayMethod("upi")}
-                >
-                  <Smartphone size={18} aria-hidden />
-                  <span>
-                    <strong>UPI</strong>
-                    <em>Pay with UPI</em>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.payMethod}${payMethod === "card" ? ` ${styles.payMethodActive}` : ""}`}
-                  onClick={() => setPayMethod("card")}
-                >
-                  <CreditCard size={18} aria-hidden />
-                  <span>
-                    <strong>Credit Card</strong>
-                    <em>Visa, Mastercard</em>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.payMethod}${payMethod === "debit" ? ` ${styles.payMethodActive}` : ""}`}
-                  onClick={() => setPayMethod("debit")}
-                >
-                  <CreditCard size={18} aria-hidden />
-                  <span>
-                    <strong>Debit Card</strong>
-                    <em>Visa, Mastercard</em>
-                  </span>
-                </button>
-              </div>
+              <h4>LiteAPI Payment SDK</h4>
+              <p className={styles.muted} style={{ marginBottom: 12 }}>
+                Secure card checkout via Stripe (sandbox test card{" "}
+                <code>4242 4242 4242 4242</code>).
+              </p>
 
-              {(payMethod === "card" || payMethod === "debit") && (
+              {(payMethod === "card" || payMethod === "debit" || !payMethod) && (
                 useMockCard ? (
                   <div className={styles.mockCardForm}>
                     <p className={styles.mockHint}>
-                      Sandbox demo — LiteAPI Payment SDK keys were not returned. Use the full test card{" "}
-                      <code>4242 4242 4242 4242</code> (16 digits) · any future MM/YY · any CVC.
+                      {stripeBlocked
+                        ? "Stripe.js was blocked - sandbox card form. Use 4242 4242 4242 4242 · any future MM/YY · any CVC. Allow js.stripe.com to use the live Stripe field."
+                        : "Sandbox demo - payment keys were not returned. Use the full test card 4242 4242 4242 4242 (16 digits) · any future MM/YY · any CVC."}
                     </p>
+                    {stripeBlocked ? (
+                      <button
+                        type="button"
+                        className={styles.retryCard}
+                        onClick={() => {
+                          resetStripeJsLoader();
+                          setStripeBlocked(false);
+                          setApiError("");
+                          setCardMountKey((k) => k + 1);
+                        }}
+                      >
+                        Retry Stripe card form
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className={styles.fillTestCard}
@@ -1211,15 +1578,40 @@ export default function BookingPopup({
                     </div>
                   </div>
                 ) : (
-                  <div className={styles.stripeMount} ref={cardMountRef} />
+                  <div className={styles.cardPanel}>
+                    <div className={styles.cardPanelHead}>
+                      <CreditCard size={18} aria-hidden />
+                      <span>
+                        <strong>Card</strong>
+                        <em>Visa, Mastercard · Stripe</em>
+                      </span>
+                    </div>
+                    {!cardReady ? (
+                      <p className={styles.cardLoading}>Loading secure card form…</p>
+                    ) : null}
+                    <div
+                      className={styles.stripeMount}
+                      ref={cardMountRef}
+                      data-ready={cardReady ? "1" : "0"}
+                    />
+                    {/rate limit|Too Many Requests|Element|could not load/i.test(
+                      String(apiError || "")
+                    ) ? (
+                      <button
+                        type="button"
+                        className={styles.retryCard}
+                        onClick={() => {
+                          resetStripeJsLoader();
+                          setStripeBlocked(false);
+                          setApiError("");
+                          setCardMountKey((k) => k + 1);
+                        }}
+                      >
+                        Retry card form
+                      </button>
+                    ) : null}
+                  </div>
                 )
-              )}
-              {payMethod === "upi" && (
-                <p className={styles.muted}>
-                  {useMockCard
-                    ? "UPI isn’t available in this sandbox demo. Select Credit or Debit and use test card 4242 4242 4242 4242."
-                    : "Live LiteAPI holds use Stripe card capture. Select Credit or Debit to pay securely — we never mark payment successful without the Payment SDK."}
-                </p>
               )}
             </div>
           )}
@@ -1239,11 +1631,11 @@ export default function BookingPopup({
                   <p className={styles.muted}>
                     {booking?.sandbox_hold
                       ? booking?.honest_status ||
-                        "Demo payment accepted. No airline ticket was invented — only the LiteAPI hold ID is shown."
+                        "Demo payment accepted. No airline ticket was invented - only the hold ID is shown."
                       : hasConfValue(booking?.airline_pnr) ||
                           (Array.isArray(booking?.ticket_numbers) && booking.ticket_numbers.length)
                         ? "Your payment succeeded and the ticket was issued from the live booking response."
-                        : "Payment step finished. Status below reflects what LiteAPI returned — no ticket numbers are invented."}
+                        : "Payment step finished. Status below reflects the live booking response - no ticket numbers are invented."}
                   </p>
                 </div>
               </div>
@@ -1431,7 +1823,7 @@ export default function BookingPopup({
               disabled={submitting}
               onClick={goToPayment}
             >
-              {submitting ? "Working…" : "Continue & Proceed to Payment"}
+              {submitting ? <LoadingDots label="Holding fare" /> : "Hold fare & continue to pay"}
             </button>
           ) : null}
           {step === "payment" ? (
@@ -1444,10 +1836,18 @@ export default function BookingPopup({
               <button
                 type="button"
                 className={styles.btnPrimary}
-                disabled={submitting}
+                disabled={
+                  submitting || (!useMockCard && !cardReady)
+                }
                 onClick={handlePayAndComplete}
               >
-                {submitting ? "Processing…" : `Pay Securely ${priceLabel}`}
+                {submitting ? (
+                  <LoadingDots label="Processing card" />
+                ) : !cardReady && !useMockCard ? (
+                  "Loading card form…"
+                ) : (
+                  `Pay ${priceLabel}`
+                )}
               </button>
             </div>
           ) : null}
@@ -1461,6 +1861,16 @@ export default function BookingPopup({
               >
                 <Download size={16} aria-hidden />
                 Download as PDF
+              </button>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => {
+                  if (typeof onClose === "function") onClose();
+                  navigate("/trips");
+                }}
+              >
+                View in Trips
               </button>
               <button
                 type="button"

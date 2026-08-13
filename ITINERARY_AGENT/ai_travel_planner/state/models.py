@@ -168,7 +168,8 @@ class FlightOption(BaseModel):
     total_price: float
     baggage_included: str = "15 kg check-in + 7 kg cabin"
     refund_policy: str = "Non-refundable"
-    seats_available: int
+    seats_available: int = 0
+    offer_id: str | None = None
     rank_score: float = Field(0.0, description="Internal ranking score 0–10")
     recommended: bool = False
 
@@ -244,6 +245,9 @@ class HotelOption(BaseModel):
     rank_score: float = Field(0.0, description="Internal ranking score 0–10")
     recommended: bool = False
     image_description: str = ""
+    image_url: str = ""
+    hotel_images: list[str] = Field(default_factory=list)
+    offer_id: str | None = None
 
 
 class HotelAgentResponse(BaseModel):
@@ -473,6 +477,8 @@ class AppState(BaseModel):
     user_confirmed: bool = False
     # Raw last user input — used by nodes to route decisions
     last_user_input: str = ""
+    # full | hotels_only | itinerary_only — set by Vero handoff / skip phrases
+    planning_scope: str = "full"
 
     # ── Sub-state buckets ─────────────────────────────────────────────────────
     trip: TripState = Field(default_factory=TripState)

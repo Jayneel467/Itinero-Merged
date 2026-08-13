@@ -1,0 +1,130 @@
+.page {
+  --ink: #001438;
+  --accent: #f97211;
+  --muted: #637588;
+  --line: #e8edf2;
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px 72px;
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(249, 114, 17, 0.1), transparent 55%),
+    radial-gradient(800px 380px at 90% 0%, rgba(0, 20, 56, 0.06), transparent 50%),
+    #f4f6fb;
+}
+
+.card {
+  width: min(560px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: clamp(24px, 4vw, 36px);
+  box-shadow: 0 16px 40px rgba(0, 20, 56, 0.08);
+  text-align: left;
+}
+
+.icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #fff7ed, #ffedd5);
+  color: #c2410c;
+  margin-bottom: 16px;
+}
+
+.brand {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.lede {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.primary,
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-weight: 750;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+
+.ghost {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+.alts {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.alts a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.alts a:hover {
+  border-color: rgba(249, 114, 17, 0.35);
+  background: #fff;
+}
+
+.alts strong {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.alts span {
+  font-size: 13px;
+  color: var(--muted);
+}

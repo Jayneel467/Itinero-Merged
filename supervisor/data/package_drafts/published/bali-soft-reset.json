@@ -1,0 +1,226 @@
+{
+  "id": "pkg-bali-soft-reset",
+  "slug": "bali-soft-reset",
+  "title": "Bali Soft Reset",
+  "tagline": "Rice terraces, surf towns, and temple sunsets.",
+  "overview": "5-day plan based in Bali. Live stays when you pick dates - not a frozen brochure price.",
+  "theme": "beach",
+  "themes": [
+    "beach",
+    "wellness",
+    "honeymoon"
+  ],
+  "region": "international",
+  "markets": [
+    "*"
+  ],
+  "productType": "curated_template",
+  "travelStyle": "beach",
+  "requiredAnchors": [],
+  "routeConcept": [
+    "Bali"
+  ],
+  "recommendedDurationDays": [
+    5,
+    7
+  ],
+  "minDurationDays": 4,
+  "durationDays": 5,
+  "durationNights": 4,
+  "destinations": [
+    "Bali"
+  ],
+  "flight": {
+    "gatewayAirport": "DPS",
+    "gatewayCity": "Bali"
+  },
+  "coverImage": "",
+  "gallery": [],
+  "highlights": [
+    "Bali walk",
+    "Local food",
+    "Easy pacing"
+  ],
+  "inclusions": [
+    "Validated day-by-day plan for your dates",
+    "Live hotel stays for each base city",
+    "Package confirmation with structured itinerary"
+  ],
+  "exclusions": [
+    "Flights into the gateway city",
+    "Personal expenses and tips",
+    "Optional activities not listed as included"
+  ],
+  "idealMonths": [
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep"
+  ],
+  "difficulty": "Easy",
+  "groupSizeHint": "Couples & small groups",
+  "featured": false,
+  "currency": "USD",
+  "stay": {
+    "city": "Bali",
+    "minStars": 3,
+    "boardHint": "Breakfast"
+  },
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Arrive Bali",
+      "description": "Arrive Bali in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Bali icons",
+      "description": "Bali icons in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Deep dive day",
+      "description": "Deep dive day in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Free day",
+      "description": "Free day in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Museum or viewpoint",
+        "Cafe stop"
+      ]
+    },
+    {
+      "day": 5,
+      "title": "Depart",
+      "description": "Depart in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "dayBlueprints": [
+    {
+      "day": 1,
+      "title": "Arrive Bali",
+      "description": "Arrive Bali in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Check in",
+        "Evening walk"
+      ]
+    },
+    {
+      "day": 2,
+      "title": "Bali icons",
+      "description": "Bali icons in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "City highlights",
+        "Local lunch"
+      ]
+    },
+    {
+      "day": 3,
+      "title": "Deep dive day",
+      "description": "Deep dive day in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Neighbourhood explore",
+        "Sunset"
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Free day",
+      "description": "Free day in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Museum or viewpoint",
+        "Cafe stop"
+      ]
+    },
+    {
+      "day": 5,
+      "title": "Depart",
+      "description": "Depart in Bali.",
+      "stayCity": "Bali",
+      "anchors": [
+        "Bali"
+      ],
+      "activities": [
+        "Breakfast",
+        "Airport transfer"
+      ]
+    }
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "GLOBAL",
+    "authoredAt": "2026-08-12T16:46:56Z",
+    "author": "package_factory.author.seed",
+    "checks": [],
+    "checkedAt": "2026-08-12T16:46:56Z",
+    "checker": "package_factory.checker",
+    "checkIssues": [],
+    "engineValidation": {
+      "ok": true,
+      "status": "VALIDATED",
+      "issueCount": 0
+    },
+    "reverifiedAt": "2026-08-12T16:46:56Z",
+    "reverifier": "package_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

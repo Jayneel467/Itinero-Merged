@@ -1,0 +1,103 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.root:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.root:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pill {
+  border-radius: 999px;
+}
+
+.block {
+  width: 100%;
+}
+
+.primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.navy {
+  background: var(--color-navy);
+  color: #fff;
+}
+
+.navy:hover:not(:disabled) {
+  background: #002056;
+}
+
+.ghost {
+  background: #fff;
+  color: var(--color-navy);
+  border-color: #d0d5dd;
+}
+
+.ghost:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #98a2b3;
+}
+
+.soft {
+  background: #fff7f0;
+  color: #e65c00;
+  border-color: #ffd9bf;
+}
+
+.soft:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.gradient {
+  background: linear-gradient(90deg, #f97316, #ea580c);
+  color: #fff;
+  border: none;
+}
+
+.gradient:hover:not(:disabled) {
+  filter: brightness(1.03);
+}
+
+.danger {
+  background: #fff;
+  color: #b42318;
+  border-color: #fecdca;
+}
+
+.danger:hover:not(:disabled) {
+  background: #fef3f2;
+}
+
+.muted {
+  font-weight: 500;
+  color: #f79a5b;
+}

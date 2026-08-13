@@ -1,6 +1,6 @@
 /**
  * Validation utilities for forms.
- * Pure functions — no side effects, easily testable.
+ * Pure functions - no side effects, easily testable.
  */
 
 /**

@@ -1,0 +1,420 @@
+/* Shared Vero sidebar - /vero full page */
+
+.vero-sidebar {
+  --sb-ink: #001439;
+  --sb-muted: #64748b;
+  --sb-line: rgba(0, 20, 57, 0.08);
+  --sb-orange: #f97211;
+  --sb-cream: #fff7ed;
+  --sb-surface: #ffffff;
+
+  width: var(--vero-nav-width, 280px);
+  flex-shrink: 0;
+  background:
+    linear-gradient(180deg, #fffaf5 0%, #fafbfc 28%, #f4f6f9 100%);
+  border-right: 1px solid var(--sb-line);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  height: 100%;
+  max-height: 100dvh;
+  padding: 18px 14px 14px;
+  min-height: 0;
+  overflow: hidden;
+  z-index: 30;
+}
+
+/* ── Brand ── */
+.vero-sidebar__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 4px 14px;
+  min-width: 0;
+  border-bottom: 1px solid var(--sb-line);
+  margin-bottom: 12px;
+}
+
+.vero-sidebar__brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vero-sidebar__logo {
+  height: 22px;
+  width: auto;
+  max-width: 128px;
+  display: block;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.vero-sidebar__vero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 3px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #ffe0cc;
+  box-shadow: 0 1px 2px rgba(249, 114, 17, 0.08);
+  flex-shrink: 0;
+}
+
+.vero-sidebar__vero-chip span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9a3412;
+  letter-spacing: 0.01em;
+}
+
+.vero-sidebar__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center center;
+  background: #ffe8d6;
+  display: block;
+}
+
+.vero-sidebar__tagline {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--sb-muted);
+}
+
+/* ── New chat CTA ── */
+.vero-sidebar__top {
+  padding: 0 0 12px;
+}
+
+.vero-sidebar__new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #fb923c, #f97211);
+  box-shadow: 0 8px 18px rgba(249, 114, 17, 0.28);
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vero-sidebar__new:hover {
+  filter: brightness(1.04);
+  box-shadow: 0 10px 22px rgba(249, 114, 17, 0.34);
+}
+
+.vero-sidebar__new:active {
+  transform: translateY(1px);
+}
+
+.vero-sidebar__new--active {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px rgba(249, 114, 17, 0.45),
+    0 8px 18px rgba(249, 114, 17, 0.28);
+}
+
+.vero-sidebar__new-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Recent chats ── */
+.vero-sidebar__chats {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  gap: 6px;
+}
+
+.vero-sidebar__chats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px 2px;
+  flex-shrink: 0;
+}
+
+.vero-sidebar__chats-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.vero-sidebar__chats-count {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+}
+
+.vero-sidebar__chats-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 0 6px;
+  margin: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.vero-sidebar__chat-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.vero-sidebar__chat-row:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.vero-sidebar__chat-row--active {
+  background: #fff;
+  box-shadow:
+    0 0 0 1px #fed7aa,
+    0 4px 12px rgba(249, 114, 17, 0.08);
+}
+
+.vero-sidebar__chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  color: var(--sb-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 9px 8px 9px 10px;
+  border-radius: 12px;
+}
+
+.vero-sidebar__chat-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1px solid #eef0f3;
+  color: #94a3b8;
+}
+
+.vero-sidebar__chat-row--active .vero-sidebar__chat-icon {
+  background: var(--sb-cream);
+  border-color: #fed7aa;
+  color: var(--sb-orange);
+}
+
+.vero-sidebar__chat-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vero-sidebar__chat-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--sb-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.vero-sidebar__chat-meta {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.vero-sidebar__chat-delete {
+  flex-shrink: 0;
+  align-self: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 4px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.vero-sidebar__chat-row:hover .vero-sidebar__chat-delete,
+.vero-sidebar__chat-row:focus-within .vero-sidebar__chat-delete {
+  opacity: 1;
+}
+
+.vero-sidebar__chat-delete:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.vero-sidebar__chat-delete:focus-visible {
+  opacity: 1;
+  outline: 2px solid #f97211;
+  outline-offset: 1px;
+}
+
+.vero-sidebar__chats-empty {
+  margin: 8px 4px 0;
+  padding: 18px 14px;
+  border-radius: 14px;
+  border: 1px dashed #e2e8f0;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  color: #94a3b8;
+}
+
+.vero-sidebar__chats-empty p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: #475467;
+}
+
+.vero-sidebar__chats-empty span {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ── Bottom nav ── */
+.vero-sidebar__nav {
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid var(--sb-line);
+  min-width: 0;
+}
+
+.vero-sidebar__nav-label {
+  margin: 0 0 8px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.vero-sidebar__nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 20, 57, 0.06);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.vero-sidebar__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #475467;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.vero-sidebar__nav-item:hover {
+  background: var(--sb-cream);
+  color: #9a3412;
+}
+
+.vero-sidebar__nav-item svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.vero-sidebar__nav-item--wide {
+  grid-column: 1 / -1;
+}
+
+.vero-sidebar__new:focus-visible,
+.vero-sidebar__chat:focus-visible,
+.vero-sidebar__nav-item:focus-visible {
+  outline: 3px solid #f97211;
+  outline-offset: 2px;
+}
+
+@media (hover: none) {
+  .vero-sidebar__chat-delete {
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 768px) {
+  .vero-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100%;
+    max-height: 100dvh;
+    transform: translateX(-105%);
+    transition: transform 0.28s ease;
+    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.12);
+    background: #fff;
+  }
+
+  .vero-shell--nav-open .vero-sidebar {
+    transform: translateX(0);
+  }
+}

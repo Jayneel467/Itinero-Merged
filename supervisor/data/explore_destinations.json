@@ -1,0 +1,1760 @@
+[
+  {
+    "id": "goa",
+    "slug": "goa",
+    "city": "Goa",
+    "country": "India",
+    "continent": "india",
+    "iata": "GOI",
+    "themes": [
+      "beach",
+      "food"
+    ],
+    "imageId": "photo-1559827260-dc66d52bef19",
+    "blurb": "Beaches, spice, and late nights by the Arabian Sea.",
+    "trendingScore": 92,
+    "minTripDays": 3,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 15.3,
+    "lng": 74.12
+  },
+  {
+    "id": "jaipur",
+    "slug": "jaipur",
+    "city": "Jaipur",
+    "country": "India",
+    "continent": "india",
+    "iata": "JAI",
+    "themes": [
+      "city",
+      "adventure"
+    ],
+    "imageId": "photo-1477587458883-47145ed94245",
+    "blurb": "Pink City palaces and vibrant bazaars.",
+    "trendingScore": 88,
+    "minTripDays": 3,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 26.91,
+    "lng": 75.79
+  },
+  {
+    "id": "manali",
+    "slug": "manali",
+    "city": "Manali",
+    "country": "India",
+    "continent": "india",
+    "iata": "KUU",
+    "themes": [
+      "hills",
+      "adventure"
+    ],
+    "imageId": "photo-1626621341517-bbf3d9990a23",
+    "blurb": "Himalayan valleys, snow, and apple orchards.",
+    "trendingScore": 90,
+    "minTripDays": 4,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 32.24,
+    "lng": 77.19
+  },
+  {
+    "id": "kochi",
+    "slug": "kochi",
+    "city": "Kochi",
+    "country": "India",
+    "continent": "india",
+    "iata": "COK",
+    "themes": [
+      "beach",
+      "food",
+      "city"
+    ],
+    "imageId": "photo-1593693411515-c20261bcad6e",
+    "blurb": "Backwaters gateway and coastal Kerala flavours.",
+    "trendingScore": 84,
+    "minTripDays": 4,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 9.93,
+    "lng": 76.27
+  },
+  {
+    "id": "udaipur",
+    "slug": "udaipur",
+    "city": "Udaipur",
+    "country": "India",
+    "continent": "india",
+    "iata": "UDR",
+    "themes": [
+      "honeymoon",
+      "city"
+    ],
+    "imageId": "photo-1696861524777-978d87c7cff2",
+    "blurb": "Lake palaces made for slow romantic days.",
+    "trendingScore": 91,
+    "minTripDays": 3,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 24.59,
+    "lng": 73.71
+  },
+  {
+    "id": "leh",
+    "slug": "leh",
+    "city": "Leh",
+    "country": "India",
+    "continent": "india",
+    "iata": "IXL",
+    "themes": [
+      "hills",
+      "adventure",
+      "wildlife"
+    ],
+    "imageId": "photo-1589182373726-e4f658ab50f0",
+    "blurb": "High-desert monasteries and epic road trips.",
+    "trendingScore": 87,
+    "minTripDays": 5,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 34.15,
+    "lng": 77.58
+  },
+  {
+    "id": "darjeeling",
+    "slug": "darjeeling",
+    "city": "Darjeeling",
+    "country": "India",
+    "continent": "india",
+    "iata": "IXB",
+    "themes": [
+      "hills",
+      "food"
+    ],
+    "imageId": "photo-1501785888041-af3ef285b470",
+    "blurb": "Tea estates and Kanchenjunga mornings.",
+    "trendingScore": 80,
+    "minTripDays": 4,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 27.04,
+    "lng": 88.26
+  },
+  {
+    "id": "varanasi",
+    "slug": "varanasi",
+    "city": "Varanasi",
+    "country": "India",
+    "continent": "india",
+    "iata": "VNS",
+    "themes": [
+      "pilgrimage",
+      "city"
+    ],
+    "imageId": "photo-1561361513-2d000a50f0dc",
+    "blurb": "Ghats, rituals, and the oldest living city energy.",
+    "trendingScore": 86,
+    "minTripDays": 3,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 25.32,
+    "lng": 82.97
+  },
+  {
+    "id": "rishikesh",
+    "slug": "rishikesh",
+    "city": "Rishikesh",
+    "country": "India",
+    "continent": "india",
+    "iata": "DED",
+    "themes": [
+      "pilgrimage",
+      "adventure",
+      "hills"
+    ],
+    "imageId": "photo-1582510003544-4d00b7f74220",
+    "blurb": "Yoga capital with Ganga rafting days.",
+    "trendingScore": 83,
+    "minTripDays": 3,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 30.09,
+    "lng": 78.27
+  },
+  {
+    "id": "andaman",
+    "slug": "andaman",
+    "city": "Port Blair",
+    "country": "India",
+    "continent": "india",
+    "iata": "IXZ",
+    "themes": [
+      "beach",
+      "wildlife"
+    ],
+    "imageId": "photo-1589308078059-be1415eab4c3",
+    "blurb": "Clear water islands and coral reefs.",
+    "trendingScore": 89,
+    "minTripDays": 5,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 11.62,
+    "lng": 92.73
+  },
+  {
+    "id": "srinagar",
+    "slug": "srinagar",
+    "city": "Srinagar",
+    "country": "India",
+    "continent": "india",
+    "iata": "SXR",
+    "themes": [
+      "hills",
+      "honeymoon"
+    ],
+    "imageId": "photo-1469474968028-56623f02e42e",
+    "blurb": "Dal Lake houseboats and Chinar shade.",
+    "trendingScore": 85,
+    "minTripDays": 4,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 34.08,
+    "lng": 74.8
+  },
+  {
+    "id": "mumbai",
+    "slug": "mumbai",
+    "city": "Mumbai",
+    "country": "India",
+    "continent": "india",
+    "iata": "BOM",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1566552881560-0be862a7c445",
+    "blurb": "Maximum city - street food to skyline.",
+    "trendingScore": 78,
+    "minTripDays": 2,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 19.09,
+    "lng": 72.87
+  },
+  {
+    "id": "lonavala",
+    "slug": "lonavala",
+    "city": "Lonavala",
+    "country": "India",
+    "continent": "india",
+    "iata": "",
+    "themes": [
+      "hills",
+      "wellness"
+    ],
+    "imageId": "photo-1506905925346-21bda4d32df4",
+    "blurb": "Misty ghats and a Mumbai weekend reset.",
+    "trendingScore": 74,
+    "minTripDays": 2,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 18.75,
+    "lng": 73.41
+  },
+  {
+    "id": "nashik",
+    "slug": "nashik",
+    "city": "Nashik",
+    "country": "India",
+    "continent": "india",
+    "iata": "ISK",
+    "themes": [
+      "food",
+      "pilgrimage",
+      "hills"
+    ],
+    "imageId": "photo-1474979266404-7eaacbcd87c5",
+    "blurb": "Vineyards, temples, and a short road north.",
+    "trendingScore": 72,
+    "minTripDays": 2,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 19.99,
+    "lng": 73.79
+  },
+  {
+    "id": "alibaug",
+    "slug": "alibaug",
+    "city": "Alibaug",
+    "country": "India",
+    "continent": "india",
+    "iata": "",
+    "themes": [
+      "beach",
+      "wellness"
+    ],
+    "imageId": "photo-1507525428034-b723cf961d3e",
+    "blurb": "Ferry across the harbour for slow beach days.",
+    "trendingScore": 73,
+    "minTripDays": 2,
+    "markets": [
+      "IN",
+      "*"
+    ],
+    "lat": 18.64,
+    "lng": 72.87
+  },
+  {
+    "id": "tokyo",
+    "slug": "tokyo",
+    "city": "Tokyo",
+    "country": "Japan",
+    "continent": "asia",
+    "iata": "NRT",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1540959733332-eab4deabeeaf",
+    "blurb": "Neon nights, quiet shrines, endless bowls.",
+    "trendingScore": 95,
+    "minTripDays": 5,
+    "markets": [
+      "JP",
+      "*"
+    ],
+    "lat": 35.68,
+    "lng": 139.69
+  },
+  {
+    "id": "kyoto",
+    "slug": "kyoto",
+    "city": "Kyoto",
+    "country": "Japan",
+    "continent": "asia",
+    "iata": "KIX",
+    "themes": [
+      "city",
+      "culture",
+      "food"
+    ],
+    "imageId": "photo-1493976040374-85c8e12f0c0e",
+    "blurb": "Temples, gardens, and maple-light evenings.",
+    "trendingScore": 94,
+    "minTripDays": 4,
+    "markets": [
+      "JP",
+      "*"
+    ],
+    "lat": 35.01,
+    "lng": 135.77
+  },
+  {
+    "id": "bangkok",
+    "slug": "bangkok",
+    "city": "Bangkok",
+    "country": "Thailand",
+    "continent": "asia",
+    "iata": "BKK",
+    "themes": [
+      "city",
+      "food",
+      "beach"
+    ],
+    "imageId": "photo-1508009603885-50cf7c579365",
+    "blurb": "Temples, markets, and midnight street eats.",
+    "trendingScore": 94,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 13.76,
+    "lng": 100.5
+  },
+  {
+    "id": "singapore",
+    "slug": "singapore",
+    "city": "Singapore",
+    "country": "Singapore",
+    "continent": "asia",
+    "iata": "SIN",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1525625293386-3f8f99389edd",
+    "blurb": "Garden city with hawker flavours and skyline views.",
+    "trendingScore": 93,
+    "minTripDays": 3,
+    "markets": [
+      "SG",
+      "*"
+    ],
+    "lat": 1.35,
+    "lng": 103.82
+  },
+  {
+    "id": "bali",
+    "slug": "bali",
+    "city": "Bali",
+    "country": "Indonesia",
+    "continent": "asia",
+    "iata": "DPS",
+    "themes": [
+      "beach",
+      "honeymoon",
+      "adventure"
+    ],
+    "imageId": "photo-1555400038-63f5ba517a47",
+    "blurb": "Rice terraces, surf, and temple sunsets.",
+    "trendingScore": 96,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": -8.34,
+    "lng": 115.09
+  },
+  {
+    "id": "maldives",
+    "slug": "maldives",
+    "city": "Malé",
+    "country": "Maldives",
+    "continent": "asia",
+    "iata": "MLE",
+    "themes": [
+      "beach",
+      "honeymoon"
+    ],
+    "imageId": "photo-1514282401047-d79a71a590e8",
+    "blurb": "Overwater villas and turquoise lagoons.",
+    "trendingScore": 97,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 4.18,
+    "lng": 73.51
+  },
+  {
+    "id": "kathmandu",
+    "slug": "kathmandu",
+    "city": "Kathmandu",
+    "country": "Nepal",
+    "continent": "asia",
+    "iata": "KTM",
+    "themes": [
+      "adventure",
+      "hills",
+      "pilgrimage"
+    ],
+    "imageId": "photo-1544735716-392fe2489ffa",
+    "blurb": "Himalaya gateway and living heritage squares.",
+    "trendingScore": 82,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 27.72,
+    "lng": 85.32
+  },
+  {
+    "id": "colombo",
+    "slug": "colombo",
+    "city": "Colombo",
+    "country": "Sri Lanka",
+    "continent": "asia",
+    "iata": "CMB",
+    "themes": [
+      "beach",
+      "food",
+      "city"
+    ],
+    "imageId": "photo-1552465011-b4e21bf6e79a",
+    "blurb": "Coastal capital into tea country and safaris.",
+    "trendingScore": 81,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": 6.93,
+    "lng": 79.85
+  },
+  {
+    "id": "seoul",
+    "slug": "seoul",
+    "city": "Seoul",
+    "country": "South Korea",
+    "continent": "asia",
+    "iata": "ICN",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1517154421773-0529f29ea451",
+    "blurb": "K-culture, mountains in the city, late-night eats.",
+    "trendingScore": 88,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 37.57,
+    "lng": 126.98
+  },
+  {
+    "id": "hong-kong",
+    "slug": "hong-kong",
+    "city": "Hong Kong",
+    "country": "China",
+    "continent": "asia",
+    "iata": "HKG",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1536599018102-9f803c140fc1",
+    "blurb": "Harbour skyline and dim sum marathons.",
+    "trendingScore": 86,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 22.32,
+    "lng": 114.17
+  },
+  {
+    "id": "phuket",
+    "slug": "phuket",
+    "city": "Phuket",
+    "country": "Thailand",
+    "continent": "asia",
+    "iata": "HKT",
+    "themes": [
+      "beach",
+      "honeymoon"
+    ],
+    "imageId": "photo-1589394815804-964ed0be2eb5",
+    "blurb": "Andaman beaches and island hopping.",
+    "trendingScore": 90,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 7.88,
+    "lng": 98.39
+  },
+  {
+    "id": "hanoi",
+    "slug": "hanoi",
+    "city": "Hanoi",
+    "country": "Vietnam",
+    "continent": "asia",
+    "iata": "HAN",
+    "themes": [
+      "city",
+      "food",
+      "adventure"
+    ],
+    "imageId": "photo-1528127269322-539801943592",
+    "blurb": "Old Quarter lanes into Ha Long adventures.",
+    "trendingScore": 85,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 21.03,
+    "lng": 105.85
+  },
+  {
+    "id": "kuala-lumpur",
+    "slug": "kuala-lumpur",
+    "city": "Kuala Lumpur",
+    "country": "Malaysia",
+    "continent": "asia",
+    "iata": "KUL",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1518548419970-58e3b4079ab2",
+    "blurb": "Towers, rainforest edges, and street food.",
+    "trendingScore": 84,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 3.14,
+    "lng": 101.69
+  },
+  {
+    "id": "dubai",
+    "slug": "dubai",
+    "city": "Dubai",
+    "country": "UAE",
+    "continent": "middle_east",
+    "iata": "DXB",
+    "themes": [
+      "city",
+      "honeymoon",
+      "adventure"
+    ],
+    "imageId": "photo-1512453979798-5ea266f8880c",
+    "blurb": "Desert dunes meet futuristic skyline.",
+    "trendingScore": 98,
+    "minTripDays": 3,
+    "markets": [
+      "AE",
+      "*"
+    ],
+    "lat": 25.2,
+    "lng": 55.27
+  },
+  {
+    "id": "abu-dhabi",
+    "slug": "abu-dhabi",
+    "city": "Abu Dhabi",
+    "country": "UAE",
+    "continent": "middle_east",
+    "iata": "AUH",
+    "themes": [
+      "city",
+      "honeymoon"
+    ],
+    "imageId": "photo-1609137144813-7d9921338f24",
+    "blurb": "Grand Mosque calm and island resorts.",
+    "trendingScore": 87,
+    "minTripDays": 3,
+    "markets": [
+      "AE",
+      "*"
+    ],
+    "lat": 24.45,
+    "lng": 54.65
+  },
+  {
+    "id": "doha",
+    "slug": "doha",
+    "city": "Doha",
+    "country": "Qatar",
+    "continent": "middle_east",
+    "iata": "DOH",
+    "themes": [
+      "city"
+    ],
+    "imageId": "photo-1555881400-74d7acaacd8b",
+    "blurb": "Museum-worthy skyline on the Gulf.",
+    "trendingScore": 79,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 25.29,
+    "lng": 51.53
+  },
+  {
+    "id": "istanbul",
+    "slug": "istanbul",
+    "city": "Istanbul",
+    "country": "Turkey",
+    "continent": "middle_east",
+    "iata": "IST",
+    "themes": [
+      "city",
+      "food",
+      "honeymoon"
+    ],
+    "imageId": "photo-1524231757912-21f4fe3a7200",
+    "blurb": "Where Europe and Asia share one skyline.",
+    "trendingScore": 94,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 41.01,
+    "lng": 28.98
+  },
+  {
+    "id": "tbilisi",
+    "slug": "tbilisi",
+    "city": "Tbilisi",
+    "country": "Georgia",
+    "continent": "europe",
+    "iata": "TBS",
+    "themes": [
+      "city",
+      "food",
+      "hills",
+      "culture"
+    ],
+    "imageId": "photo-1523906834658-6e24ef2386f9",
+    "blurb": "Old streets, mountain access, and unhurried dinners.",
+    "trendingScore": 86,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 41.72,
+    "lng": 44.79
+  },
+  {
+    "id": "paris",
+    "slug": "paris",
+    "city": "Paris",
+    "country": "France",
+    "continent": "europe",
+    "iata": "CDG",
+    "themes": [
+      "city",
+      "honeymoon",
+      "food"
+    ],
+    "imageId": "photo-1502602898657-3e91760cbb34",
+    "blurb": "Cafés, museums, and river-light evenings.",
+    "trendingScore": 97,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 48.86,
+    "lng": 2.35
+  },
+  {
+    "id": "rome",
+    "slug": "rome",
+    "city": "Rome",
+    "country": "Italy",
+    "continent": "europe",
+    "iata": "FCO",
+    "themes": [
+      "city",
+      "food",
+      "honeymoon"
+    ],
+    "imageId": "photo-1552832230-c0197dd311b5",
+    "blurb": "Ancient stones and perfect pasta nights.",
+    "trendingScore": 95,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 41.9,
+    "lng": 12.5
+  },
+  {
+    "id": "london",
+    "slug": "london",
+    "city": "London",
+    "country": "UK",
+    "continent": "europe",
+    "iata": "LHR",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1513635269975-59663e0ac1ad",
+    "blurb": "Parks, pubs, and world-class museums.",
+    "trendingScore": 93,
+    "minTripDays": 4,
+    "markets": [
+      "GB",
+      "*"
+    ],
+    "lat": 51.51,
+    "lng": -0.13
+  },
+  {
+    "id": "barcelona",
+    "slug": "barcelona",
+    "city": "Barcelona",
+    "country": "Spain",
+    "continent": "europe",
+    "iata": "BCN",
+    "themes": [
+      "city",
+      "beach",
+      "food"
+    ],
+    "imageId": "photo-1583422409516-2895a77efded",
+    "blurb": "Gaudí curves and Mediterranean nights.",
+    "trendingScore": 94,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 41.39,
+    "lng": 2.17
+  },
+  {
+    "id": "amsterdam",
+    "slug": "amsterdam",
+    "city": "Amsterdam",
+    "country": "Netherlands",
+    "continent": "europe",
+    "iata": "AMS",
+    "themes": [
+      "city"
+    ],
+    "imageId": "photo-1534351590666-13e3e96b5017",
+    "blurb": "Canals, bikes, and golden-hour bridges.",
+    "trendingScore": 89,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 52.37,
+    "lng": 4.9
+  },
+  {
+    "id": "santorini",
+    "slug": "santorini",
+    "city": "Santorini",
+    "country": "Greece",
+    "continent": "europe",
+    "iata": "JTR",
+    "themes": [
+      "beach",
+      "honeymoon"
+    ],
+    "imageId": "photo-1570077188670-e3a8d69ac5ff",
+    "blurb": "White cliffs and legendary sunsets.",
+    "trendingScore": 96,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 36.39,
+    "lng": 25.46
+  },
+  {
+    "id": "prague",
+    "slug": "prague",
+    "city": "Prague",
+    "country": "Czechia",
+    "continent": "europe",
+    "iata": "PRG",
+    "themes": [
+      "city",
+      "honeymoon"
+    ],
+    "imageId": "photo-1541849546-216549ae216d",
+    "blurb": "Fairy-tale bridges and old-town spires.",
+    "trendingScore": 88,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 50.08,
+    "lng": 14.44
+  },
+  {
+    "id": "vienna",
+    "slug": "vienna",
+    "city": "Vienna",
+    "country": "Austria",
+    "continent": "europe",
+    "iata": "VIE",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1516550893923-42d28e5677af",
+    "blurb": "Palaces, coffee houses, and classical calm.",
+    "trendingScore": 84,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 48.21,
+    "lng": 16.37
+  },
+  {
+    "id": "zurich",
+    "slug": "zurich",
+    "city": "Zurich",
+    "country": "Switzerland",
+    "continent": "europe",
+    "iata": "ZRH",
+    "themes": [
+      "city",
+      "hills",
+      "ski"
+    ],
+    "imageId": "photo-1515488764276-beab7607c1e6",
+    "blurb": "Lake city gateway to Alps adventures.",
+    "trendingScore": 83,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 47.38,
+    "lng": 8.54
+  },
+  {
+    "id": "reykjavik",
+    "slug": "iceland",
+    "city": "Reykjavik",
+    "country": "Iceland",
+    "continent": "europe",
+    "iata": "KEF",
+    "themes": [
+      "adventure",
+      "hills",
+      "wildlife"
+    ],
+    "imageId": "photo-1504893524553-b855bce32c67",
+    "blurb": "Long evenings, open lava, and northern light hunts.",
+    "trendingScore": 90,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": 64.13,
+    "lng": -21.94
+  },
+  {
+    "id": "lisbon",
+    "slug": "lisbon",
+    "city": "Lisbon",
+    "country": "Portugal",
+    "continent": "europe",
+    "iata": "LIS",
+    "themes": [
+      "city",
+      "food",
+      "beach"
+    ],
+    "imageId": "photo-1558642452-9d2a7deb7f62",
+    "blurb": "Tile hills, trams, and Atlantic light.",
+    "trendingScore": 90,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 38.72,
+    "lng": -9.14
+  },
+  {
+    "id": "milan",
+    "slug": "milan",
+    "city": "Milan",
+    "country": "Italy",
+    "continent": "europe",
+    "iata": "MXP",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1513581166391-887a96ddeafd",
+    "blurb": "Fashion capital into lake-country escapes.",
+    "trendingScore": 82,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 45.46,
+    "lng": 9.19
+  },
+  {
+    "id": "berlin",
+    "slug": "berlin",
+    "city": "Berlin",
+    "country": "Germany",
+    "continent": "europe",
+    "iata": "BER",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1560969184-10fe8719e047",
+    "blurb": "History, nightlife, and creative energy.",
+    "trendingScore": 85,
+    "minTripDays": 3,
+    "markets": [
+      "*"
+    ],
+    "lat": 52.52,
+    "lng": 13.4
+  },
+  {
+    "id": "new-york",
+    "slug": "new-york",
+    "city": "New York",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "JFK",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1496442226666-8d4d0e62e6e9",
+    "blurb": "The city that never sleeps - skyline and street energy.",
+    "trendingScore": 96,
+    "minTripDays": 4,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 40.64,
+    "lng": -73.78
+  },
+  {
+    "id": "los-angeles",
+    "slug": "los-angeles",
+    "city": "Los Angeles",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "LAX",
+    "themes": [
+      "city",
+      "beach"
+    ],
+    "imageId": "photo-1534190760961-74e8c1c5c3da",
+    "blurb": "Pacific light, Hollywood, and endless drives.",
+    "trendingScore": 88,
+    "minTripDays": 4,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 33.94,
+    "lng": -118.41
+  },
+  {
+    "id": "san-francisco",
+    "slug": "san-francisco",
+    "city": "San Francisco",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "SFO",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1501594907352-04cda38ebc29",
+    "blurb": "Fog, bridges, and neighbourhood walks.",
+    "trendingScore": 86,
+    "minTripDays": 3,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 37.62,
+    "lng": -122.38
+  },
+  {
+    "id": "toronto",
+    "slug": "toronto",
+    "city": "Toronto",
+    "country": "Canada",
+    "continent": "americas",
+    "iata": "YYZ",
+    "themes": [
+      "city"
+    ],
+    "imageId": "photo-1480714378408-67cf0d13bc1b",
+    "blurb": "Lake city with neighbourhood food scenes.",
+    "trendingScore": 80,
+    "minTripDays": 3,
+    "markets": [
+      "CA",
+      "*"
+    ],
+    "lat": 43.68,
+    "lng": -79.63
+  },
+  {
+    "id": "mexico-city",
+    "slug": "mexico-city",
+    "city": "Mexico City",
+    "country": "Mexico",
+    "continent": "americas",
+    "iata": "MEX",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1578662996442-48f60103fc96",
+    "blurb": "Museums, markets, and world-class cuisine.",
+    "trendingScore": 87,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 19.44,
+    "lng": -99.07
+  },
+  {
+    "id": "miami",
+    "slug": "miami",
+    "city": "Miami",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "MIA",
+    "themes": [
+      "beach",
+      "city"
+    ],
+    "imageId": "photo-1514214246283-d427a95c5d2f",
+    "blurb": "Art Deco beaches and Latin rhythm.",
+    "trendingScore": 85,
+    "minTripDays": 3,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 25.8,
+    "lng": -80.29
+  },
+  {
+    "id": "chicago",
+    "slug": "chicago",
+    "city": "Chicago",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "ORD",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1494522855154-9297ac14b55f",
+    "blurb": "Architecture, lake wind, and neighbourhood eats.",
+    "trendingScore": 84,
+    "minTripDays": 3,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 41.97,
+    "lng": -87.91
+  },
+  {
+    "id": "denver",
+    "slug": "denver",
+    "city": "Denver",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "DEN",
+    "themes": [
+      "hills",
+      "adventure",
+      "city"
+    ],
+    "imageId": "photo-1546156929-a4c0ac41164c",
+    "blurb": "Mile-high gateway to Rockies weekends.",
+    "trendingScore": 82,
+    "minTripDays": 3,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 39.86,
+    "lng": -104.67
+  },
+  {
+    "id": "seattle",
+    "slug": "seattle",
+    "city": "Seattle",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "SEA",
+    "themes": [
+      "city",
+      "food",
+      "hills"
+    ],
+    "imageId": "photo-1502175353174-a7a70eaa6b4c",
+    "blurb": "Coffee, ferry light, and Cascade day trips.",
+    "trendingScore": 83,
+    "minTripDays": 3,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 47.45,
+    "lng": -122.31
+  },
+  {
+    "id": "las-vegas",
+    "slug": "las-vegas",
+    "city": "Las Vegas",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "LAS",
+    "themes": [
+      "city",
+      "adventure"
+    ],
+    "imageId": "photo-1605833556294-ea5c7a74f57d",
+    "blurb": "Neon nights and red-rock day escapes.",
+    "trendingScore": 86,
+    "minTripDays": 3,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 36.08,
+    "lng": -115.15
+  },
+  {
+    "id": "nashville",
+    "slug": "nashville",
+    "city": "Nashville",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "BNA",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1546146830-2cca7862f0f0",
+    "blurb": "Music Row energy and Southern tables.",
+    "trendingScore": 81,
+    "minTripDays": 3,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 36.13,
+    "lng": -86.67
+  },
+  {
+    "id": "honolulu",
+    "slug": "honolulu",
+    "city": "Honolulu",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "HNL",
+    "themes": [
+      "beach",
+      "honeymoon",
+      "adventure"
+    ],
+    "imageId": "photo-1505852679233-d9fd70aff56d",
+    "blurb": "Pacific islands, surf, and sunrise trails.",
+    "trendingScore": 90,
+    "minTripDays": 5,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "lat": 21.32,
+    "lng": -157.92
+  },
+  {
+    "id": "cancun",
+    "slug": "cancun",
+    "city": "Cancún",
+    "country": "Mexico",
+    "continent": "americas",
+    "iata": "CUN",
+    "themes": [
+      "beach",
+      "honeymoon"
+    ],
+    "imageId": "photo-1552074284-5e88ef1aef18",
+    "blurb": "Caribbean blue and Mayan day trips.",
+    "trendingScore": 89,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": 21.04,
+    "lng": -86.87
+  },
+  {
+    "id": "rio",
+    "slug": "rio",
+    "city": "Rio de Janeiro",
+    "country": "Brazil",
+    "continent": "americas",
+    "iata": "GIG",
+    "themes": [
+      "beach",
+      "city",
+      "adventure"
+    ],
+    "imageId": "photo-1483729558449-99ef09a8c325",
+    "blurb": "Mountains meet beach carnival energy.",
+    "trendingScore": 84,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": -22.91,
+    "lng": -43.17
+  },
+  {
+    "id": "cape-town",
+    "slug": "cape-town",
+    "city": "Cape Town",
+    "country": "South Africa",
+    "continent": "africa",
+    "iata": "CPT",
+    "themes": [
+      "city",
+      "adventure",
+      "wildlife",
+      "beach"
+    ],
+    "imageId": "photo-1580060839134-75a5edca2e99",
+    "blurb": "Table Mountain, wine country, and wild coast.",
+    "trendingScore": 91,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": -33.97,
+    "lng": 18.6
+  },
+  {
+    "id": "cairo",
+    "slug": "cairo",
+    "city": "Cairo",
+    "country": "Egypt",
+    "continent": "africa",
+    "iata": "CAI",
+    "themes": [
+      "city",
+      "adventure",
+      "pilgrimage"
+    ],
+    "imageId": "photo-1572252009286-268acec5ca0a",
+    "blurb": "Pyramids, Nile evenings, and ancient streets.",
+    "trendingScore": 86,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 30.11,
+    "lng": 31.4
+  },
+  {
+    "id": "marrakech",
+    "slug": "marrakech",
+    "city": "Marrakech",
+    "country": "Morocco",
+    "continent": "africa",
+    "iata": "RAK",
+    "themes": [
+      "city",
+      "adventure",
+      "food"
+    ],
+    "imageId": "photo-1544644181-1484b3fdfc62",
+    "blurb": "Souks, riads, and Atlas day trips.",
+    "trendingScore": 88,
+    "minTripDays": 4,
+    "markets": [
+      "*"
+    ],
+    "lat": 31.61,
+    "lng": -8.0
+  },
+  {
+    "id": "nairobi",
+    "slug": "nairobi",
+    "city": "Nairobi",
+    "country": "Kenya",
+    "continent": "africa",
+    "iata": "NBO",
+    "themes": [
+      "wildlife",
+      "adventure"
+    ],
+    "imageId": "photo-1516426122078-c23e76319801",
+    "blurb": "Safari capital with urban safari energy.",
+    "trendingScore": 83,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": -1.32,
+    "lng": 36.93
+  },
+  {
+    "id": "zanzibar",
+    "slug": "zanzibar",
+    "city": "Zanzibar",
+    "country": "Tanzania",
+    "continent": "africa",
+    "iata": "ZNZ",
+    "themes": [
+      "beach",
+      "honeymoon"
+    ],
+    "imageId": "photo-1571896349842-33c89424de2d",
+    "blurb": "Spice island beaches and Stone Town lanes.",
+    "trendingScore": 87,
+    "minTripDays": 5,
+    "markets": [
+      "*"
+    ],
+    "lat": -6.22,
+    "lng": 39.22
+  },
+  {
+    "id": "sydney",
+    "slug": "sydney",
+    "city": "Sydney",
+    "country": "Australia",
+    "continent": "oceania",
+    "iata": "SYD",
+    "themes": [
+      "city",
+      "beach"
+    ],
+    "imageId": "photo-1506973035872-a4ec16b8e8d9",
+    "blurb": "Harbour icon with beach-city lifestyle.",
+    "trendingScore": 92,
+    "minTripDays": 5,
+    "markets": [
+      "AU",
+      "*"
+    ],
+    "lat": -33.94,
+    "lng": 151.18
+  },
+  {
+    "id": "melbourne",
+    "slug": "melbourne",
+    "city": "Melbourne",
+    "country": "Australia",
+    "continent": "oceania",
+    "iata": "MEL",
+    "themes": [
+      "city",
+      "food"
+    ],
+    "imageId": "photo-1514395462725-fb4566210144",
+    "blurb": "Coffee culture and laneway art.",
+    "trendingScore": 86,
+    "minTripDays": 4,
+    "markets": [
+      "AU",
+      "*"
+    ],
+    "lat": -37.67,
+    "lng": 144.84
+  },
+  {
+    "id": "auckland",
+    "slug": "auckland",
+    "city": "Auckland",
+    "country": "New Zealand",
+    "continent": "oceania",
+    "iata": "AKL",
+    "themes": [
+      "city",
+      "adventure",
+      "wildlife"
+    ],
+    "imageId": "photo-1507699622108-4be3abd695ad",
+    "blurb": "City of sails into island adventures.",
+    "trendingScore": 84,
+    "minTripDays": 5,
+    "markets": [
+      "AU",
+      "*"
+    ],
+    "lat": -37.01,
+    "lng": 174.79
+  },
+  {
+    "id": "queenstown",
+    "slug": "queenstown",
+    "city": "Queenstown",
+    "country": "New Zealand",
+    "continent": "oceania",
+    "iata": "ZQN",
+    "themes": [
+      "adventure",
+      "hills",
+      "ski"
+    ],
+    "imageId": "photo-1469854523086-cc02fe5d8800",
+    "blurb": "Adventure capital with alpine lakes.",
+    "trendingScore": 90,
+    "minTripDays": 5,
+    "markets": [
+      "AU",
+      "*"
+    ],
+    "lat": -45.02,
+    "lng": 168.74
+  },
+  {
+    "id": "fiji",
+    "slug": "fiji",
+    "city": "Nadi",
+    "country": "Fiji",
+    "continent": "oceania",
+    "iata": "NAN",
+    "themes": [
+      "beach",
+      "honeymoon"
+    ],
+    "imageId": "photo-1507525428034-b723cf961d3e",
+    "blurb": "Island blues and slow reef days.",
+    "trendingScore": 85,
+    "minTripDays": 5,
+    "markets": [
+      "AU",
+      "*"
+    ],
+    "lat": -17.76,
+    "lng": 177.44
+  },
+  {
+    "id": "boston",
+    "slug": "boston",
+    "city": "Boston",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "BOS",
+    "themes": [
+      "city",
+      "food",
+      "culture"
+    ],
+    "imageId": "photo-1501594907352-04cda38ebc29",
+    "blurb": "Harbour walks, university energy, and New England seafood.",
+    "trendingScore": 84,
+    "minTripDays": 3,
+    "lat": 42.36,
+    "lng": -71.06,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:42:39Z",
+      "publisher": "explore_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:42:39Z",
+      "checkedAt": "2026-08-12T16:42:39Z",
+      "reverifiedAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "austin",
+    "slug": "austin",
+    "city": "Austin",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "AUS",
+    "themes": [
+      "city",
+      "food",
+      "adventure"
+    ],
+    "imageId": "photo-1531219572328-a0171b4448a3",
+    "blurb": "Live music, breakfast tacos, and Hill Country day trips.",
+    "trendingScore": 85,
+    "minTripDays": 3,
+    "lat": 30.27,
+    "lng": -97.74,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:42:39Z",
+      "publisher": "explore_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:42:39Z",
+      "checkedAt": "2026-08-12T16:42:39Z",
+      "reverifiedAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "new-orleans",
+    "slug": "new-orleans",
+    "city": "New Orleans",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "MSY",
+    "themes": [
+      "city",
+      "food",
+      "culture"
+    ],
+    "imageId": "photo-1569949381669-ecf31ae8e613",
+    "blurb": "Jazz nights, Creole tables, and Mississippi light.",
+    "trendingScore": 86,
+    "minTripDays": 3,
+    "lat": 29.95,
+    "lng": -90.07,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:42:39Z",
+      "publisher": "explore_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:42:39Z",
+      "checkedAt": "2026-08-12T16:42:39Z",
+      "reverifiedAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "washington-dc",
+    "slug": "washington-dc",
+    "city": "Washington, D.C.",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "DCA",
+    "themes": [
+      "city",
+      "culture",
+      "family"
+    ],
+    "imageId": "photo-1501466044931-62695aada8ed",
+    "blurb": "Monuments, museums, and cherry-blossom springs.",
+    "trendingScore": 83,
+    "minTripDays": 3,
+    "lat": 38.85,
+    "lng": -77.04,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:42:39Z",
+      "publisher": "explore_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:42:39Z",
+      "checkedAt": "2026-08-12T16:42:39Z",
+      "reverifiedAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "portland",
+    "slug": "portland",
+    "city": "Portland",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "PDX",
+    "themes": [
+      "city",
+      "food",
+      "hills"
+    ],
+    "imageId": "photo-1469474968028-56623f02e42e",
+    "blurb": "Coffee, forests, and Cascades weekend escapes.",
+    "trendingScore": 81,
+    "minTripDays": 3,
+    "lat": 45.59,
+    "lng": -122.6,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:42:39Z",
+      "publisher": "explore_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:42:39Z",
+      "checkedAt": "2026-08-12T16:42:39Z",
+      "reverifiedAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "savannah",
+    "slug": "savannah",
+    "city": "Savannah",
+    "country": "USA",
+    "continent": "americas",
+    "iata": "SAV",
+    "themes": [
+      "city",
+      "culture",
+      "food"
+    ],
+    "imageId": "photo-1546156929-a4c0ac41164c",
+    "blurb": "Oak-lined squares and slow Southern evenings.",
+    "trendingScore": 80,
+    "minTripDays": 2,
+    "lat": 32.08,
+    "lng": -81.09,
+    "markets": [
+      "US",
+      "*"
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:42:39Z",
+      "publisher": "explore_factory.publisher",
+      "market": "US",
+      "authoredAt": "2026-08-12T16:42:39Z",
+      "checkedAt": "2026-08-12T16:42:39Z",
+      "reverifiedAt": "2026-08-12T16:42:39Z"
+    }
+  },
+  {
+    "id": "edinburgh",
+    "slug": "edinburgh",
+    "city": "Edinburgh",
+    "country": "UK",
+    "continent": "europe",
+    "iata": "EDI",
+    "themes": [
+      "city",
+      "culture",
+      "hills"
+    ],
+    "imageId": "photo-1506377247377-2a5b3b417ebb",
+    "blurb": "Castle views, festival energy, and highland day trips.",
+    "trendingScore": 88,
+    "minTripDays": 3,
+    "lat": 55.95,
+    "lng": -3.19,
+    "markets": [
+      "GB",
+      "*"
+    ],
+    "pipeline": {
+      "status": "published",
+      "publishedAt": "2026-08-12T16:27:16Z",
+      "publisher": "explore_factory.publisher",
+      "market": "GB",
+      "authoredAt": "2026-08-12T16:27:16Z",
+      "checkedAt": "2026-08-12T16:27:16Z",
+      "reverifiedAt": "2026-08-12T16:27:16Z"
+    }
+  }
+]

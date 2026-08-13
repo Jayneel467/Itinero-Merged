@@ -39,7 +39,7 @@ export function BookingPanel({
         </button>
       </div>
       <p className="mt-4 text-[11px] text-[#868686]">
-        Card fields intentionally omitted — no secrets in the browser. Gateway
+        Card fields intentionally omitted - no secrets in the browser. Gateway
         returns publishable keys when prebook succeeds.
       </p>
     </div>

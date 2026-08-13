@@ -1,0 +1,112 @@
+.thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #e8edf2;
+  display: block;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.row:hover {
+  background: #fff;
+  border-color: #e8edf2;
+}
+
+.mealCard {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e8edf2;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 20, 56, 0.05);
+}
+
+.mealMedia {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  background: #e8edf2;
+}
+
+.mealCarousel {
+  position: absolute !important;
+  inset: 0;
+  border-radius: 0 !important;
+}
+
+.mealCarousel :global(button) {
+  width: 28px !important;
+  height: 28px !important;
+  opacity: 0;
+}
+
+.mealMedia:hover .mealCarousel :global(button) {
+  opacity: 1;
+}
+
+.mealThumb {
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  object-fit: cover;
+  background: #e8edf2;
+  display: block;
+}
+
+.mealKicker {
+  display: block;
+  margin: 0 0 3px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f97211;
+}
+
+.mealHint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 550;
+  color: #94a3b8;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 20px;
+  border-radius: 50%;
+  background: #fdba74;
+  display: inline-block;
+}
+
+.label {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #334155;
+  font-weight: 650;
+  padding: 0 12px 12px;
+}
+
+.row .label {
+  padding: 0;
+}

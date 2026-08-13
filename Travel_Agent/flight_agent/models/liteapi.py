@@ -75,6 +75,7 @@ class PaymentMethod(str, Enum):
     TRANSACTION_ID = "TRANSACTION_ID"
     CREDIT = "CREDIT"
     THIRD_PARTY = "THIRD_PARTY"
+    ACC_CREDIT_CARD = "ACC_CREDIT_CARD"
 
 
 class BookingPayment(LiteAPIBaseModel):

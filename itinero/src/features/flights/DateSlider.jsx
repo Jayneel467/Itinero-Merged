@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Calendar } from "lucide-react";
 import styles from "./FlightsPage.module.css";
 import PriceCalendarModal from "./PriceCalendarModal";
+import { useCurrency } from "@/context/CurrencyContext";
 
 function addDays(iso, n) {
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
   d.setDate(d.getDate() + n);
-  // Local YMD — never toISOString() (shifts the calendar day in IST+)
+  // Local YMD - never toISOString() (shifts the calendar day in IST+)
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -21,11 +22,6 @@ function dayLabel(iso) {
     line: d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }),
     iso,
   };
-}
-
-function formatPrice(price) {
-  if (typeof price !== "number" || !(price > 0)) return null;
-  return `₹${Math.round(price).toLocaleString("en-IN")}`;
 }
 
 /**
@@ -43,9 +39,15 @@ export default function DateSlider({
   origin = "",
   destination = "",
 }) {
+  const { formatMoney } = useCurrency();
   const [startIndex, setStartIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(7);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  const fmtPrice = (price) => {
+    if (typeof price !== "number" || !(price > 0)) return null;
+    return formatMoney(price);
+  };
 
   const dates = useMemo(() => {
     const center = departDate || new Date().toISOString().slice(0, 10);
@@ -113,7 +115,7 @@ export default function DateSlider({
 
             {visibleDates.map((item, index) => {
               const isActive = item.isActive;
-              const priceLabel = formatPrice(item.price);
+              const priceLabel = fmtPrice(item.price);
               return (
                 <React.Fragment key={item.iso}>
                   <div
@@ -132,7 +134,7 @@ export default function DateSlider({
                       {item.loading ? (
                         <span className={styles["price-skeleton"]} aria-label="Loading fare" />
                       ) : (
-                        priceLabel || "—"
+                        priceLabel || "-"
                       )}
                     </span>
                     {isActive && <div className={styles["active-date-border"]} />}

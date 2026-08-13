@@ -22,8 +22,8 @@ const STEP = 20;
 
 const TIME_BUCKETS: { id: string; label: string; range: [number, number] }[] = [
   { id: "early", label: "Before 6 AM", range: [0, 6] },
-  { id: "morning", label: "6 AM – 12 PM", range: [6, 12] },
-  { id: "afternoon", label: "12 PM – 6 PM", range: [12, 18] },
+  { id: "morning", label: "6 AM - 12 PM", range: [6, 12] },
+  { id: "afternoon", label: "12 PM - 6 PM", range: [12, 18] },
   { id: "evening", label: "After 6 PM", range: [18, 24] },
 ];
 
@@ -196,7 +196,7 @@ export function BookFlightResults({
     setVeroNote(
       notes.length
         ? `Filtered: ${notes.join(" · ")}`
-        : "I couldn't spot a filter in that — try a price, airline, or 'non-stop'."
+        : "I couldn't spot a filter in that - try a price, airline, or 'non-stop'."
     );
   }
 
@@ -369,7 +369,7 @@ export function BookFlightResults({
                   </span>
                 ) : (
                   <span className="mt-0.5 text-[12px] text-[#B7BFCC]">
-                    {active ? "" : "—"}
+                    {active ? "" : "-"}
                   </span>
                 )}
               </button>
@@ -475,7 +475,7 @@ export function BookFlightResults({
             )}
           </div>
 
-          {/* Track prices — placeholder (no historical data available) */}
+          {/* Track prices - placeholder (no historical data available) */}
           <div className="rounded-[18px] border border-[#E4E7EC] bg-white p-4 shadow-soft">
             <div className="flex items-center justify-between">
               <p className="text-[14px] font-bold text-[#0B1F3A]">Book Now</p>
@@ -665,13 +665,13 @@ export function BookFlightResults({
               </FilterGroup>
             )}
 
-            {/* Refundable — not provided by the fares feed */}
+            {/* Refundable - not provided by the fares feed */}
             <div className="pt-3">
               <p className="text-[12px] font-bold uppercase tracking-wide text-[#8A94A6]">
                 Refundable Flights
               </p>
               <p className="mt-1 text-[11px] text-[#B7BFCC]">
-                Refund rules are confirmed with the airline at payment — not filterable
+                Refund rules are confirmed with the airline at payment - not filterable
                 from the live feed.
               </p>
             </div>

@@ -1,14 +1,18 @@
 import React from 'react';
 
-const Switch = ({ isDarkMode, onToggle }) => {
+const Switch = ({ isDarkMode, onToggle, "aria-label": ariaLabel, ...rest }) => {
   return (
     <button
+      type="button"
       onClick={onToggle}
-      className={`relative inline-flex h-[32px] w-[60px] shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none ${
-        isDarkMode ? 'bg-gray-800' : 'bg-[#F4EAE6]'
+      data-sky-toggle=""
+      className={`relative inline-flex h-[32px] w-[60px] shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F97211]/40 ${
+        isDarkMode ? "bg-gray-800" : "bg-[#F4EAE6]"
       }`}
       role="switch"
       aria-checked={isDarkMode}
+      aria-label={ariaLabel || (isDarkMode ? "Switch to light mode" : "Switch to dark mode")}
+      {...rest}
     >
       <span
         aria-hidden="true"

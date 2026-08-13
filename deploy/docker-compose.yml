@@ -1,0 +1,73 @@
+# Itinero production-ish local stack
+# From repo root: docker compose -f deploy/docker-compose.yml up --build
+#
+# web        → static SPA at http://localhost/itinero/
+# supervisor → FastAPI gateway :8000 (also via nginx /api/)
+# vero       → general_agent :8001
+# redis      → optional session / job queue (profile: redis)
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    ports:
+      - "80:80"
+    depends_on:
+      - supervisor
+    restart: unless-stopped
+
+  supervisor:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.supervisor
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../supervisor/.env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      SERVICE_NAME: itinero-supervisor
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      DATABASE_URL: ${DATABASE_URL:-}
+      REDIS_URL: ${REDIS_URL:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.05}
+    restart: unless-stopped
+
+  vero:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.vero
+    ports:
+      - "8001:8001"
+    env_file:
+      - ../general_agent/.env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      SERVICE_NAME: itinero-vero
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      REDIS_URL: ${REDIS_URL:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.05}
+    restart: unless-stopped
+
+  # With Redis: docker compose -f deploy/docker-compose.yml --profile redis up --build
+  # and set REDIS_URL=redis://redis:6379/0
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - itinero_redis:/data
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  itinero_redis:

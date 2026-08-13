@@ -1,0 +1,38 @@
+{
+  "id": "savannah",
+  "slug": "savannah",
+  "city": "Savannah",
+  "country": "USA",
+  "continent": "americas",
+  "iata": "SAV",
+  "themes": [
+    "city",
+    "culture",
+    "food"
+  ],
+  "imageId": "photo-1546156929-a4c0ac41164c",
+  "blurb": "Oak-lined squares and slow Southern evenings.",
+  "trendingScore": 80,
+  "minTripDays": 2,
+  "lat": 32.08,
+  "lng": -81.09,
+  "markets": [
+    "US",
+    "*"
+  ],
+  "pipeline": {
+    "status": "reverified",
+    "market": "US",
+    "authoredAt": "2026-08-12T16:42:39Z",
+    "author": "explore_factory.author.seed",
+    "checkedAt": "2026-08-12T16:42:39Z",
+    "checker": "explore_factory.checker",
+    "checkIssues": [],
+    "reverifiedAt": "2026-08-12T16:42:39Z",
+    "reverifier": "explore_factory.reverify",
+    "reverifyIssues": [],
+    "liveProbe": {
+      "skipped": true
+    }
+  }
+}

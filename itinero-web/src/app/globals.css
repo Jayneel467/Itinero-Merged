@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Pixano Itinero design tokens — mirrored from https://pixano.in/itinero/ */
+/* Pixano Itinero design tokens - mirrored from https://pixano.in/itinero/ */
 :root {
   --color-primary: #f97211;
   --color-primary-light: #f8e7da;
@@ -129,7 +129,7 @@ body {
   color: var(--color-navy);
 }
 
-/* /ai — Layla-like immersive chat */
+/* /ai - Layla-like immersive chat */
 .ai-shell {
   background:
     radial-gradient(1200px 600px at 12% -10%, #dff0ff 0%, transparent 55%),

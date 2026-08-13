@@ -76,7 +76,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-white">
       <SiteHeader />
 
-      {/* Hero — Pixano visual language: navy + orange, brand-first */}
+      {/* Hero - Pixano visual language: navy + orange, brand-first */}
       <section className="relative overflow-hidden min-h-[70vh]">
         <HeroBackdrop />
         <div className="relative mx-auto max-w-[1280px] px-4 pb-16 pt-10 md:px-[53px] md:pb-24 md:pt-[60px] 2xl:pt-[84px]">
@@ -93,7 +93,7 @@ export default function HomePage() {
             className="animate-slide-up mt-4 max-w-[595px] text-[16px] leading-relaxed text-white/85 md:text-[18px] 2xl:text-[20px]"
             style={{ animationDelay: "160ms" }}
           >
-            Find the best flights and unforgettable experiences — with AI that
+            Find the best flights and unforgettable experiences - with AI that
             plans, or classic booking when you want full control.
           </p>
 
@@ -316,7 +316,7 @@ export default function HomePage() {
               Start your travel planning here
             </h2>
             <p className="mt-2 max-w-xl text-white/75">
-              Search flights, hotels & more — or let the supervisor agent drive
+              Search flights, hotels & more - or let the supervisor agent drive
               the whole journey.
             </p>
           </div>

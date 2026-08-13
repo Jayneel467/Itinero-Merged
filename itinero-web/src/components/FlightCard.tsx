@@ -154,7 +154,7 @@ export function FlightCard({
             <p className="text-[12px] text-[#8A94A6]">
               {f.flight_number
                 ? `${f.segments?.[0]?.airline_code ?? ""}${f.flight_number}`
-                : "—"}
+                : "-"}
               {f.cabin ? ` · ${f.cabin}` : ""}
             </p>
           </div>
@@ -291,7 +291,7 @@ export function FlightCard({
               Cancellation and change rules are confirmed with the airline at the
               payment step. This fare
               {f.fare_family ? ` (${f.fare_family})` : ""} follows the carrier&apos;s
-              standard policy — exact penalties are shown before you pay.
+              standard policy - exact penalties are shown before you pay.
             </p>
           )}
           {tab === "miles" && (

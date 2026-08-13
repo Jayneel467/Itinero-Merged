@@ -1,204 +1,467 @@
-import React from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
-import BookingStepper from './components/BookingStepper';
+import BookingStepper from "./components/BookingStepper";
 import {
-  CheckCircle, Download, Share2, MapPin, Calendar, Users, Bed,
-  Phone, Mail, Clock, ArrowRight, Home
-} from 'lucide-react';
-import styles from './HotelConfirmationPage.module.css';
+  CheckCircle,
+  Download,
+  Share2,
+  MapPin,
+  Calendar,
+  Users,
+  Bed,
+  Mail,
+  ArrowRight,
+  Home,
+  Copy,
+  Star,
+} from "lucide-react";
+import styles from "./HotelConfirmationPage.module.css";
+import { useCurrency } from "@/context/CurrencyContext";
+import { tripService } from "@/features/trips/tripService";
+import { isSupplierBookingId } from "@/features/trips/utils/supplierBooking";
+import {
+  cancelHotelWithPolicy,
+  refundPatchFromResult,
+  formatCancelResultMessage,
+} from "@/features/trips/utils/cancelFlow";
+import { downloadHotelVoucherPdf } from "@/features/booking/utils/bookingConfirmationPdf";
+import { resolveHotelConfirmation } from "./utils/hotelCheckout";
+
+function shortRef(value, head = 12, tail = 6) {
+  const s = String(value || "").trim();
+  if (!s) return "-";
+  if (s.length <= head + tail + 1) return s;
+  return `${s.slice(0, head)}…${s.slice(-tail)}`;
+}
+
+async function copyText(value) {
+  const s = String(value || "").trim();
+  if (!s) return false;
+  try {
+    await navigator.clipboard.writeText(s);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export default function HotelConfirmationPage() {
-  const { state } = useLocation();
+  const { state: routeState } = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
-  const base = import.meta.env.BASE_URL;
+  const { formatMoney } = useCurrency();
+  const confirmation = useMemo(() => resolveHotelConfirmation(routeState), [routeState]);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState("");
+  const [cancelErr, setCancelErr] = useState("");
+  const [cancelled, setCancelled] = useState(false);
+  const [copiedKey, setCopiedKey] = useState("");
 
-  // Fallback data if navigated directly
-  const paymentId = state?.paymentId || 'pay_TestDemoID12345';
-  const bookingData = state?.bookingData || {
-    hotelName: 'Atlantis The Palm',
-    hotelImage: `${base}hotel_room.png`,
-    location: 'Palm Jumeirah, Dubai, UAE',
-    checkIn: { date: '12 May 2026', day: 'Mon' },
-    checkOut: { date: '17 May 2026', day: 'Sat' },
-    guests: 2,
-    rooms: 1,
-    nights: 5,
-    roomsTotal: 129995,
-    taxesTotal: 24665,
-    totalPrice: 154660
-  };
+  const paymentId = confirmation?.paymentId || null;
+  const bookingId = confirmation?.bookingId || null;
+  const prebookId = confirmation?.prebookId || null;
+  const hotelConfirmationCode = confirmation?.hotelConfirmationCode || null;
+  const bookingData = confirmation?.bookingData || null;
 
-  const bookingRef = `ITN-HTL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  const bookingRef = useMemo(() => {
+    if (bookingId) return bookingId;
+    if (hotelConfirmationCode) return hotelConfirmationCode;
+    return null;
+  }, [bookingId, hotelConfirmationCode]);
 
-  return (
-    <PageLayout>
+  useEffect(() => {
+    if (!bookingData || !bookingId) return;
+    tripService.ensureHotelTrip({
+      hotelName: bookingData.hotelName,
+      hotelId: id,
+      location: bookingData.location,
+      checkIn: bookingData.checkInIso || bookingData.checkIn,
+      checkOut: bookingData.checkOutIso || bookingData.checkOut,
+      guests: bookingData.guests,
+      rooms: bookingData.rooms,
+      totalPrice: bookingData.totalPrice,
+      paymentId,
+      bookingId,
+      prebookId,
+      hotelConfirmationCode,
+      confirmed: true,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- persist once per confirmation view
+  }, [id, paymentId, bookingId, bookingData?.hotelName, bookingData?.totalPrice]);
+
+  if (!bookingId || !bookingData) {
+    return (
+      <PageLayout>
+        <div className={styles.pageContainer}>
+          <p style={{ padding: 24, color: "#b42318" }}>
+            No confirmed stay found. Complete checkout with Stripe first - we do not invent booking
+            references.
+          </p>
+          <button type="button" className={styles.homeBtn} onClick={() => navigate("/hotels")}>
+            Back to hotels
+          </button>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  async function handleCancel() {
+    if (!isSupplierBookingId(bookingId)) {
+      setCancelErr("Cancel this stay from My Trips - no supplier booking id on this confirmation.");
+      return;
+    }
+    setCancelBusy(true);
+    setCancelErr("");
+    setCancelMsg("");
+    try {
+      const res = await cancelHotelWithPolicy({
+        bookingId,
+        paymentId,
+        expectedAmount: Number(bookingData?.totalPrice) || null,
+        paymentProvider: bookingData?.paymentProvider || "stripe",
+      });
+      if (res?.aborted) return;
+      if (!res?.ok) throw new Error(res?.error || res?.message || "Cancel failed.");
+      const patch = refundPatchFromResult(res);
+      tripService.markHotelCancelled({ bookingId, refund: patch });
+      setCancelled(!patch.cancelPending);
+      setCancelMsg(formatCancelResultMessage(res) || "Stay cancelled.");
+    } catch (err) {
+      setCancelErr(err?.message || "Cancel failed.");
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
+  const checkIn = bookingData.checkIn || { date: "-", day: "" };
+  const checkOut = bookingData.checkOut || { date: "-", day: "" };
+  const stars = Number(bookingData.starRating || 0) || 0;
+
+  async function handleCopy(label, value) {
+    const ok = await copyText(value);
+    if (ok) {
+      setCopiedKey(label);
+      window.setTimeout(() => setCopiedKey(""), 2000);
+    }
+  }
+
+  const confirmBody = (
       <div className={styles.pageContainer}>
-        {/* Stepper */}
         <div className={styles.stepperWrapper}>
           <BookingStepper currentStep={4} />
         </div>
 
         <div className={styles.mainLayout}>
-          {/* Left — Confirmation Details */}
           <div className={styles.confirmationColumn}>
-
-            {/* Success Banner */}
-            <div className={styles.successBanner}>
+            <section className={styles.successBanner} aria-labelledby="hotel-confirmed-title">
               <div className={styles.successIconWrap}>
-                <CheckCircle size={48} className={styles.successIcon} />
+                <CheckCircle size={40} className={styles.successIcon} aria-hidden />
               </div>
-              <div>
-                <h1 className={styles.successTitle}>Booking Confirmed! 🎉</h1>
+              <div className={styles.successCopy}>
+                <p className={styles.successEyebrow}>You&apos;re all set</p>
+                <h1 id="hotel-confirmed-title" className={styles.successTitle}>
+                  Booking confirmed
+                </h1>
                 <p className={styles.successSubtitle}>
-                  Your room has been successfully booked. A confirmation email has been sent to your registered address.
+                  Voucher ready - download the PDF or keep this page handy for your stay details.
+                  {bookingData.email ? ` We also have ${bookingData.email} on file.` : ""}
                 </p>
               </div>
-            </div>
+            </section>
 
-            {/* Booking Reference */}
-            <div className={styles.refCard}>
-              <div className={styles.refBlock}>
-                <span className={styles.refLabel}>Booking Reference</span>
-                <span className={styles.refValue}>{bookingRef}</span>
+            <section className={styles.refCard} aria-label="Booking references">
+              <div className={styles.refPrimary}>
+                <span className={styles.refLabel}>Booking reference</span>
+                <div className={styles.refValueRow}>
+                  <span className={styles.refValue}>{bookingRef}</span>
+                  <button
+                    type="button"
+                    className={styles.copyBtn}
+                    onClick={() => handleCopy("booking", bookingRef)}
+                    aria-label="Copy booking reference"
+                  >
+                    <Copy size={14} />
+                    {copiedKey === "booking" ? "Copied" : "Copy"}
+                  </button>
+                </div>
               </div>
-              <div className={styles.refDivider} />
-              <div className={styles.refBlock}>
-                <span className={styles.refLabel}>Payment ID</span>
-                <span className={styles.refValue}>{paymentId}</span>
+              {hotelConfirmationCode && hotelConfirmationCode !== bookingRef ? (
+                <div className={styles.refTile}>
+                  <span className={styles.refLabel}>Hotel confirmation</span>
+                  <span className={styles.refValueMuted}>{hotelConfirmationCode}</span>
+                </div>
+              ) : null}
+              <div className={styles.refTile}>
+                <span className={styles.refLabel}>Payment</span>
+                <div className={styles.refValueRow}>
+                  <span className={styles.refValueMuted} title={paymentId || undefined}>
+                    {shortRef(paymentId, 14, 8)}
+                  </span>
+                  {paymentId ? (
+                    <button
+                      type="button"
+                      className={styles.copyBtn}
+                      onClick={() => handleCopy("payment", paymentId)}
+                      aria-label="Copy payment id"
+                    >
+                      <Copy size={14} />
+                      {copiedKey === "payment" ? "Copied" : "Copy"}
+                    </button>
+                  ) : null}
+                </div>
               </div>
-              <div className={styles.refDivider} />
-              <div className={styles.refBlock}>
+              <div className={styles.refTile}>
                 <span className={styles.refLabel}>Status</span>
-                <span className={styles.statusBadge}>Confirmed</span>
+                <span className={cancelled ? styles.statusCancelled : styles.statusBadge}>
+                  {cancelled ? "Cancelled" : "Confirmed"}
+                </span>
               </div>
-            </div>
+            </section>
 
-            {/* Hotel Info Card */}
-            <div className={styles.hotelCard}>
-              <img
-                src={bookingData.hotelImage}
-                alt={bookingData.hotelName}
-                className={styles.hotelImage}
-              />
+            <article className={styles.hotelCard}>
+              <div className={styles.hotelMedia}>
+                <img
+                  src={bookingData.hotelImage}
+                  alt={bookingData.hotelName}
+                  className={styles.hotelImage}
+                />
+              </div>
               <div className={styles.hotelContent}>
-                <h2 className={styles.hotelName}>{bookingData.hotelName}</h2>
+                <div className={styles.hotelHead}>
+                  <div>
+                    {stars > 0 ? (
+                      <div className={styles.starRow} aria-label={`${stars} star hotel`}>
+                        {Array.from({ length: Math.min(5, stars) }).map((_, i) => (
+                          <Star key={i} size={14} fill="currentColor" aria-hidden />
+                        ))}
+                      </div>
+                    ) : null}
+                    <h2 className={styles.hotelName}>{bookingData.hotelName}</h2>
+                  </div>
+                </div>
                 <div className={styles.hotelLocation}>
-                  <MapPin size={14} />
+                  <MapPin size={15} aria-hidden />
                   <span>{bookingData.location}</span>
                 </div>
 
                 <div className={styles.bookingDetails}>
                   <div className={styles.detailItem}>
-                    <Calendar size={16} className={styles.detailIcon} />
+                    <Calendar size={17} className={styles.detailIcon} aria-hidden />
                     <div>
                       <span className={styles.detailLabel}>Check-in</span>
-                      <span className={styles.detailValue}>{bookingData.checkIn.date} ({bookingData.checkIn.day})</span>
+                      <span className={styles.detailValue}>
+                        {checkIn.date}
+                        {checkIn.day ? ` · ${checkIn.day}` : ""}
+                      </span>
                     </div>
                   </div>
-                  <div className={styles.detailDivider} />
                   <div className={styles.detailItem}>
-                    <Calendar size={16} className={styles.detailIcon} />
+                    <Calendar size={17} className={styles.detailIcon} aria-hidden />
                     <div>
                       <span className={styles.detailLabel}>Check-out</span>
-                      <span className={styles.detailValue}>{bookingData.checkOut.date} ({bookingData.checkOut.day})</span>
+                      <span className={styles.detailValue}>
+                        {checkOut.date}
+                        {checkOut.day ? ` · ${checkOut.day}` : ""}
+                      </span>
                     </div>
                   </div>
-                  <div className={styles.detailDivider} />
                   <div className={styles.detailItem}>
-                    <Bed size={16} className={styles.detailIcon} />
+                    <Bed size={17} className={styles.detailIcon} aria-hidden />
                     <div>
                       <span className={styles.detailLabel}>Room</span>
-                      <span className={styles.detailValue}>Deluxe Room · {bookingData.nights} Nights</span>
+                      <span className={styles.detailValue}>
+                        {bookingData.roomName || "Room"} · {bookingData.nights} night
+                        {Number(bookingData.nights) === 1 ? "" : "s"}
+                      </span>
                     </div>
                   </div>
-                  <div className={styles.detailDivider} />
                   <div className={styles.detailItem}>
-                    <Users size={16} className={styles.detailIcon} />
+                    <Users size={17} className={styles.detailIcon} aria-hidden />
                     <div>
                       <span className={styles.detailLabel}>Guests</span>
-                      <span className={styles.detailValue}>{bookingData.guests} Adults</span>
+                      <span className={styles.detailValue}>{bookingData.guests} adults</span>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
 
-            {/* Important Info */}
-            <div className={styles.infoCard}>
-              <h3 className={styles.infoTitle}>Important Information</h3>
+            {Array.isArray(bookingData.addons) && bookingData.addons.length ? (
+              <section className={styles.infoCard}>
+                <h3 className={styles.infoTitle}>Your trip add-ons</h3>
+                <div className={styles.infoList}>
+                  {bookingData.addons.map((addon, i) => (
+                    <div key={`${addon.type}-${i}`} className={styles.infoItem}>
+                      <CheckCircle size={17} className={styles.infoIcon} aria-hidden />
+                      <span>
+                        {addon.type === "uber" ? (
+                          <>
+                            Uber ride credit -{" "}
+                            {addon.voucherUrl ? (
+                              <a href={addon.voucherUrl} target="_blank" rel="noreferrer">
+                                Activate voucher
+                              </a>
+                            ) : (
+                              "check email for link"
+                            )}
+                          </>
+                        ) : addon.type === "esimply" ? (
+                          <>
+                            eSIM - scan QR or copy code:{" "}
+                            <code style={{ fontSize: "11px", wordBreak: "break-all" }}>
+                              {addon.qrCode || addon.voucherUrl || "pending"}
+                            </code>
+                          </>
+                        ) : (
+                          String(addon.type || "Add-on")
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <section className={styles.infoCard}>
+              <h3 className={styles.infoTitle}>Important information</h3>
               <div className={styles.infoList}>
                 <div className={styles.infoItem}>
-                  <Clock size={16} className={styles.infoIcon} />
-                  <span>Check-in from <strong>2:00 PM</strong> · Check-out by <strong>12:00 PM</strong></span>
+                  <Mail size={17} className={styles.infoIcon} aria-hidden />
+                  <span>
+                    Guest <strong>{bookingData.guestName || "-"}</strong>
+                    {bookingData.email ? ` · ${bookingData.email}` : ""}
+                  </span>
                 </div>
                 <div className={styles.infoItem}>
-                  <Phone size={16} className={styles.infoIcon} />
-                  <span>Hotel contact: <strong>+971 4 426 2000</strong></span>
-                </div>
-                <div className={styles.infoItem}>
-                  <Mail size={16} className={styles.infoIcon} />
-                  <span>Confirmation email sent to your registered address</span>
-                </div>
-                <div className={styles.infoItem}>
-                  <CheckCircle size={16} className={styles.infoIcon} />
-                  <span>Free cancellation until <strong>10 May 2026</strong></span>
+                  <CheckCircle size={17} className={styles.infoIcon} aria-hidden />
+                  <span>
+                    Manage this stay anytime from{" "}
+                    <button type="button" className={styles.inlineLink} onClick={() => navigate("/trips")}>
+                      My Trips
+                    </button>
+                  </span>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Action Buttons */}
-            <div className={styles.actions}>
-              <button className={styles.downloadBtn}>
+            {cancelMsg ? <p className={styles.cancelOk}>{cancelMsg}</p> : null}
+            {cancelErr ? <p className={styles.cancelErr}>{cancelErr}</p> : null}
+
+            <section className={styles.actions} aria-label="Booking actions">
+              {isSupplierBookingId(bookingId) && !cancelled ? (
+                <button
+                  type="button"
+                  className={styles.cancelBtn}
+                  onClick={handleCancel}
+                  disabled={cancelBusy}
+                >
+                  {cancelBusy ? "Cancelling…" : "Cancel stay"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={styles.downloadBtn}
+                onClick={async () => {
+                  const checkInLabel = [checkIn.date, checkIn.day ? `(${checkIn.day})` : ""]
+                    .filter(Boolean)
+                    .join(" ");
+                  const checkOutLabel = [checkOut.date, checkOut.day ? `(${checkOut.day})` : ""]
+                    .filter(Boolean)
+                    .join(" ");
+                  try {
+                    await downloadHotelVoucherPdf({
+                      bookingId: bookingRef,
+                      hotelName: bookingData.hotelName,
+                      location: bookingData.location,
+                      guestName: bookingData.guestName,
+                      email: bookingData.email,
+                      checkIn: checkInLabel,
+                      checkOut: checkOutLabel,
+                      roomName: bookingData.roomName,
+                      nights: bookingData.nights,
+                      guests: bookingData.guests,
+                      totalPrice: bookingData.totalPrice,
+                      currency: bookingData.currency,
+                      paymentId,
+                      paymentLabel: paymentId ? "Card · Stripe" : "Paid",
+                    });
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+              >
                 <Download size={18} /> Download Voucher
               </button>
-              <button className={styles.shareBtn}>
+              <button
+                type="button"
+                className={styles.shareBtn}
+                onClick={() => {
+                  const text = `Itinero hotel booking ${bookingRef}`;
+                  if (navigator.share) navigator.share({ title: "Hotel booking", text }).catch(() => {});
+                  else navigator.clipboard?.writeText(text);
+                }}
+              >
                 <Share2 size={18} /> Share Booking
               </button>
-              <button className={styles.homeBtn} onClick={() => navigate('/')}>
-                <Home size={18} /> Back to Home
+              <button
+                type="button"
+                className={styles.homeBtn}
+                onClick={() => navigate("/trips")}
+              >
+                <Home size={18} /> View in Trips
               </button>
-            </div>
+            </section>
           </div>
 
-          {/* Right — Price Summary */}
-          <div className={styles.summaryColumn}>
+          <aside className={styles.summaryColumn}>
             <div className={styles.summaryCard}>
-              <h3 className={styles.summaryTitle}>Payment Summary</h3>
+              <h3 className={styles.summaryTitle}>Payment summary</h3>
 
               <div className={styles.summaryRow}>
-                <span>Room Charges ({bookingData.nights} Nights)</span>
-                <span>₹{bookingData.roomsTotal.toLocaleString()}</span>
+                <span>Room ({bookingData.nights} night{Number(bookingData.nights) === 1 ? "" : "s"})</span>
+                <span>{formatMoney(bookingData.roomsTotal)}</span>
               </div>
               <div className={styles.summaryRow}>
-                <span>Taxes & Fees</span>
-                <span>₹{bookingData.taxesTotal.toLocaleString()}</span>
+                <span>Taxes &amp; fees</span>
+                <span>{formatMoney(bookingData.taxesTotal)}</span>
               </div>
               <div className={styles.summaryDivider} />
               <div className={styles.summaryTotal}>
-                <span>Amount Paid</span>
-                <span className={styles.summaryTotalPrice}>₹{bookingData.totalPrice.toLocaleString()}</span>
+                <span>Amount paid</span>
+                <span className={styles.summaryTotalPrice}>
+                  {formatMoney(bookingData.totalPrice)}
+                </span>
               </div>
               <div className={styles.paidBadge}>
-                <CheckCircle size={16} /> Paid via Razorpay
+                <CheckCircle size={16} aria-hidden /> Payment confirmed
               </div>
-              <div className={styles.paymentId}>
-                Payment ID: {paymentId}
-              </div>
+              {paymentId ? (
+                <p className={styles.paymentId} title={paymentId}>
+                  Ref {shortRef(paymentId, 16, 10)}
+                </p>
+              ) : null}
             </div>
 
-            {/* Explore More */}
             <div className={styles.exploreCard}>
-              <h3 className={styles.exploreTitle}>Explore More</h3>
-              <p className={styles.exploreText}>Discover activities and experiences near your hotel</p>
-              <button className={styles.exploreBtn} onClick={() => navigate('/hotels')}>
-                Browse More Hotels <ArrowRight size={16} />
+              <p className={styles.exploreEyebrow}>What&apos;s next</p>
+              <h3 className={styles.exploreTitle}>Plan the rest of your trip</h3>
+              <p className={styles.exploreText}>
+                Add flights, explore stays, or ask Vero for ideas near your hotel.
+              </p>
+              <button
+                type="button"
+                className={styles.exploreBtn}
+                onClick={() => navigate("/hotels")}
+              >
+                Browse more hotels
+                <ArrowRight size={16} aria-hidden />
               </button>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
-    </PageLayout>
   );
+
+  return <PageLayout>{confirmBody}</PageLayout>;
 }

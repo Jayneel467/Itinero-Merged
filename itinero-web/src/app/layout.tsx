@@ -15,7 +15,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Itinero — Discover More Everywhere | Flights, Hotels & AI Travel",
+  title: "Itinero - Discover More Everywhere | Flights, Hotels & AI Travel",
   description:
     "Plan your perfect trip with Itinero. Book flights, hotels, and travel packages with AI-powered assistance. Discover trending destinations and unbeatable deals.",
   keywords: [

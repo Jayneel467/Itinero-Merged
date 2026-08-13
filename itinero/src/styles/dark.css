@@ -1,0 +1,136 @@
+/* ═══════════════════════════════════════════════════════
+   Dark mode - shell + high-traffic surfaces
+   Tokens live in variables.css (html.dark).
+   ═══════════════════════════════════════════════════════ */
+
+html.dark body {
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+html.dark #root {
+  background: var(--surface-page);
+  min-height: 100%;
+}
+
+/* Page shell */
+html.dark .page-layout,
+html.dark .page-loader {
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+html.dark .vero-layout-wrapper {
+  background: var(--surface-page) !important;
+  color: var(--text-primary);
+}
+
+/* Navbar */
+html.dark .navbar {
+  background-color: var(--surface-navbar);
+}
+
+html.dark .navbar--scrolled .navbar__inner {
+  background-color: var(--surface-navbar-scrolled);
+  border-color: var(--border-subtle);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35);
+}
+
+html.dark .navbar__hamburger:hover,
+html.dark .navbar__bell:hover,
+html.dark .navbar__currency:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .navbar__logo-text {
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+
+/* Common light cards / panels that hardcode white */
+html.dark [class*="page"],
+html.dark [class*="wrap"],
+html.dark [class*="card"],
+html.dark [class*="panel"],
+html.dark [class*="summary"],
+html.dark [class*="form"],
+html.dark [class*="faq"] details,
+html.dark [class*="contact"] {
+  color: inherit;
+}
+
+/* Inputs on dark surfaces */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.dark textarea,
+html.dark select {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+/* Modals / sheets that stay light in dark mode become readable */
+html.dark .react-datepicker {
+  background: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: var(--shadow-elevated) !important;
+}
+
+html.dark .react-datepicker__header {
+  background-color: var(--surface-muted) !important;
+  border-bottom-color: var(--border-subtle) !important;
+}
+
+html.dark .react-datepicker__current-month,
+html.dark .react-datepicker__day {
+  color: var(--text-primary) !important;
+}
+
+html.dark .react-datepicker__day-name {
+  color: var(--text-secondary) !important;
+}
+
+html.dark .react-datepicker__day:hover {
+  background-color: var(--surface-muted) !important;
+}
+
+/* Scrollbars */
+html.dark {
+  scrollbar-color: #3a4a63 transparent;
+}
+
+/* Tailwind utility islands used on many pages */
+html.dark .bg-white {
+  background-color: var(--surface-elevated) !important;
+}
+
+html.dark .bg-\[\#F2F2F2\],
+html.dark .bg-\[\#F5F7FA\],
+html.dark .bg-\[\#f2f2f2\] {
+  background-color: var(--surface-page) !important;
+}
+
+html.dark .text-black,
+html.dark .text-\[\#001438\],
+html.dark .text-\[\#001439\] {
+  color: var(--text-primary) !important;
+}
+
+html.dark .border-gray-100,
+html.dark .border-gray-200 {
+  border-color: var(--border-subtle) !important;
+}
+
+/* Home / account light sections that hardcode cream/white */
+html.dark [class*="AccountPages"],
+html.dark [class*="profilePage"],
+html.dark .profilePage,
+html.dark main {
+  color: var(--text-primary);
+}
+

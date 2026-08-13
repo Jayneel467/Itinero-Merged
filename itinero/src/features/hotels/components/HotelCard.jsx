@@ -1,12 +1,95 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styles from '../HotelsPage.module.css';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { useCurrency } from "@/context/CurrencyContext";
+import { isSaved, toggleSaved } from "@/features/account/savedService";
+import styles from "../HotelsPage.module.css";
+
+function amenityFamily(label) {
+  const s = String(label || "").toLowerCase();
+  if (/wifi|wi-?fi|wireless/.test(s)) return "wifi";
+  if (/parking|valet/.test(s)) return "parking";
+  if (/pool|swim/.test(s)) return "pool";
+  if (/breakfast|board/.test(s)) return "breakfast";
+  if (/fitness|gym/.test(s)) return "fitness";
+  if (/spa|sauna/.test(s)) return "spa";
+  if (/cancel/.test(s)) return "cancel";
+  return s;
+}
+
+function amenityScore(label) {
+  const s = String(label || "").toLowerCase();
+  // Prefer concrete freebie wording over vague “available”
+  if (/^free\b/.test(s)) return 3;
+  if (/included/.test(s)) return 2;
+  if (/available/.test(s)) return 0;
+  return 1;
+}
+
+function pickAmenities(hotel) {
+  const raw = [
+    ...(Array.isArray(hotel.amenities) ? hotel.amenities : []),
+    ...(Array.isArray(hotel.tags) ? hotel.tags : []),
+    hotel.board || hotel.boardBasis || "",
+  ]
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+
+  const best = new Map();
+  for (const item of raw) {
+    if (/^\d+(\.\d+)?\s*★/.test(item) || /^\d+\s*star/i.test(item)) continue;
+    const family = amenityFamily(item);
+    const prev = best.get(family);
+    if (!prev || amenityScore(item) > amenityScore(prev)) best.set(family, item);
+  }
+
+  return [...best.values()].slice(0, 4);
+}
+
+function hasFreeCancel(hotel) {
+  if (hotel.freeCancellation === true) return true;
+  const blob = [...(hotel.tags || []), ...(hotel.amenities || [])]
+    .map((t) => String(t).toLowerCase())
+    .join(" ");
+  return blob.includes("cancel");
+}
 
 export const HotelCard = ({ hotel, searchQuery }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [saved, setSaved] = useState(() => isSaved(`hotel:${hotel.id}`));
   const navigate = useNavigate();
-  const images = hotel.images || [hotel.image];
+  const { formatMoney } = useCurrency();
+
+  const nightPrice = Number(hotel.pricePerNight);
+  const totalPrice = Number(hotel.totalPrice);
+  const hasPrice =
+    hotel.has_price !== false && Number.isFinite(nightPrice) && nightPrice > 0;
+  const amenities = useMemo(() => pickAmenities(hotel), [hotel]);
+  const freeCancel = hasFreeCancel(hotel);
+  const stars = Number(hotel.stars) || 0;
+  const rating = Number(hotel.rating) || 0;
+  const reviews = Number(hotel.reviewCount) || 0;
+  const placeRaw =
+    hotel.area || hotel.location || hotel.city || hotel.address || "";
+  const place = String(placeRaw)
+    .replace(/\s*[·•]\s*\d+(\.\d+)?\s*★.*/u, "")
+    .replace(/\s*\d+(\.\d+)?\s*★.*/u, "")
+    .trim();
+
+  const images = useMemo(() => {
+    const list = [];
+    for (const u of [...(Array.isArray(hotel.images) ? hotel.images : []), hotel.image]) {
+      const s = String(u || "").trim();
+      if (!s || s === "null" || s === "undefined") continue;
+      const url = s.startsWith("//") ? `https:${s}` : s;
+      if (!list.includes(url)) list.push(url);
+    }
+    return list;
+  }, [hotel.images, hotel.image]);
+
+  if (!hasPrice) return null;
+
+  const moneyOpts = { maximumFractionDigits: 0 };
 
   const nextImage = (e) => {
     e.preventDefault();
@@ -20,13 +103,13 @@ export const HotelCard = ({ hotel, searchQuery }) => {
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
-  const handleCardClick = () => {
+  const openRooms = () => {
     const qs = new URLSearchParams();
-    if (searchQuery?.checkIn) qs.set('checkIn', searchQuery.checkIn);
-    if (searchQuery?.checkOut) qs.set('checkOut', searchQuery.checkOut);
-    if (searchQuery?.guests) qs.set('guests', String(searchQuery.guests));
-    if (searchQuery?.rooms) qs.set('rooms', String(searchQuery.rooms));
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    if (searchQuery?.checkIn) qs.set("checkIn", searchQuery.checkIn);
+    if (searchQuery?.checkOut) qs.set("checkOut", searchQuery.checkOut);
+    if (searchQuery?.guests) qs.set("guests", String(searchQuery.guests));
+    if (searchQuery?.rooms) qs.set("rooms", String(searchQuery.rooms));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
     navigate(`/hotel/${hotel.id}/booking${suffix}`, {
       state: {
         hotel,
@@ -39,114 +122,147 @@ export const HotelCard = ({ hotel, searchQuery }) => {
   };
 
   return (
-    <div className={styles.hotelCard} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
-      {/* Image Section */}
+    <article className={styles.hotelCard} onClick={openRooms}>
       <div className={styles.hotelImageWrapper}>
-        <div className={styles.imageBadgeTopLeft}>Free cancellation</div>
+        {freeCancel ? (
+          <div className={styles.imageBadgeTopLeft}>Free cancellation</div>
+        ) : null}
         <div className={styles.carouselViewport}>
-          <div 
-            className={styles.carouselTrack} 
+          <div
+            className={styles.carouselTrack}
             style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
           >
-            {images.map((img, idx) => (
-              <img key={idx} src={img} alt={`${hotel.name} - ${idx}`} className={styles.hotelImage} />
-            ))}
+            {images.length ? (
+              images.map((img, idx) => (
+                <img
+                  key={`${img}-${idx}`}
+                  src={img}
+                  alt=""
+                  className={styles.hotelImage}
+                  loading={idx === 0 ? "eager" : "lazy"}
+                  referrerPolicy="no-referrer"
+                />
+              ))
+            ) : (
+              <div className={styles.hotelImageMissing}>No photo yet</div>
+            )}
           </div>
         </div>
-        
-        {/* Carousel Controls */}
-        {images.length > 1 && (
+
+        {images.length > 1 ? (
           <>
-            <button className={`${styles.carouselBtn} ${styles.carouselBtnPrev}`} onClick={prevImage} aria-label="Previous image">
+            <button
+              type="button"
+              className={`${styles.carouselBtn} ${styles.carouselBtnPrev}`}
+              onClick={prevImage}
+              aria-label="Previous image"
+            >
               <ChevronLeft size={16} />
             </button>
-            <button className={`${styles.carouselBtn} ${styles.carouselBtnNext}`} onClick={nextImage} aria-label="Next image">
+            <button
+              type="button"
+              className={`${styles.carouselBtn} ${styles.carouselBtnNext}`}
+              onClick={nextImage}
+              aria-label="Next image"
+            >
               <ChevronRight size={16} />
             </button>
           </>
-        )}
-        {/* Favorite Icon */}
-        <button 
-          className={styles.favoriteBtn} 
-          aria-label="Save hotel"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        ) : null}
+
+        <button
+          type="button"
+          className={`${styles.favoriteBtn}${saved ? ` ${styles.favoriteBtnOn}` : ""}`}
+          aria-label={saved ? "Remove from saved" : "Save hotel"}
+          aria-pressed={saved}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const next = toggleSaved({
+              id: `hotel:${hotel.id}`,
+              type: "hotel",
+              title: hotel.name,
+              subtitle: place || hotel.city || "Stay",
+              url: `/hotel/${hotel.id}/booking`,
+              image: images[0] || "",
+            });
+            setSaved(Boolean(next));
+          }}
         >
-          <svg width="20" height="18" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 18L8.55 16.68C3.4 12.02 0 8.94 0 5.12C0 2.24 2.24 0 5.12 0C6.75 0 8.32 0.77 9.28 2.02C9.48 2.28 9.73 2.28 9.93 2.02C10.89 0.77 12.46 0 14.09 0C16.97 0 19.21 2.24 19.21 5.12C19.21 8.94 15.81 12.02 10.66 16.69L10 18Z" fill="#242A31" fillOpacity="0.4"/>
+          <svg width="18" height="16" viewBox="0 0 20 18" aria-hidden>
+            <path
+              d="M10 18L8.55 16.68C3.4 12.02 0 8.94 0 5.12C0 2.24 2.24 0 5.12 0C6.75 0 8.32 0.77 9.28 2.02C9.48 2.28 9.73 2.28 9.93 2.02C10.89 0.77 12.46 0 14.09 0C16.97 0 19.21 2.24 19.21 5.12C19.21 8.94 15.81 12.02 10.66 16.69L10 18Z"
+              fill={saved ? "#F97211" : "#242A31"}
+              fillOpacity={saved ? 1 : 0.35}
+            />
           </svg>
         </button>
-        <div className={styles.imageBadgeBottomLeft}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="8" width="18" height="12" rx="2" ry="2"></rect><circle cx="12" cy="14" r="3"></circle><path d="M7 8v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path></svg>
-          {currentImageIndex + 1}/{images.length}
-        </div>
+
+        {images.length ? (
+          <div className={styles.imageBadgeBottomLeft}>
+            {currentImageIndex + 1}/{images.length}
+          </div>
+        ) : null}
       </div>
 
-      {/* Details Section */}
       <div className={styles.hotelDetails}>
         <div className={styles.hotelDetailsLeft}>
           <h3 className={styles.hotelName}>{hotel.name}</h3>
-          
+
           <div className={styles.hotelLocationRow}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            <span className={styles.hotelLocation}>{hotel.location}</span>
-            <span className={styles.locationDot}>•</span>
-            <span className={styles.hotelDistance}>{hotel.distance}</span>
-          </div>
-          
-          <div className={styles.hotelRatingRow}>
-            <div className={styles.ratingBadge}>{hotel.rating}</div>
-            <span className={styles.ratingText}>{hotel.ratingText}</span>
-            <span className={styles.reviewCount}>({hotel.reviewCount} reviews)</span>
-          </div>
-
-          <div className={styles.hotelAmenitiesRow}>
-            <span className={styles.amenityItem}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-              Breakfast included
+            <MapPin size={14} aria-hidden />
+            <span className={styles.hotelLocation}>
+              {[
+                place,
+                stars ? `${stars}★` : null,
+                hotel.distance && !/★/.test(String(hotel.distance))
+                  ? hotel.distance
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
-            <span className={styles.amenityItem}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
-              Free Wi-Fi
-            </span>
-            <span className={styles.amenityItem}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6c.6 0 1.2-.2 1.7-.6.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0"></path><path d="M2 12c.6 0 1.2-.2 1.7-.6.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0"></path><path d="M2 18c.6 0 1.2-.2 1.7-.6.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0 .5.4 1.1.6 1.7.6s1.2-.2 1.7-.6c.9-.7 2.1-.7 3 0"></path></svg>
-              Swimming Pool
-            </span>
-            <span className={styles.amenityItem}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect><line x1="9" y1="8" x2="9" y2="16"></line><path d="M9 8h3a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H9"></path></svg>
-              Parking
-            </span>
-            <span className={styles.amenityMore}>| +6 more</span>
           </div>
 
-          <div className={styles.hotelTagsRow}>
-            {(hotel.tags || []).map((tag, index) => (
-              <span key={index} className={tag === 'Free cancellation' ? styles.tagGreen : styles.tagGray}>
-                {tag}
+          {rating > 0 ? (
+            <div className={styles.hotelRatingRow}>
+              <div className={styles.ratingBadge}>{rating.toFixed(1)}</div>
+              <span className={styles.ratingText}>
+                {hotel.ratingText || (rating >= 9 ? "Excellent" : rating >= 8 ? "Very good" : "Good")}
               </span>
-            ))}
-          </div>
+              {reviews > 0 ? (
+                <span className={styles.reviewCount}>
+                  ({reviews.toLocaleString()} reviews)
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {amenities.length ? (
+            <div className={styles.hotelAmenitiesRow}>
+              {amenities.map((a) => (
+                <span key={a} className={styles.amenityItem}>
+                  {a}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.hotelDetailsRight}>
-          <div className={styles.priceLabel}>Per Night</div>
-          <div className={styles.pricePerNight}>
-            {hotel.has_price === false || !hotel.pricePerNight
-              ? 'Rates on request'
-              : `₹${Number(hotel.pricePerNight).toLocaleString()}`}
-          </div>
+          <div className={styles.priceLabel}>Per night</div>
+          <div className={styles.pricePerNight}>{formatMoney(nightPrice, moneyOpts)}</div>
           <div className={styles.totalPrice}>
-            {hotel.has_price === false || !hotel.totalPrice
-              ? '—'
-              : `₹${Number(hotel.totalPrice).toLocaleString()} total`}
-            <br />
+            {Number.isFinite(totalPrice) && totalPrice > 0
+              ? `${formatMoney(totalPrice, moneyOpts)} total`
+              : null}
             <span className={styles.taxesText}>incl. taxes & fees</span>
           </div>
-          
-          <button className={styles.bookNowBtn} type="button">See rooms</button>
-          <button className={styles.seeOptionsBtn} type="button">Live LiteAPI rates &gt;</button>
+          <button className={styles.bookNowBtn} type="button">
+            See rooms
+          </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 };

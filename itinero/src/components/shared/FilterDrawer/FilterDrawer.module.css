@@ -1,0 +1,78 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  background: rgba(0, 10, 26, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.panel {
+  width: 100%;
+  max-width: 400px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f2f2f2;
+  animation: filterDrawerIn 0.28s ease forwards;
+}
+
+@keyframes filterDrawerIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px;
+  background: #fff;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #001439;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #667085;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: rgba(0, 20, 56, 0.06);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.footer {
+  padding: 20px;
+  background: #fff;
+  border-top: 1px solid #ebebeb;
+}

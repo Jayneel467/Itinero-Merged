@@ -1,0 +1,103 @@
+.panel {
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(249, 114, 17, 0.25);
+  background: rgba(249, 114, 17, 0.04);
+}
+
+.head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.head svg {
+  color: var(--color-primary, #f97211);
+  margin-top: 2px;
+}
+
+.head strong {
+  display: block;
+  font-size: 14px;
+}
+
+.head span {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted, #637588);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted, #637588);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pointsValue {
+  font-size: 13px;
+  color: var(--color-navy, #001438);
+  text-transform: none;
+  font-weight: 700;
+}
+
+.quote {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--color-navy, #001438);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.applyBtn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--color-primary, #f97211);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.applyBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.clearBtn {
+  border: 1px solid var(--color-gray-200, #e8edf2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.note,
+.panel p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-muted, #637588);
+}
+
+.error {
+  margin-top: 8px !important;
+  color: #b42318 !important;
+}
+
+.panel a {
+  color: var(--color-primary, #f97211);
+  font-weight: 700;
+}

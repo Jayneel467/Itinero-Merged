@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flightService } from "../services/flightService";
+import { useCurrency } from "@/context/CurrencyContext";
 
 function addDays(iso, n) {
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
   d.setDate(d.getDate() + n);
-  // Local YMD — never toISOString() (shifts the calendar day in IST+)
+  // Local YMD - never toISOString() (shifts the calendar day in IST+)
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -18,7 +19,12 @@ function daysInMonth(year, monthIndex) {
 
 /**
  * Async live min-fares for the date strip / price calendar.
- * Never invents prices — only stores numbers returned by LiteAPI via supervisor.
+ * Never invents prices - only stores numbers returned by LiteAPI via supervisor.
+ *
+ * Speed notes:
+ * - Wait until `enabled` (main search done) so we don't fight LiteAPI.
+ * - One request for the visible ±3 window first; edges fill in after.
+ * - Backend uses fast one-way probes (not 15 round-trips).
  */
 export default function usePriceCalendar({
   origin,
@@ -32,7 +38,10 @@ export default function usePriceCalendar({
   cabin = "ECONOMY",
   /** Seed selected-day fare from the main results search without waiting */
   seedPrice = null,
+  /** Gate calendar until main flight search finishes */
+  enabled = true,
 }) {
+  const { currency } = useCurrency();
   const [pricesByDate, setPricesByDate] = useState({});
   const [loadingDates, setLoadingDates] = useState({});
   const [isStripLoading, setIsStripLoading] = useState(false);
@@ -85,16 +94,16 @@ export default function usePriceCalendar({
       const myReq = reqIdRef.current;
 
       try {
+        // Backend ignores return for strip probes (one-way = much faster).
         const res = await flightService.priceCalendar({
           origin,
           destination,
           dates: needed,
-          return_date:
-            tripType === "return" && returnDate ? returnDate : undefined,
           adults,
           children,
           infants,
           cabin,
+          currency,
         });
 
         if (!mountedRef.current || myReq !== reqIdRef.current) return;
@@ -126,17 +135,17 @@ export default function usePriceCalendar({
         }
       }
     },
-    [origin, destination, returnDate, tripType, adults, children, infants, cabin]
+    [origin, destination, adults, children, infants, cabin, currency]
   );
 
-  // Reset when route / pax / cabin changes
+  // Reset when route / pax / cabin / currency changes
   useEffect(() => {
     reqIdRef.current += 1;
     pricesRef.current = {};
     setPricesByDate({});
     setLoadingDates({});
     inflightRef.current = new Set();
-  }, [origin, destination, adults, children, infants, cabin, tripType, returnDate]);
+  }, [origin, destination, adults, children, infants, cabin, tripType, returnDate, currency]);
 
   // Seed selected day from main live search min price
   useEffect(() => {
@@ -147,9 +156,9 @@ export default function usePriceCalendar({
     });
   }, [departDate, seedPrice]);
 
-  // Load strip window async (does not block main results).
-  // Prefer center ±3 first so visible fares appear sooner, then the rest of ±7.
+  // Load strip after main search - visible week first, then edges (non-blocking).
   useEffect(() => {
+    if (!enabled) return;
     if (!stripDates.length || !origin || !destination || !departDate) return;
     let cancelled = false;
     (async () => {
@@ -157,15 +166,24 @@ export default function usePriceCalendar({
       try {
         const priority = Array.from({ length: 7 }, (_, i) => addDays(departDate, i - 3));
         if (!cancelled) await fetchDates(priority);
-        if (!cancelled) await fetchDates(stripDates);
       } finally {
         if (!cancelled && mountedRef.current) setIsStripLoading(false);
+      }
+      // Edges after visible week - don't hold strip skeletons for them
+      if (!cancelled) {
+        const idle =
+          typeof requestIdleCallback === "function"
+            ? (cb) => requestIdleCallback(cb, { timeout: 2500 })
+            : (cb) => setTimeout(cb, 400);
+        idle(() => {
+          if (!cancelled) fetchDates(stripDates);
+        });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [stripDates, origin, destination, departDate, fetchDates]);
+  }, [enabled, stripDates, origin, destination, departDate, fetchDates]);
 
   const ensureMonthPrices = useCallback(
     async (year, monthIndex) => {
@@ -174,7 +192,6 @@ export default function usePriceCalendar({
         const day = i + 1;
         return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       });
-      // Skeleton the whole month while week batches fill in
       setLoadingDates((prev) => {
         const next = { ...prev };
         for (const iso of dates) {
@@ -185,9 +202,8 @@ export default function usePriceCalendar({
         return next;
       });
       try {
-        for (let i = 0; i < dates.length; i += 7) {
-          await fetchDates(dates.slice(i, i + 7));
-        }
+        // One request for the whole month (backend caps at 31 + concurrency).
+        await fetchDates(dates);
       } finally {
         setLoadingDates((prev) => {
           const next = { ...prev };
@@ -203,10 +219,18 @@ export default function usePriceCalendar({
     (iso) => {
       if (Object.prototype.hasOwnProperty.call(pricesByDate, iso)) return false;
       if (loadingDates[iso]) return true;
-      if (isStripLoading && stripDates.includes(iso)) return true;
+      if (isStripLoading && stripDates.includes(iso)) {
+        // Only skeleton the visible ±3 while priority batch runs
+        const center = departDate;
+        if (!center) return true;
+        const priority = new Set(
+          Array.from({ length: 7 }, (_, i) => addDays(center, i - 3))
+        );
+        return priority.has(iso);
+      }
       return false;
     },
-    [loadingDates, isStripLoading, pricesByDate, stripDates]
+    [loadingDates, isStripLoading, pricesByDate, stripDates, departDate]
   );
 
   return {

@@ -179,6 +179,133 @@
   color: #0066FF;
 }
 
+.locationPane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.locationLead {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.locationSummary {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  color: #001439;
+}
+
+.locationSummary strong {
+  display: block;
+  font-size: 15px;
+}
+
+.locationSummary span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.sectionTitle {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.searchWrap:focus-within {
+  border-color: #0066ff;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.12);
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.searchInput::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.searchClear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 999px;
+}
+
+.searchClear:hover {
+  color: #1a1a1a;
+  background: #e5e7eb;
+}
+
+.searchHint {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.locationActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.doneBtn {
+  border: none;
+  border-radius: 999px;
+  background: #001439;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.doneBtn:hover {
+  opacity: 0.92;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 1024px) {
   .grid {
