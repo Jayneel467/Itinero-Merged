@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
+import VeroPostBookingHelp from "@/components/shared/VeroPostBookingHelp";
+import { useVeroUi } from "@/context/VeroUiContext";
+import { buildHotelConfirmationPageContext } from "@/features/vero/utils/pageContext";
 import BookingStepper from "./components/BookingStepper";
 import {
   CheckCircle,
@@ -26,7 +29,14 @@ import {
   formatCancelResultMessage,
 } from "@/features/trips/utils/cancelFlow";
 import { downloadHotelVoucherPdf } from "@/features/booking/utils/bookingConfirmationPdf";
-import { resolveHotelConfirmation } from "./utils/hotelCheckout";
+import { sendBookingEmail } from "@/features/booking/services/paymentService";
+import { hotelService } from "./services/hotelService";
+import {
+  resolveHotelConfirmation,
+  saveHotelConfirmation,
+  confirmationFromHotelBooking,
+  confirmationFromHotelTrip,
+} from "./utils/hotelCheckout";
 
 function shortRef(value, head = 12, tail = 6) {
   const s = String(value || "").trim();
@@ -50,13 +60,77 @@ export default function HotelConfirmationPage() {
   const { state: routeState } = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const { formatMoney } = useCurrency();
-  const confirmation = useMemo(() => resolveHotelConfirmation(routeState), [routeState]);
+  const { setPageContext, clearPageContext } = useVeroUi();
+  const [confirmation, setConfirmation] = useState(() => resolveHotelConfirmation(routeState));
+  const [hydrateBusy, setHydrateBusy] = useState(!resolveHotelConfirmation(routeState)?.bookingData);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [tripId, setTripId] = useState(null);
   const [cancelMsg, setCancelMsg] = useState("");
   const [cancelErr, setCancelErr] = useState("");
   const [cancelled, setCancelled] = useState(false);
   const [copiedKey, setCopiedKey] = useState("");
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
+  const [resendErr, setResendErr] = useState("");
+
+  useEffect(() => {
+    let cancelledHydrate = false;
+    const fromSession = resolveHotelConfirmation(routeState);
+    if (fromSession?.bookingData && fromSession?.bookingId) {
+      setConfirmation(fromSession);
+      setHydrateBusy(false);
+      return undefined;
+    }
+    const bid = String(searchParams.get("booking") || searchParams.get("bookingId") || "").trim();
+    const tripMatch =
+      tripService
+        .list()
+        .map((t) => {
+          const c = confirmationFromHotelTrip(t);
+          if (!c) return null;
+          const hotelLeg = (t.legs || []).find((l) => l.type === "hotel");
+          if (bid && c.bookingId === bid) return c;
+          if (id && hotelLeg?.hotelId === id && hotelLeg?.bookingId) return c;
+          return null;
+        })
+        .find(Boolean) || null;
+    if (tripMatch?.bookingData) {
+      setConfirmation(tripMatch);
+      saveHotelConfirmation(tripMatch);
+      setHydrateBusy(false);
+      if (!bid) return undefined;
+    }
+    if (!bid) {
+      setHydrateBusy(false);
+      return undefined;
+    }
+    setHydrateBusy(true);
+    hotelService
+      .getBooking(bid, { email: fromSession?.bookingData?.email || tripMatch?.bookingData?.email })
+      .then((res) => {
+        if (cancelledHydrate) return;
+        const mapped = confirmationFromHotelBooking(res, {
+          bookingId: bid,
+          hotelName: tripMatch?.bookingData?.hotelName,
+          location: tripMatch?.bookingData?.location,
+          email: tripMatch?.bookingData?.email,
+          guestName: tripMatch?.bookingData?.guestName,
+          paymentId: tripMatch?.paymentId,
+        });
+        if (mapped?.bookingData) {
+          setConfirmation(mapped);
+          saveHotelConfirmation(mapped);
+        }
+      })
+      .finally(() => {
+        if (!cancelledHydrate) setHydrateBusy(false);
+      });
+    return () => {
+      cancelledHydrate = true;
+    };
+  }, [id, routeState, searchParams]);
 
   const paymentId = confirmation?.paymentId || null;
   const bookingId = confirmation?.bookingId || null;
@@ -72,7 +146,7 @@ export default function HotelConfirmationPage() {
 
   useEffect(() => {
     if (!bookingData || !bookingId) return;
-    tripService.ensureHotelTrip({
+    const trip = tripService.ensureHotelTrip({
       hotelName: bookingData.hotelName,
       hotelId: id,
       location: bookingData.location,
@@ -87,15 +161,52 @@ export default function HotelConfirmationPage() {
       hotelConfirmationCode,
       confirmed: true,
     });
+    setTripId(trip?.id || null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- persist once per confirmation view
   }, [id, paymentId, bookingId, bookingData?.hotelName, bookingData?.totalPrice]);
+
+  useEffect(() => {
+    if (!bookingData || !bookingId) return undefined;
+    const checkInLabel =
+      bookingData.checkInIso ||
+      bookingData.checkIn?.date ||
+      (typeof bookingData.checkIn === "string" ? bookingData.checkIn : null);
+    const checkOutLabel =
+      bookingData.checkOutIso ||
+      bookingData.checkOut?.date ||
+      (typeof bookingData.checkOut === "string" ? bookingData.checkOut : null);
+    setPageContext(
+      buildHotelConfirmationPageContext({
+        hotelName: bookingData.hotelName,
+        location: bookingData.location,
+        checkIn: checkInLabel,
+        checkOut: checkOutLabel,
+        bookingId,
+        confirmation: hotelConfirmationCode || bookingId,
+        guestName: bookingData.guestName,
+        tripId,
+        nights: bookingData.nights,
+        guests: bookingData.guests,
+        hotelId: id,
+      })
+    );
+    return () => clearPageContext();
+  }, [
+    bookingData,
+    bookingId,
+    hotelConfirmationCode,
+    tripId,
+    id,
+    setPageContext,
+    clearPageContext,
+  ]);
 
   if (!bookingId || !bookingData) {
     return (
       <PageLayout>
         <div className={styles.pageContainer}>
           <p style={{ padding: 24, color: "#b42318" }}>
-            No confirmed stay found. Complete checkout with Stripe first - we do not invent booking
+            No confirmed stay found. Complete checkout first - we do not invent booking
             references.
           </p>
           <button type="button" className={styles.homeBtn} onClick={() => navigate("/hotels")}>
@@ -108,7 +219,7 @@ export default function HotelConfirmationPage() {
 
   async function handleCancel() {
     if (!isSupplierBookingId(bookingId)) {
-      setCancelErr("Cancel this stay from My Trips - no supplier booking id on this confirmation.");
+      setCancelErr("Cancel this stay from My Trips — this confirmation has no hotel booking id.");
       return;
     }
     setCancelBusy(true);
@@ -132,6 +243,68 @@ export default function HotelConfirmationPage() {
     } finally {
       setCancelBusy(false);
     }
+  }
+
+  async function handleResendEmail() {
+    const mail = String(bookingData?.email || "").trim();
+    if (!mail) {
+      setResendErr("No email on this booking. Open My Trips to resend.");
+      return;
+    }
+    setResendBusy(true);
+    setResendErr("");
+    setResendMsg("");
+    try {
+      const res = await sendBookingEmail({
+        kind: "hotel",
+        payment_id: paymentId || undefined,
+        email: mail,
+        booking_ref: bookingRef || bookingId || undefined,
+        hotel_name: bookingData?.hotelName,
+        amount: Number(bookingData?.totalPrice) || undefined,
+        currency: bookingData?.currency || "INR",
+        pending: !bookingId,
+      });
+      if (!res?.ok) {
+        throw new Error(res?.message || res?.error || "Could not send email.");
+      }
+      setResendMsg(res.message || `Confirmation emailed to ${mail}.`);
+    } catch (err) {
+      setResendErr(err?.message || "Could not send email.");
+    } finally {
+      setResendBusy(false);
+    }
+  }
+
+  if (hydrateBusy && !bookingData) {
+    return (
+      <PageLayout>
+        <div className={styles.pageContainer}>
+          <p className={styles.empty}>Loading your stay confirmation…</p>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (!bookingData) {
+    return (
+      <PageLayout>
+        <div className={styles.pageContainer}>
+          <p className={styles.empty}>
+            No stay confirmation on this device. Open My Trips, or complete checkout first — we don’t invent
+            bookings.
+          </p>
+          <div className={styles.actions} style={{ maxWidth: 420, margin: "16px auto" }}>
+            <button type="button" className={styles.homeBtn} onClick={() => navigate("/trips")}>
+              My Trips
+            </button>
+            <button type="button" className={styles.shareBtn} onClick={() => navigate("/hotels")}>
+              Search stays
+            </button>
+          </div>
+        </div>
+      </PageLayout>
+    );
   }
 
   const checkIn = bookingData.checkIn || { date: "-", day: "" };
@@ -384,7 +557,7 @@ export default function HotelConfirmationPage() {
                       totalPrice: bookingData.totalPrice,
                       currency: bookingData.currency,
                       paymentId,
-                      paymentLabel: paymentId ? "Card · Stripe" : "Paid",
+                      paymentLabel: paymentId ? "Card" : "Paid",
                     });
                   } catch {
                     /* ignore */
@@ -407,11 +580,26 @@ export default function HotelConfirmationPage() {
               <button
                 type="button"
                 className={styles.homeBtn}
+                onClick={handleResendEmail}
+                disabled={resendBusy}
+              >
+                <Mail size={18} /> {resendBusy ? "Sending…" : "Email confirmation"}
+              </button>
+              <button
+                type="button"
+                className={styles.homeBtn}
                 onClick={() => navigate("/trips")}
               >
                 <Home size={18} /> View in Trips
               </button>
             </section>
+            {resendMsg ? <p className={styles.cancelOk}>{resendMsg}</p> : null}
+            {resendErr ? <p className={styles.cancelErr}>{resendErr}</p> : null}
+
+            <VeroPostBookingHelp
+              prompt={`I booked ${bookingData.hotelName || "a hotel"} in ${bookingData.location || "this city"}. Confirmation ${hotelConfirmationCode || bookingRef}. Can I change dates or cancel?`}
+              copy="Ask confirmation, cancel, or date/name change on this stay — not a new search."
+            />
           </div>
 
           <aside className={styles.summaryColumn}>

@@ -100,11 +100,32 @@ def email_matches_booking(supplier_booking_id: str, email: str | None) -> bool:
     return bool(stored and stored == want)
 
 
+def _user_id_from_request(request: Request | None) -> str | None:
+    if request is None:
+        return None
+    auth = (request.headers.get("authorization") or "").strip()
+    if not auth.lower().startswith("bearer "):
+        return None
+    token = auth[7:].strip() or None
+    if not token:
+        return None
+    try:
+        from supervisor.auth import user_from_token
+
+        user = user_from_token(token)
+    except Exception:
+        return None
+    if not user or not user.get("id"):
+        return None
+    return str(user["id"])
+
+
 def require_booking_access(
     *,
     booking_id: str,
     device_id: str | None,
     email: str | None = None,
+    user_id: str | None = None,
     admin_ok: bool = False,
     production: bool | None = None,
 ) -> None:
@@ -115,10 +136,12 @@ def require_booking_access(
     if admin_ok:
         return
 
-    from supervisor.ledger import booking_owned_by_device
+    from supervisor.ledger import booking_owned_by_device, booking_owned_by_user
 
     owned = booking_owned_by_device(bid, device_id)
     if owned is True:
+        return
+    if user_id and booking_owned_by_user(bid, user_id) is True:
         return
     if email_matches_booking(bid, email):
         return
@@ -150,6 +173,7 @@ def require_booking_access_from_request(
         booking_id=booking_id,
         device_id=device_id,
         email=q_email,
+        user_id=_user_id_from_request(request),
         admin_ok=admin_ok,
     )
 

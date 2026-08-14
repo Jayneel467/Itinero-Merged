@@ -32,7 +32,7 @@
 .fl-empty-route {
 	padding: 28px 24px;
 	text-align: center;
-	background: #fff;
+	background: var(--surface-elevated, #fff);
 	border-radius: 16px;
 	border: 1px dashed #e4e7ec;
 	margin-bottom: 16px;
@@ -223,17 +223,6 @@
 	box-sizing: border-box;
 	container-type: inline-size;
 	container-name: flights-split;
-}
-
-:global(.vero-is-open) .fl-row12 {
-	margin-left: 16px;
-	margin-right: 16px;
-	gap: 12px;
-}
-
-:global(.vero-is-open) .fl-results-list {
-	padding-right: 12px;
-	padding-bottom: 48px;
 }
 
 .fl-row24 {
@@ -848,7 +837,7 @@
 }
 
 .spg-tooltip {
-	background: #fff;
+	background: var(--surface-elevated, #fff);
 	border: 1px solid #E5E7EB;
 	border-radius: 8px;
 	padding: 8px 10px;
@@ -1058,7 +1047,7 @@
 	flex-shrink: 0;
 	border: none;
 	border-radius: 999px;
-	background: #fff;
+	background: var(--surface-elevated, #fff);
 	color: #C2410C;
 	font-weight: 800;
 	padding: 10px 16px;
@@ -1331,7 +1320,7 @@
 	height: 8px;
 	border: 2px solid #888888;
 	border-radius: 50%;
-	background: #fff;
+	background: var(--surface-elevated, #fff);
 	flex-shrink: 0;
 	box-sizing: border-box;
 }
@@ -1792,7 +1781,7 @@
 }
 
 .fc-amenity-icon-box {
-	background: #fff;
+	background: var(--surface-elevated, #fff);
 	border-radius: 8px;
 	width: 32px;
 	height: 32px;
@@ -2474,7 +2463,7 @@
 }
 
 .fc-fare-btn {
-	background: #fff;
+	background: var(--surface-elevated, #fff);
 	color: #F97211;
 	border: 1.5px solid #F97211;
 }

@@ -11,7 +11,7 @@
 .title {
   font-size: clamp(1.35rem, 2.4vw, 1.6rem);
   font-weight: 800;
-  color: var(--color-navy, #001438);
+  color: var(--text-primary, var(--color-navy, #001438));
   margin: 0 0 6px;
   letter-spacing: -0.02em;
 }
@@ -40,7 +40,7 @@
 }
 
 .section {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid var(--color-gray-200, #e8edf2);
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 20, 56, 0.04);
@@ -51,7 +51,7 @@
 .sectionTitle {
   font-size: 15px;
   font-weight: 800;
-  color: var(--color-navy, #001438);
+  color: var(--text-primary, var(--color-navy, #001438));
   margin: 0 0 2px;
 }
 
@@ -97,8 +97,8 @@
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-navy, #001438);
-  background: #fff;
+  color: var(--text-primary, var(--color-navy, #001438));
+  background: var(--surface-elevated, #fff);
   transition: border-color 0.15s, box-shadow 0.15s;
   outline: none;
   width: 100%;
@@ -162,7 +162,7 @@
 .checkboxText {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-navy, #001438);
+  color: var(--text-primary, var(--color-navy, #001438));
   line-height: 1.45;
 }
 
@@ -186,7 +186,7 @@
   padding: 8px 14px;
   border: 1px solid var(--color-primary, #f97211);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--color-primary, #f97211);
   font-size: 13px;
   font-weight: 700;
@@ -211,7 +211,7 @@
   padding: 7px 12px;
   border: 1px solid #e4e7ec;
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: #344054;
   font-size: 13px;
   font-weight: 600;
@@ -236,8 +236,8 @@
   border: 1px solid #d0d5dd;
   border-radius: 10px;
   font-size: 14px;
-  color: var(--color-navy, #001438);
-  background: #fff;
+  color: var(--text-primary, var(--color-navy, #001438));
+  background: var(--surface-elevated, #fff);
   resize: vertical;
   font-family: inherit;
   outline: none;

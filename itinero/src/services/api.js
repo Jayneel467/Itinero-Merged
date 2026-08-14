@@ -1,5 +1,6 @@
 import { APP_CONFIG } from "@/app/config";
 import { getDeviceId } from "@/features/trips/utils/deviceId";
+import { scrubProviderCopy } from "@/utils/scrubProviderCopy";
 
 /**
  * HTTP client for the booking / flight-search API.
@@ -86,7 +87,9 @@ async function request(
       (response.status === 502
         ? "API gateway error (502) - is supervisor running on :8000?"
         : `HTTP ${response.status}`);
-    const error = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    const error = new Error(
+      scrubProviderCopy(typeof detail === "string" ? detail : JSON.stringify(detail))
+    );
     error.status = response.status;
     error.data = errorData;
     error.code = `http_${response.status}`;

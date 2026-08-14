@@ -125,6 +125,33 @@
   gap: 12px;
 }
 
+.HotelDetailHero_nameRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.HotelDetailHero_save,
+.HotelDetailHero_saveOn {
+  flex-shrink: 0;
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.HotelDetailHero_saveOn {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .HotelDetailHero_hotelName {
   font-size: 42px;
   font-weight: 700;

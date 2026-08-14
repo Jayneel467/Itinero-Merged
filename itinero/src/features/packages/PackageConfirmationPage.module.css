@@ -2,7 +2,7 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 40px 20px 72px;
-  color: #001439;
+  color: var(--text-primary, #001439);
 }
 
 .kicker {
@@ -49,6 +49,10 @@
   color: #065f46;
   font-size: 14px;
   line-height: 1.45;
+}
+
+.veroHelp {
+  margin: 0 0 16px;
 }
 
 .docActions {
@@ -121,7 +125,7 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid #e8edf2;
   border-radius: 16px;
   padding: 20px;

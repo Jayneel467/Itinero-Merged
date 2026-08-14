@@ -158,16 +158,16 @@ def build_liteapi_catalog(*, loyalty: dict[str, Any] | None = None) -> dict[str,
                 "status": "wired",
                 "enabled": _webhook_configured(),
                 "endpoint": "/api/webhooks/liteapi",
-                "usage": "booking.book / cancel (+ flight aliases) → loyalty earn backup + cancel clawback. Secret required in production.",
+                "usage": "booking.book / cancel → loyalty earn/clawback + Itinero SMTP confirm/cancel (deduped). Secret required in production.",
                 "env": "LITEAPI_WEBHOOK_SECRET",
             },
             "bookingAmendments": {
-                "status": "unused",
-                "usage": "PUT /bookings/{id}/amend (name/email) + hard amend (dates/occupancy → alternative-prebooks → rebook). No Trips UI yet.",
+                "status": "wired",
+                "usage": "POST /api/hotels/bookings/amend — guest name/email (PUT Lite amend) + date quote/confirm (alternative-prebooks). Trips UI.",
             },
             "flightAncillaries": {
-                "status": "partial",
-                "usage": "attach-services (seats/bags) wired in BookingPopup; not yet in main FlightPaymentPage flow.",
+                "status": "wired",
+                "usage": "attach-services (seats/bags) on BookingPopup and main FlightPaymentPage checkout.",
             },
             # ── Distribution ────────────────────────────────────────────
             "googleHotelCenter": {

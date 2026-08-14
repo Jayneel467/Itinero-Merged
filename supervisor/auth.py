@@ -103,7 +103,7 @@ def _merge_loyalty(user: dict[str, Any] | None) -> None:
 def _public_user(row: dict[str, Any]) -> dict[str, Any]:
     name = (row.get("name") or "").strip() or None
     phone = row.get("phone")
-    return {
+    out = {
         "id": row.get("id"),
         "name": name or "Itinero member",
         "displayName": name,
@@ -112,7 +112,20 @@ def _public_user(row: dict[str, Any]) -> dict[str, Any]:
         "mobileNumber": phone,
         "newsletter": bool(row.get("newsletter", True)),
         "needs_setup": not bool(name),
+        "veroFree": True,
     }
+    try:
+        from supervisor.billing import snapshot_for_user
+
+        out["plan"] = snapshot_for_user(out.get("id"))
+    except Exception:
+        out["plan"] = {
+            "plan": "free",
+            "veroFree": True,
+            "loyaltyMultiplier": 1.0,
+            "status": "inactive",
+        }
+    return out
 
 
 def _row_user(row) -> dict[str, Any]:
@@ -189,6 +202,12 @@ def _issue_session(user_id: str, device_id: str | None = None) -> str:
         )
         conn.commit()
     _link_device(did, user_id)
+    try:
+        from supervisor.ledger import claim_device_for_user
+
+        claim_device_for_user(did, user_id)
+    except Exception:
+        traceback.print_exc()
     return token
 
 

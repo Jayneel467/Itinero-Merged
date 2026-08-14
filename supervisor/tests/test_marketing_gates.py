@@ -164,3 +164,78 @@ def test_offline_marketing_smoke_passes():
 
     out = run_offline()
     assert out["ok"] is True, out
+
+
+def test_india_landings_and_offer_copy_have_no_supplier():
+    from supervisor.marketing_campaigns import marketing_catalog
+
+    cat = marketing_catalog()
+    slugs = {c["slug"] for c in cat["landings"]}
+    assert {"goa-sun", "kerala-backwaters", "rajasthan-forts", "golden-triangle", "welcome"} <= slugs
+    blob = " ".join(str(o.get("copy") or "") for o in cat["offers"]).lower()
+    assert "supplier" not in blob
+    assert "liteapi" not in blob
+    ids = {j["id"] for j in cat["journeys"]}
+    assert "signup_onboarding" in ids
+    assert "price_watch" in ids
+    assert "daily_digest" in ids
+
+
+def test_broadcast_rejects_unknown_segment_and_template():
+    import asyncio
+    from supervisor.marketing_mailer import broadcast_to_segment
+
+    with patch("supervisor.marketing_mailer.store.list_segments", return_value=[{"id": "seg_newsletter", "name": "All", "rules": {}}]):
+        bad_t = asyncio.run(broadcast_to_segment(template="nukes", segment_id="seg_newsletter"))
+        assert bad_t["ok"] is False
+        assert bad_t["error"] == "unknown_template"
+        bad_s = asyncio.run(broadcast_to_segment(template="daily_digest", segment_id="nope"))
+        assert bad_s["ok"] is False
+        assert bad_s["error"] == "unknown_segment"
+
+
+def test_newsletter_segment_matches_zero_score():
+    from supervisor.marketing_store import user_matches_segment
+
+    with patch("supervisor.marketing_store.get_interests", return_value={"vibes": [], "home_country": "IN"}), patch(
+        "supervisor.marketing_store.get_contact_score", return_value={"score": 0}
+    ):
+        assert user_matches_segment("u1", {"min_score": 0}) is True
+        assert user_matches_segment("u1", {"min_score": 40}) is False
+        assert user_matches_segment("u1", {"vibes_any": ["beach"], "home_country": "IN"}) is False
+
+
+def test_lead_welcome_passes_unsub_token():
+    src = (_ROOT / "supervisor" / "main.py").read_text(encoding="utf-8")
+    chunk = src.split("signup_spark_html")[1].split("send_marketing")[0]
+    assert "unsubscribe_token" in chunk
+    assert 'unsub_token=""' not in chunk
+
+
+def test_signup_spark_html_includes_unsub_token():
+    from supervisor.marketing_templates import signup_spark_html
+
+    html = signup_spark_html(
+        unsub_token="lead_abc123",
+        api_base="https://itinero.company",
+    )
+    assert "token=lead_abc123" in html
+
+
+def test_unsubscribe_missing_token():
+    from supervisor.marketing_store import unsubscribe_by_token
+
+    missing = unsubscribe_by_token("")
+    assert missing["ok"] is False
+    assert missing.get("error") == "missing_token"
+
+
+def test_lead_unsubscribed_blocks_mail():
+    from supervisor import marketing_store as store
+
+    with patch.object(store, "lead_is_unsubscribed", return_value=True):
+        gate = store.marketing_send_allowed(
+            user_id=None, to_email="lead@x.com", campaign="daily_digest"
+        )
+    assert gate["ok"] is False
+    assert gate["reason"] == "lead_unsubscribed"

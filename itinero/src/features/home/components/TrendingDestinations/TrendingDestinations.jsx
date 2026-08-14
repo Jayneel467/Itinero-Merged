@@ -13,7 +13,7 @@ const DESTINATIONS = [
   {
     id: 1,
     image:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2950kkhg_expires_30_days.png",
+      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
     title: "Bali",
     subtitle: "Indonesia",
     code: "DPS",
@@ -21,7 +21,7 @@ const DESTINATIONS = [
   {
     id: 2,
     image:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fmqxgcdt_expires_30_days.png",
+      "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=800&q=80",
     title: "New York",
     subtitle: "USA",
     code: "JFK",
@@ -29,7 +29,7 @@ const DESTINATIONS = [
   {
     id: 3,
     image:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/jq3ahus7_expires_30_days.png",
+      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80",
     title: "Darjeeling",
     subtitle: "Bagdogra",
     code: "IXB",
@@ -37,7 +37,7 @@ const DESTINATIONS = [
   {
     id: 4,
     image:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/r1oo6x2k_expires_30_days.png",
+      "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80",
     title: "Japan",
     subtitle: "Tokyo",
     code: "NRT",
@@ -45,7 +45,7 @@ const DESTINATIONS = [
   {
     id: 5,
     image:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2b6x2epp_expires_30_days.png",
+      "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80",
     title: "Paris",
     subtitle: "France",
     code: "CDG",
@@ -53,7 +53,7 @@ const DESTINATIONS = [
   {
     id: 6,
     image:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fmqxgcdt_expires_30_days.png",
+      "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80",
     title: "London",
     subtitle: "UK",
     code: "LHR",
@@ -61,7 +61,7 @@ const DESTINATIONS = [
   {
     id: 7,
     image:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/jq3ahus7_expires_30_days.png",
+      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80",
     title: "Dubai",
     subtitle: "UAE",
     code: "DXB",

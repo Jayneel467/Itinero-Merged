@@ -178,6 +178,22 @@ async def _on_booking_confirmed(
         currency=str(currency),
         check_out_date=str(check_out)[:10] if check_out else None,
     )
+    await _maybe_send_itinero_mail(
+        booking_id=booking_id,
+        kind="confirm",
+        booking_kind=booking_kind,
+        email=str(guest_email) if guest_email else None,
+        details={
+            "booking_ref": booking_id,
+            "booking_id": booking_id,
+            "status": resp.get("status") or "confirmed",
+            "hotel_name": resp.get("hotelName") or resp.get("hotel_name"),
+            "check_in": resp.get("checkin") or resp.get("checkIn"),
+            "check_out": check_out,
+            "amount": amount,
+            "currency": currency,
+        },
+    )
 
 
 async def _on_booking_cancelled(resp: dict[str, Any], req: dict[str, Any] | None = None) -> None:
@@ -187,12 +203,110 @@ async def _on_booking_cancelled(resp: dict[str, Any], req: dict[str, Any] | None
 
     from supervisor.loyalty_ledger import loyalty_on_booking_cancelled
 
-    await loyalty_on_booking_cancelled(
+    loyalty = await loyalty_on_booking_cancelled(
         booking_id=booking_id,
         reason="liteapi_webhook_cancel",
+    )
+    holder = resp.get("holder") if isinstance(resp.get("holder"), dict) else {}
+    guest_email = holder.get("email") or (req or {}).get("email")
+    await _maybe_send_itinero_mail(
+        booking_id=booking_id,
+        kind="cancel",
+        booking_kind="hotel" if "hotel" in str(resp.get("status") or "") else "booking",
+        email=str(guest_email) if guest_email else None,
+        details={
+            "booking_ref": booking_id,
+            "booking_id": booking_id,
+            "status": "cancelled",
+            "title": resp.get("hotelName") or resp.get("hotel_name") or booking_id,
+            "loyalty_reversed": bool(loyalty) if loyalty is not False else True,
+        },
     )
 
 
 def _on_hotel_confirmation_number(resp: dict[str, Any]) -> None:
     # Stored via webhook log; confirmation page can poll booking retrieve.
     _ = resp
+
+
+def _mail_flag_key(kind: str) -> str:
+    return "itinero_cancel_email_sent" if kind == "cancel" else "itinero_confirm_email_sent"
+
+
+def _booking_payload(booking_id: str) -> dict[str, Any]:
+    if not configured():
+        return {}
+    try:
+        with connection() as conn:
+            row = conn.execute(
+                """
+                SELECT payload FROM bookings
+                WHERE supplier_booking_id = %s
+                ORDER BY updated_at DESC NULLS LAST
+                LIMIT 1
+                """,
+                (booking_id,),
+            ).fetchone()
+        payload = row[0] if row else {}
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def _mark_mail_sent(booking_id: str, kind: str) -> None:
+    if not configured():
+        return
+    key = _mail_flag_key(kind)
+    try:
+        with connection() as conn:
+            conn.execute(
+                """
+                UPDATE bookings
+                SET payload = COALESCE(payload, '{}'::jsonb) || jsonb_build_object(%s, now()::text),
+                    updated_at = now()
+                WHERE supplier_booking_id = %s
+                """,
+                (key, booking_id),
+            )
+            conn.commit()
+    except Exception:
+        traceback.print_exc()
+
+
+async def _maybe_send_itinero_mail(
+    *,
+    booking_id: str,
+    kind: str,
+    booking_kind: str,
+    email: str | None,
+    details: dict[str, Any],
+) -> None:
+    """Itinero SMTP only. Skip if checkout already mailed this booking."""
+    payload = _booking_payload(booking_id)
+    if payload.get(_mail_flag_key(kind)) or payload.get("confirmation_email_sent"):
+        return
+    mail = (email or "").strip()
+    if not mail or "@" not in mail:
+        try:
+            from supervisor.booking_access import ledger_guest_email
+
+            mail = ledger_guest_email(booking_id) or ""
+        except Exception:
+            mail = ""
+    if not mail or "@" not in mail:
+        return
+    try:
+        from supervisor.email_service import send_booking_cancellation, send_booking_confirmation
+
+        if kind == "cancel":
+            out = await send_booking_cancellation(kind=booking_kind, to_email=mail, details=details)
+        else:
+            out = await send_booking_confirmation(
+                kind="hotel" if "hotel" in str(booking_kind or "") else "flight",
+                to_email=mail,
+                details=details,
+            )
+        if out.get("ok"):
+            _mark_mail_sent(booking_id, kind)
+    except Exception:
+        traceback.print_exc()

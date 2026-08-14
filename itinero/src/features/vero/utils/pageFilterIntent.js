@@ -1045,6 +1045,12 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
     return { type: "open_trips" };
   }
   if (
+    /\b(buy (?:vero )?credits|vero credits|credit packs?|open plus)\b/i.test(t) &&
+    pageContext?.screen !== "plus"
+  ) {
+    return { type: "open_plus" };
+  }
+  if (
     /\b(my (account|profile)|account (page|settings)|open (account|profile)|edit (my )?profile|saved travellers)\b/i.test(
       t
     ) &&

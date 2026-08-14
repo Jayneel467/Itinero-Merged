@@ -15,7 +15,7 @@ function env(key, fallback = "") {
 export const LEGAL = {
   brand: "Itinero",
   /** Registered / operating company name shown on legal pages */
-  entityName: env("VITE_LEGAL_ENTITY_NAME", "Itinero"),
+  entityName: env("VITE_LEGAL_ENTITY_NAME", "Itinero Travels Private Limited"),
   /** Optional registered office line */
   registeredAddress: env(
     "VITE_LEGAL_ADDRESS",
@@ -25,7 +25,7 @@ export const LEGAL = {
   governingLaw: "the laws of India",
   disputeVenue:
     "the competent courts in India, without prejudice to mandatory consumer protections that apply where you live",
-  supportEmail: env("VITE_SUPPORT_EMAIL", "support@itinero.app"),
+  supportEmail: env("VITE_SUPPORT_EMAIL", "support@itinero.company"),
   legalEmail: env("VITE_LEGAL_EMAIL", "legal@itinero.app"),
   privacyEmail: env("VITE_PRIVACY_EMAIL", "privacy@itinero.app"),
   /** Honest support expectation - do not claim 24/7 phone unless staffed */

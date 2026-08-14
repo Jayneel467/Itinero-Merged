@@ -21,6 +21,22 @@ export default defineConfig({
     },
   },
   plugins: [
+    {
+      name: 'redirect-spa-base',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const url = req.url || ''
+          const path = url.split('?')[0]
+          if (path === '/plus' || path.startsWith('/plus/')) {
+            res.statusCode = 302
+            res.setHeader('Location', `/itinero${url}`)
+            res.end()
+            return
+          }
+          next()
+        })
+      },
+    },
     react(),
     tailwindcss(),
   ],

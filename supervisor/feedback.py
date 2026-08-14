@@ -28,7 +28,7 @@ def _support_inbox() -> str:
         (os.getenv("FEEDBACK_TO_EMAIL") or "").strip()
         or (os.getenv("SUPPORT_EMAIL") or "").strip()
         or (os.getenv("VITE_SUPPORT_EMAIL") or "").strip()
-        or "support@itinero.app"
+        or "support@itinero.company"
     )
 
 
@@ -102,6 +102,7 @@ async def submit_feedback(
     page_path: str | None = None,
     user_agent: str | None = None,
     device_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     checked = validate_feedback(
         message=message,
@@ -124,6 +125,7 @@ async def submit_feedback(
         "pagePath": (page_path or "").strip()[:300] or None,
         "userAgent": (user_agent or "").strip()[:400] or None,
         "deviceId": (device_id or "").strip()[:80] or None,
+        "userId": (user_id or "").strip()[:80] or None,
     }
     try:
         _append_log(row)
@@ -166,6 +168,7 @@ async def submit_feedback(
                 subject=subject,
                 plain=text,
                 html=html_body,
+                reply_to=checked["email"],
             )
             emailed = bool(out.get("ok"))
             if not emailed:

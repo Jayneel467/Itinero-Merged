@@ -1,5 +1,6 @@
 import { Component } from "react";
 import * as Sentry from "@sentry/react";
+import { APP_CONFIG } from "@/app/config";
 import styles from "./AppErrorBoundary.module.css";
 
 /**
@@ -36,8 +37,11 @@ export default class AppErrorBoundary extends Component {
           <button type="button" className={styles.primary} onClick={() => window.location.reload()}>
             Reload
           </button>
-          <a className={styles.secondary} href="/itinero/">
+          <a className={styles.secondary} href={`${APP_CONFIG.BASE_PATH || "/itinero"}/`}>
             Home
+          </a>
+          <a className={styles.secondary} href={`${APP_CONFIG.BASE_PATH || "/itinero"}/help`}>
+            Help
           </a>
         </div>
       </div>

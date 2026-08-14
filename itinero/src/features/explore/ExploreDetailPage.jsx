@@ -19,7 +19,7 @@ import {
 } from "./data/catalog";
 import { getTravelIntel, summarizeIntelForVero } from "./data/travelIntel";
 import { trackInterestEvent } from "@/services/interestTracker";
-import { isSaved, toggleSaved } from "@/features/account/savedService";
+import { isSaved, onSavedChange, toggleSaved } from "@/features/account/savedService";
 import { isKlookEnabled, klookHref } from "@/services/klookAffiliate";
 import { usePlacesPhoto } from "@/hooks/usePlacesPhoto";
 import { PlacesPhotoImg } from "@/components/shared";
@@ -104,8 +104,9 @@ export default function ExploreDetailPage() {
   );
 
   useEffect(() => {
-    if (!dest) return;
-    setBookmarked(isSaved(`explore:${dest.slug || dest.id}`));
+    if (!dest) return undefined;
+    const sync = () => setBookmarked(isSaved(`explore:${dest.slug || dest.id}`));
+    sync();
     try {
       trackInterestEvent("search", {
         city: dest.city,
@@ -117,6 +118,7 @@ export default function ExploreDetailPage() {
     } catch {
       /* optional */
     }
+    return onSavedChange(sync);
   }, [dest]);
 
   useEffect(() => {
@@ -177,23 +179,26 @@ export default function ExploreDetailPage() {
       if (alive) {
         const list = Array.isArray(res?.packages) ? res.packages : [];
         const destThemes = new Set(dest.themes || []);
-        const city = dest.city.toLowerCase();
-        const country = (dest.country || "").toLowerCase();
+        const city = String(dest.city || "").toLowerCase();
         const scored = list
           .map((p) => {
             const themes = p.themes || (p.theme ? [p.theme] : []);
-            const cities = (p.destinations || []).join(" ").toLowerCase();
+            const cities = [
+              ...(p.destinations || []),
+              p.stay?.city,
+              ...(p.requiredAnchors || []),
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
             const title = (p.title || "").toLowerCase();
             const themeHit = themes.some((t) => destThemes.has(t));
-            const cityHit =
-              cities.includes(city) ||
-              title.includes(city) ||
-              (country && (cities.includes(country) || title.includes(country)));
-            return { p, score: (cityHit ? 3 : 0) + (themeHit ? 1 : 0) };
+            const cityHit = Boolean(city) && (cities.includes(city) || title.includes(city));
+            return { p, score: (cityHit ? 3 : 0) + (themeHit ? 1 : 0), cityHit };
           })
-          .filter((x) => x.score > 0)
+          .filter((x) => x.cityHit)
           .sort((a, b) => b.score - a.score);
-        setPackages((scored.length ? scored.map((x) => x.p) : list).slice(0, 6));
+        setPackages(scored.map((x) => x.p).slice(0, 6));
       }
     })();
     return () => {

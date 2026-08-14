@@ -200,8 +200,9 @@ export default function TrainBookingPage() {
             {selected.number} {klass}
           </b>{" "}
           ({selected.from_code} → {selected.to_code}
-          {selected.date ? ` · ${selected.date}` : ""}). IRCTC still issues the e-ticket SMS/email -
-          paste that PNR on the next screen.
+          {selected.date ? ` · ${selected.date}` : ""}). IRCTC still issues the e-ticket SMS/email —
+          paste that PNR on the next screen. We don’t charge the rail fare here (v1 handoff until an
+          authorised PSP).
         </p>
 
         <section className={styles.summary}>
@@ -378,7 +379,8 @@ export default function TrainBookingPage() {
         </div>
         <p className={styles.note}>
           We never take the rail fare here, and never ask for your IRCTC password. Passenger names are copied for
-          partner checkout. Ticket confirmation still comes from IRCTC.
+          partner checkout. Ticket confirmation still comes from IRCTC — not Itinero SMTP. India trains stay a
+          licensed-partner handoff until we have an authorised rail PSP.
         </p>
       </div>
     </PageLayout>

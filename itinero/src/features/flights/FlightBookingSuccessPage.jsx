@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Download, Share2, Ban, Mail } from "lucide-react";
 import { PageLayout } from "@/components/layout";
+import VeroPostBookingHelp from "@/components/shared/VeroPostBookingHelp";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useVeroUi } from "@/context/VeroUiContext";
+import { buildBookingSuccessPageContext } from "@/features/vero/utils/pageContext";
 import { describeAirport, findAirportByCode } from "@/constants/airports";
 import { downloadBookingConfirmationPdf } from "@/features/booking/utils/bookingConfirmationPdf";
 import { sendBookingEmail } from "@/features/booking/services/paymentService";
 import { tripService } from "@/features/trips/tripService";
+import { flightService } from "./services/flightService";
 import { isSupplierBookingId, pickSupplierBookingId } from "@/features/trips/utils/supplierBooking";
 import {
   cancelFlightWithQuote,
@@ -22,10 +25,12 @@ import {
 } from "./utils/airlineIdentity";
 import {
   resolveFlightConfirmation,
+  saveFlightConfirmation,
   confirmationToPdfBooking,
   formatFlightClock,
   formatFlightDate,
   pickDisplayBookingRef,
+  confirmationFromFlightTrip,
 } from "./utils/flightCheckout";
 import { isKlookEnabled, klookHref } from "@/services/klookAffiliate";
 import styles from "./FlightBookingSuccessPage.module.css";
@@ -41,11 +46,12 @@ function stopsLabel(stops) {
 export default function FlightBookingSuccessPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { formatMoney } = useCurrency();
-  const { openVero } = useVeroUi();
-  const veroSrc = `${import.meta.env.BASE_URL}vero-chatbot.png`;
+  const { setPageContext, clearPageContext } = useVeroUi();
   const logoSrc = `${import.meta.env.BASE_URL}itinero-logo.png`;
-  const confirmation = useMemo(() => resolveFlightConfirmation(state), [state]);
+  const [confirmation, setConfirmation] = useState(() => resolveFlightConfirmation(state));
+  const [hydrateBusy, setHydrateBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState("");
   const [cancelBusy, setCancelBusy] = useState(false);
@@ -57,6 +63,69 @@ export default function FlightBookingSuccessPage() {
   const [cancelled, setCancelled] = useState(
     String(confirmation?.liteapi?.status || confirmation?.status || "").toLowerCase().includes("cancel")
   );
+
+  useEffect(() => {
+    const local = resolveFlightConfirmation(state);
+    const bid = String(searchParams.get("booking") || searchParams.get("bookingId") || "").trim();
+    if (local?.flight && (local.paymentId || local.bookingRef || local.supplierBookingId || local.liteapi)) {
+      setConfirmation(local);
+      return undefined;
+    }
+    const fromTrip =
+      tripService
+        .list()
+        .map((t) => confirmationFromFlightTrip(t))
+        .find((c) => {
+          if (!c?.flight) return false;
+          if (!bid) return Boolean(c.supplierBookingId || c.bookingRef);
+          return (
+            c.supplierBookingId === bid ||
+            c.bookingRef === bid ||
+            c.liteapi?.booking_id === bid
+          );
+        }) || null;
+    if (fromTrip?.flight) {
+      setConfirmation(fromTrip);
+      saveFlightConfirmation(fromTrip);
+      if (!bid) return undefined;
+    }
+    if (!bid) return undefined;
+    let cancelledHydrate = false;
+    setHydrateBusy(true);
+    flightService
+      .getBooking(bid, { email: local?.contact?.email || fromTrip?.contact?.email })
+      .then((res) => {
+        if (cancelledHydrate) return;
+        const booking = res?.booking || res;
+        if (!booking || res?.ok === false) return;
+        const merged = {
+          ...(fromTrip || local || {}),
+          flight: fromTrip?.flight || local?.flight || booking.flight || booking.offer,
+          paymentId: fromTrip?.paymentId || local?.paymentId || booking.payment_id,
+          bookingRef:
+            booking.airline_pnr ||
+            booking.booking_ref ||
+            fromTrip?.bookingRef ||
+            bid,
+          supplierBookingId: booking.booking_id || booking.id || bid,
+          liteapi: booking,
+          amount: Number(booking.price || fromTrip?.amount || local?.amount) || 0,
+          currency: booking.currency || fromTrip?.currency || local?.currency || "INR",
+          contact: fromTrip?.contact || local?.contact || {},
+          travelers: fromTrip?.travelers || local?.travelers || [],
+        };
+        if (merged.flight) {
+          setConfirmation(merged);
+          saveFlightConfirmation(merged);
+        }
+      })
+      .finally(() => {
+        if (!cancelledHydrate) setHydrateBusy(false);
+      });
+    return () => {
+      cancelledHydrate = true;
+    };
+  }, [state, searchParams]);
 
   const flight = confirmation?.flight || null;
   const travelers = Array.isArray(confirmation?.travelers) ? confirmation.travelers : [];
@@ -141,12 +210,36 @@ export default function FlightBookingSuccessPage() {
     };
   }, [flight]);
 
+  useEffect(() => {
+    if (!recap) return undefined;
+    setPageContext(
+      buildBookingSuccessPageContext({
+        airline: recap.airlineName,
+        flightNumber: recap.flightNo,
+        origin: recap.origin,
+        destination: recap.dest,
+        pnr: bookingRef,
+        bookingId: supplierBookingId,
+        departDate: recap.depDate,
+        depTerminal: recap.depTerm,
+        arrTerminal: recap.arrTerm,
+        baggageCabin: flight?.baggage?.cabin || flight?.baggage_cabin || null,
+        baggageChecked: flight?.baggage?.checked || flight?.baggage_checked || null,
+      })
+    );
+    return () => clearPageContext();
+  }, [recap, bookingRef, supplierBookingId, flight, setPageContext, clearPageContext]);
+
   if (!flight || !recap) {
     return (
       <PageLayout>
         <div className={styles.page}>
           <div className={styles.empty}>
-            <p>No booking to show. Complete passenger details and card payment first - we don’t invent tickets.</p>
+            <p>
+              {hydrateBusy
+                ? "Loading your ticket…"
+                : "No booking to show. Complete passenger details and card payment first - we don’t invent tickets."}
+            </p>
             <button type="button" className={styles.navPrimary} onClick={() => navigate("/flights")}>
               Back to flights
             </button>
@@ -254,11 +347,11 @@ export default function FlightBookingSuccessPage() {
         });
       } else if (paymentId && String(paymentId).startsWith("pay_")) {
         setCancelErr(
-          "This looks like a legacy payment without a supplier ticket. Contact support with your booking reference for a refund."
+          "This looks like a legacy payment without an airline ticket. Contact support with your booking reference for a refund."
         );
         return;
       } else {
-        setCancelErr("No supplier ticket id on this confirmation - cannot cancel with LiteAPI.");
+        setCancelErr("No airline ticket id on this confirmation — we can't cancel it from here.");
         return;
       }
       if (res?.aborted) return;
@@ -422,7 +515,7 @@ export default function FlightBookingSuccessPage() {
                 <div className={styles.paidLabel}>Amount paid</div>
                 <div className={styles.paidAmt}>{amount ? amountLabel : "-"}</div>
                 <div className={styles.paidVia}>
-                  {paymentId ? `Stripe ${paymentId}` : paid ? "Stripe / LiteAPI" : "Not captured"}
+                  {paymentId ? `Card ${paymentId}` : paid ? "Card" : "Not captured"}
                 </div>
               </div>
               <div className={styles.barcodeWrap}>
@@ -432,22 +525,10 @@ export default function FlightBookingSuccessPage() {
             </div>
 
             <div className={styles.veroHelp}>
-              <img src={veroSrc} alt="" className={styles.veroFace} />
-              <div className={styles.veroCopy}>
-                <h3>Need help? Ask Vero</h3>
-                <p>Open Itinero and tap Vero for terminals, baggage, or a hotel near arrival.</p>
-              </div>
-              <button
-                type="button"
-                className={styles.veroBtn}
-                onClick={() =>
-                  openVero(
-                    `I booked ${recap.airlineName} ${recap.flightNo || ""} ${recap.origin} to ${recap.dest} (${bookingRef || "this PNR"}). Help me with terminals, baggage, and getting into ${recap.destCity || recap.dest}.`
-                  )
-                }
-              >
-                Ask Vero
-              </button>
+              <VeroPostBookingHelp
+                prompt={`I booked ${recap.airlineName} ${recap.flightNo || ""} ${recap.origin} to ${recap.dest}. PNR ${bookingRef || supplierBookingId || "pending"}. What’s my PNR / gate, and can I cancel?`}
+                copy="Ask PNR, gate, bags, or cancel on this ticket — not a new search."
+              />
             </div>
 
             {isKlookEnabled() ? (

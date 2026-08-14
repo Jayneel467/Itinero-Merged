@@ -1,10 +1,10 @@
 .page {
-  --ink: #001438;
+  --ink: var(--text-primary, #001438);
   --accent: #f97211;
-  --muted: #637588;
-  --line: #e8edf2;
+  --muted: var(--text-secondary, #637588);
+  --line: var(--border-subtle, #e8edf2);
   --nav-offset: 76px;
-  background: #ffffff;
+  background: var(--surface-page, #ffffff);
   min-height: 100vh;
   padding: 0 16px 80px;
   box-sizing: border-box;
@@ -128,7 +128,7 @@
 
 .chip {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-radius: 999px;
   padding: 8px 14px;

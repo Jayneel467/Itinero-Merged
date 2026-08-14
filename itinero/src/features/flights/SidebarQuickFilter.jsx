@@ -6,7 +6,7 @@ export default function SidebarQuickFilter({ onFilter, onClear }) {
   return (
     <LetVeroFilter
       subtitle="Describe the flight you want."
-      placeholder='Try: "non-stop under 25000", "no Middle East layover", "morning IndiGo"'
+      placeholder='Try: "non-stop under 25000", "stop at Pattaya", "no Middle East layover"'
       buttonLabel="Ask Vero"
       onApply={onFilter}
       onClear={onClear}

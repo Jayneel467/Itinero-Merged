@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
+  Bus,
   CreditCard,
   Hotel,
   LifeBuoy,
@@ -51,6 +52,13 @@ const TOPICS = [
       "I need help with a train booking or PNR. Guide me using live tools where you can - don’t invent waitlist status.",
   },
   {
+    id: "transits",
+    title: "Transits",
+    Icon: Bus,
+    prompt:
+      "I need help with a bus, metro, or coach search. Explain what Transits covers and help me pick a ride on the left.",
+  },
+  {
     id: "other",
     title: "Something else",
     Icon: LifeBuoy,
@@ -76,11 +84,25 @@ const FAQS = [
     q: "Will Vero invent gates or PNRs?",
     a: "No. Live facts only come from tools or your trip. If we don’t have it, we say so.",
   },
+  {
+    q: "Is Vero free? How do credits work?",
+    a: "Vero is free every day with a small UTC credit pool. Buy prepaid packs when you need more — they never expire. Search and book never need credits. Need more than Pro? Use itinero ultra on the Credits page.",
+  },
+  {
+    q: "Where are my Rewards points?",
+    a: "Open Rewards from the menu or Profile. Points earn on confirmed bookings.",
+  },
+  {
+    q: "Do Saved hearts stay if I switch phones?",
+    a: "Yes if you are signed in — Saved stays with your account. Guests keep hearts on this browser only.",
+  },
 ];
 
 export default function HelpPage() {
+  const navigate = useNavigate();
   const { openVero, setPageContext, clearPageContext } = useVeroUi();
   const [activeId, setActiveId] = useState(null);
+  const [bookingRef, setBookingRef] = useState("");
 
   useEffect(() => {
     const topic = TOPICS.find((t) => t.id === activeId);
@@ -140,6 +162,39 @@ export default function HelpPage() {
           })}
         </div>
 
+        <section className={styles.find} aria-label="Find a booking">
+          <h2>Find a booking</h2>
+          <p>Paste a trip id or confirmation from My Trips or your email.</p>
+          <form
+            className={styles.findRow}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = bookingRef.trim();
+              if (!q) {
+                navigate("/trips");
+                return;
+              }
+              navigate(`/trips/${encodeURIComponent(q)}`);
+            }}
+          >
+            <input
+              className={styles.findInput}
+              value={bookingRef}
+              onChange={(e) => setBookingRef(e.target.value)}
+              placeholder="Trip id or confirmation"
+              autoComplete="off"
+              aria-label="Trip id or confirmation"
+            />
+            <button type="submit" className={styles.findBtn}>
+              Open trip
+            </button>
+          </form>
+          <p className={styles.fine}>
+            Or browse <Link to="/trips">My Trips</Link>. Booking disputes: use Feedback with
+            category Booking, or email with the same id.
+          </p>
+        </section>
+
         <section className={styles.contact} aria-label="Email support">
           <h2>Email support</h2>
           <p>
@@ -163,7 +218,8 @@ export default function HelpPage() {
 
         <p className={styles.hint}>
           Bookings live in <Link to="/trips">My Trips</Link>. Cancel rules in{" "}
-          <Link to="/cancellation">Cancellation &amp; refunds</Link>. Product ideas in{" "}
+          <Link to="/cancellation">Cancellation &amp; refunds</Link>. Optional perks in{" "}
+          <Link to="/plus">Credits</Link> and <Link to="/rewards">Rewards</Link>. Product ideas in{" "}
           <Link to="/feedback">Feedback</Link>. Account in <Link to="/profile">Profile</Link>.
         </p>
 

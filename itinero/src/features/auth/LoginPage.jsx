@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import LoginModal from "./components/LoginModal";
 import "./LoginPage.css";
 
@@ -11,7 +11,10 @@ const VERO = `${import.meta.env.BASE_URL}vero-chatbot.png`;
  */
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [isOpen, setIsOpen] = useState(true);
+  const nextRaw = params.get("next") || "/profile";
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/profile";
 
   const handleClose = () => {
     setIsOpen(false);
@@ -20,7 +23,7 @@ export default function LoginPage() {
 
   const handleSuccess = () => {
     setIsOpen(false);
-    navigate("/profile");
+    navigate(next);
   };
 
   return (

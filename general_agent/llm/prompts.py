@@ -15,12 +15,16 @@ from datetime import datetime
 
 # Pin for evals / canary rollback. Bump when SYSTEM prompt policy changes.
 # Keep default in sync with general_agent/runtime.py PROMPT_VERSION.
-PROMPT_VERSION = "2026.08.13.1"
+PROMPT_VERSION = "2026.08.13.2"
 
 
-def build_system_prompt(trip_context: dict = None) -> str:
+def build_system_prompt(trip_context: dict = None, *, lane: str = "tools") -> str:
     """Return the system prompt with human-readable and
-    machine-comparable numeric timestamps injected at the end."""
+    machine-comparable numeric timestamps injected at the end.
+
+    lane=tools → full tool-routing bible (OpenAI).
+    lane=planner|synth → slim prompt (DeepSeek cost lane).
+    """
     now_human = datetime.now().strftime("%A, %d %B %Y, %I:%M %p")
     now_numeric = datetime.now().strftime("%Y-%m-%d")
 
@@ -55,6 +59,9 @@ def build_system_prompt(trip_context: dict = None) -> str:
             "required_second_person", "avoid_second_person", "respect_hard_rule",
             "respect_language_label", "profile_preferred_name", "account_first_name",
             "name_source", "nickname_permission", "address_style", "formality",
+            "vero_cost", "vero_last_lane", "credits_remaining", "cost_subject",
+            "voice_mode", "spoken_language", "user_language", "reply_script",
+            "pending_left_nav",
         }
 
         trip_fields = {k: v for k, v in trip_context.items()
@@ -87,7 +94,12 @@ def build_system_prompt(trip_context: dict = None) -> str:
             )
             itinerary_block = "\n".join(lines)
 
-    prompt = _SYSTEM_PROMPT_TEMPLATE.format(
+    template = (
+        _PLANNER_PROMPT_TEMPLATE
+        if str(lane or "").lower() in {"planner", "synth"}
+        else _SYSTEM_PROMPT_TEMPLATE
+    )
+    prompt = template.format(
         current_datetime=now_human,
         current_date_numeric=now_numeric,
         confirmed_state=state_str,
@@ -388,6 +400,42 @@ def _format_ui_page(ui_page) -> str:
             '{"type":"open_hotel_swap","city":"Haridwar"} {"type":"select_day","day":5}. '
             "Do not escalate to a new itinerary unless they abandon this package."
         )
+    elif screen == "booking_success":
+        detail = ui_page.get("detail") or {}
+        booking = ui_page.get("booking") or {}
+        title = detail.get("title") or booking.get("hotel_name") or booking.get("airline") or "this booking"
+        lines.append(
+            f"CONFIRMATION on the left: {title} | status={detail.get('status') or 'confirmed'} | "
+            f"id={detail.get('id') or booking.get('booking_id') or booking.get('pnr') or '?'}"
+        )
+        legs = list(detail.get("legs") or [])
+        if booking and not legs:
+            legs = [booking]
+        for i, leg in enumerate(legs[:6], 1):
+            if not isinstance(leg, dict):
+                continue
+            kind = str(leg.get("type") or "").lower()
+            if kind == "hotel" or leg.get("hotel_name"):
+                lines.append(
+                    f"  Stay {i}: {leg.get('hotel_name') or title} "
+                    f"{leg.get('check_in') or '?'}→{leg.get('check_out') or '?'} "
+                    f"confirmation={leg.get('confirmation') or leg.get('booking_id') or '?'}"
+                )
+            elif kind == "package" or leg.get("title"):
+                lines.append(
+                    f"  Package {i}: {leg.get('title') or title} "
+                    f"booking={leg.get('booking_id') or detail.get('id') or '?'}"
+                )
+            else:
+                lines.append(
+                    f"  Flight {i}: {leg.get('airline') or ''} {leg.get('flight_number') or ''} "
+                    f"{leg.get('origin') or ''}→{leg.get('destination') or ''} "
+                    f"PNR={leg.get('pnr') or leg.get('booking_id') or '?'}"
+                )
+        lines.append(
+            "Vague follow-ups (PNR, confirmation, cancel, dates, guest name) mean THIS booking. "
+            "Do not start a new search. Cancel/amend: My Trips on the left."
+        )
     elif screen == "trips":
         detail = ui_page.get("detail") or {}
         summary = ui_page.get("results_summary") or {}
@@ -542,6 +590,30 @@ def _format_ui_page(ui_page) -> str:
         lines.append(f"Screen: {screen}")
 
     return "\n".join(lines)
+
+
+_PLANNER_PROMPT_TEMPLATE = """\
+[IDENTITY]
+You are Vero — Itinero's travel companion. Think, then answer. Short, opinionated, no filler.
+- Never invent live fares, gates, PNRs, or availability. Label facts: **confirmed** / **estimate** / **unknown**.
+- Never name suppliers or payment rails to the user. Say live fares / card checkout / partner.
+- You cannot pay, cancel, or rebook for them. Point to My Trips / the left page.
+- After turn 1, skip greetings. No corporate filler.
+
+[HONESTY]
+UNKNOWN — do not guess: current gate, boarding started, security queue minutes, bag loaded, live delay, change-fee unless a tool returned it this turn.
+CONFIRMED — PNR / hotel confirmation / left-page ticket facts.
+You cannot call hotels, police, or airlines. Never “I’ve cancelled / rebooked.”
+
+[THIS TURN]
+Today is {current_datetime} ({current_date_numeric}).
+Confirmed trip state: {confirmed_state}
+
+[CHEAP LANE]
+No live search tools this turn. Culture, packing, “what’s it like”, rough plans: answer from knowledge + left page.
+If they need live flights/hotels/trains/pay/cancel, say you’ll look that up next — do not invent inventory.
+Keep replies tight (WhatsApp-with-a-friend). One pick, not a numbered dump.
+"""
 
 
 _SYSTEM_PROMPT_TEMPLATE = """\

@@ -1,81 +1,98 @@
 .page {
-  --ink: #001438;
+  --ink: var(--text-primary, #001438);
   --accent: #f97211;
-  --muted: #637588;
-  --line: #e8edf2;
+  --muted: var(--text-secondary, #637588);
+  --line: var(--border-subtle, #e8edf2);
   --nav-offset: 76px;
-  --surface: #f4f6fb;
-  background:
-    radial-gradient(1200px 480px at 12% -10%, rgba(249, 114, 17, 0.12), transparent 55%),
-    radial-gradient(900px 420px at 88% 0%, rgba(0, 20, 56, 0.08), transparent 50%),
-    var(--surface);
+  --surface: var(--surface-page, #ffffff);
+  background: var(--surface-page, #ffffff);
   min-height: 100vh;
   padding: 0 16px 80px;
   box-sizing: border-box;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 900px) {
   .page {
-    padding: 0 28px 96px;
+    padding: 0 40px 96px;
   }
 }
 
 /* ── Landing ─────────────────────────────────────────── */
 
-.landing {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 20px 0 56px;
-}
-
 .hero {
   position: relative;
-  overflow: hidden;
+  margin-top: 8px;
+  min-height: min(48vh, 400px);
   border-radius: 24px;
-  background:
-    radial-gradient(700px 280px at 90% 10%, rgba(249, 114, 17, 0.28), transparent 55%),
-    linear-gradient(155deg, #001438 0%, #0a2448 55%, #123868 100%);
+  overflow: visible;
+  background-color: #001438;
+  display: flex;
+  align-items: flex-end;
   color: #fff;
-  padding: clamp(28px, 4.5vw, 44px) clamp(18px, 3.5vw, 36px) clamp(22px, 3.5vw, 32px);
-  box-shadow: 0 20px 48px rgba(0, 20, 56, 0.18);
-  animation: rise 0.5s ease both;
 }
 
-.heroCopy {
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background-image: linear-gradient(
+      105deg,
+      rgba(0, 20, 57, 0.78) 0%,
+      rgba(0, 20, 57, 0.42) 52%,
+      rgba(0, 20, 57, 0.2) 100%
+    ),
+    url("/itinero/hero-transits.jpg");
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroInner {
   position: relative;
   z-index: 1;
-  max-width: 34rem;
-  margin-bottom: 22px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 36px 28px 28px;
 }
 
 .brand {
-  margin: 0 0 12px;
-  font-size: 11px;
-  font-weight: 800;
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #fdba74;
 }
 
-.hero h1 {
+.headline {
   margin: 0;
-  font-size: clamp(1.85rem, 4.2vw, 2.65rem);
-  font-weight: 800;
-  line-height: 1.12;
+  font-family: var(--font-sans);
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.1;
+  font-weight: 700;
+  max-width: 18ch;
   letter-spacing: -0.03em;
 }
 
+.headlineAccent {
+  color: #f97316;
+}
+
 .lede {
-  margin: 12px 0 0;
-  font-size: clamp(14px, 1.8vw, 16px);
+  margin: 12px 0 22px;
+  max-width: 52ch;
+  font-size: 15px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.78);
-  max-width: 32em;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .searchInHero {
+  width: 100%;
   position: relative;
-  z-index: 2;
+  z-index: 5;
 }
 
 .heroSearchBar {
@@ -90,156 +107,162 @@
   color: #fed7aa;
 }
 
-/* ── Promise strip (replaces flat feature cards) ─────── */
-
-.promise {
-  margin-top: 28px;
-  border-radius: 22px;
-  overflow: visible;
-  background:
-    radial-gradient(520px 220px at 100% 0%, rgba(249, 114, 17, 0.22), transparent 55%),
-    linear-gradient(160deg, #001438 0%, #0a2448 62%, #0f2f5a 100%);
-  color: #fff;
-  padding: clamp(22px, 3.5vw, 32px) clamp(16px, 3vw, 28px) clamp(20px, 3vw, 28px);
-  box-shadow: 0 16px 40px rgba(0, 20, 56, 0.14);
-  animation: rise 0.55s 0.06s ease both;
+.landing {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 0 24px;
 }
 
-.promiseIntro {
-  margin-bottom: 22px;
-  max-width: 28rem;
+.sectionIntro {
+  margin-bottom: 18px;
+  max-width: 40rem;
 }
 
-.promiseEyebrow {
+.sectionEyebrow {
   margin: 0 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #fdba74;
+  color: var(--accent);
 }
 
-.promiseTitle {
+.sectionIntro h2 {
   margin: 0;
-  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  font-size: clamp(1.35rem, 2.6vw, 1.7rem);
   font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1.2;
 }
 
-.promiseSteps {
+.sectionIntro p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.modes,
+.how,
+.faq {
+  margin-bottom: 40px;
+}
+
+.modeGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .modeGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.modeCard {
+  background: var(--surface-elevated, #fff);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 20px;
+  box-shadow: 0 8px 24px rgba(0, 20, 56, 0.04);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.modeIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff7ed;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.modeKicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.modeCard h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.modeCard p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.stepGrid {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0;
-  counter-reset: none;
+  gap: 14px;
+  grid-template-columns: 1fr;
 }
 
 @media (min-width: 720px) {
-  .promiseSteps {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
+  .stepGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-.promiseStep {
-  position: relative;
+.stepCard {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 14px 16px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 8px;
 }
 
-@media (min-width: 720px) {
-  .promiseStep {
-    padding: 0 18px 0 0;
-    border-top: 0;
-    border-right: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
-  .promiseStep:last-child {
-    border-right: 0;
-    padding-right: 0;
-  }
-
-  .promiseStep:not(:first-child) {
-    padding-left: 18px;
-  }
-}
-
-.promiseStep:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-@media (max-width: 719px) {
-  .promiseStep:last-child {
-    padding-bottom: 0;
-  }
-}
-
-.promiseNum {
-  font-size: 11px;
+.stepNum {
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: #fdba74;
+  color: var(--accent);
 }
 
-.promiseIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(249, 114, 17, 0.16);
-  color: #fdba74;
-}
-
-.promiseStep strong {
-  font-size: 15px;
-  font-weight: 750;
-  letter-spacing: -0.015em;
-  line-height: 1.25;
-}
-
-.promiseStep p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.68);
-}
-
-/* ── Popular corridors ───────────────────────────────── */
-
-.corridors {
-  margin-top: 28px;
-  animation: rise 0.55s 0.1s ease both;
-}
-
-.corridorIntro {
-  margin-bottom: 16px;
-}
-
-.corridorIntro h2 {
-  margin: 0 0 4px;
-  font-size: clamp(1.25rem, 2.4vw, 1.5rem);
-  color: var(--ink);
-  letter-spacing: -0.02em;
+.stepCard strong {
+  font-size: 16px;
   font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
-.corridorIntro p {
+.stepCard p {
   margin: 0;
   font-size: 14px;
+  line-height: 1.5;
   color: var(--muted);
+}
+
+.corridors {
+  margin-bottom: 40px;
 }
 
 .corridorGrid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   grid-template-columns: 1fr;
 }
 
@@ -262,9 +285,8 @@
   gap: 12px;
   width: 100%;
   text-align: left;
-  border: 1px solid rgba(0, 20, 56, 0.08);
-  background:
-    linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-radius: 16px;
   padding: 16px 16px 16px 18px;
@@ -273,8 +295,7 @@
   transition:
     transform 0.18s ease,
     border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
+    box-shadow 0.18s ease;
   position: relative;
   overflow: hidden;
 }
@@ -295,7 +316,6 @@
   transform: translateY(-2px);
   border-color: rgba(249, 114, 17, 0.35);
   box-shadow: 0 10px 28px rgba(0, 20, 56, 0.08);
-  background: #fff;
 }
 
 .corridorTile:hover::before {
@@ -308,9 +328,10 @@
 
 .corridorCities {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .corridorFrom,
@@ -322,11 +343,9 @@
 }
 
 .corridorArrow {
-  font-size: 12px;
-  font-weight: 700;
+  display: inline-flex;
   color: var(--accent);
-  line-height: 1.2;
-  margin: 1px 0;
+  flex-shrink: 0;
 }
 
 .corridorMeta {
@@ -348,32 +367,48 @@
   color: #fff;
 }
 
+.faqList {
+  display: grid;
+  gap: 12px;
+}
+
+.faqItem {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: var(--surface-elevated, #fff);
+}
+
+.faqItem h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+}
+
+.faqItem p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
 .note {
-  margin-top: 28px;
+  margin: 8px 0 0;
   display: flex;
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
   line-height: 1.5;
   color: var(--muted);
-  max-width: 40em;
+  max-width: 46em;
 }
 
 .note svg {
   flex-shrink: 0;
   margin-top: 2px;
   color: var(--accent);
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* ── Results shell ───────────────────────────────────── */
@@ -408,6 +443,14 @@
   font-size: clamp(18px, 2.4vw, 26px);
   line-height: 1.25;
   font-weight: 750;
+}
+
+.topSub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 42em;
 }
 
 .changeSearch {
@@ -448,7 +491,7 @@
   flex: 0 0 auto;
   min-width: 108px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border-radius: 12px;
   padding: 10px 12px;
   text-align: left;
@@ -514,7 +557,7 @@
   align-items: center;
   gap: 8px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-radius: 999px;
   padding: 8px 14px;
@@ -542,7 +585,7 @@
   width: min(360px, 92vw);
   height: 100%;
   overflow: auto;
-  background: var(--surface);
+  background: #f4f6fb;
   padding: 12px;
   box-shadow: -12px 0 36px rgba(0, 20, 56, 0.18);
 }
@@ -576,7 +619,7 @@
 }
 
 .sideCard {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px;
@@ -640,7 +683,7 @@
 
 .sortWrap select {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border-radius: 10px;
   min-height: 36px;
   padding: 0 10px;
@@ -670,7 +713,7 @@
 .featChip {
   flex: 0 0 auto;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-radius: 999px;
   padding: 8px 12px;
@@ -700,7 +743,7 @@
   padding: 40px 16px;
   color: var(--muted);
   text-align: center;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px dashed var(--line);
   border-radius: 18px;
 }
@@ -740,7 +783,7 @@
 
 .retryGhost {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   font-weight: 700;
   border-radius: 10px;
@@ -748,17 +791,22 @@
   cursor: pointer;
 }
 
-.veroCompact .top h1 {
-  font-size: 1.25rem;
+.veroCompact .top h1,
+.veroCompact .headline {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+@media (max-width: 640px) {
+  .page {
+    --nav-offset: 64px;
+  }
+
+  .heroInner {
+    padding: 28px 18px 20px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero,
-  .promise,
-  .corridors {
-    animation: none;
-  }
-
   .corridorTile {
     transition: none;
   }

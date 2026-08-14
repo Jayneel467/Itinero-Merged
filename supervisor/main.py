@@ -18,6 +18,15 @@ Routes:
   GET  /api/health
   GET  /api/health/live
   GET  /api/health/ready
+  GET  /api/billing/plans          — Vero credit packs (free daily + prepaid)
+  GET  /api/billing/me
+  GET  /api/billing/credits        — daily free + wallet balance
+  GET  /api/account/state          — signed-in travellers + prefs
+  PUT  /api/account/state
+  POST /api/billing/checkout       — one-time Stripe pack purchase
+  POST /api/billing/checkout/complete
+  POST /api/billing/portal
+  POST /api/webhooks/stripe
   GET  /api/capabilities
   GET  /api/trips                 — My Trips for this device (Neon)
   PUT  /api/trips                 — upsert trip JSON
@@ -408,6 +417,7 @@ class ChatResponse(BaseModel):
     error: Optional[str] = None
     mode: Literal["live", "degraded", "stub"] = "live"
     config_missing: list[str] = Field(default_factory=list)
+    credits: Optional[dict[str, Any]] = None
 
 
 class FlightSearchRequest(BaseModel):
@@ -544,6 +554,25 @@ class HotelBookingIdRequest(BaseModel):
     email: Optional[str] = None
 
 
+class HotelAmendRequest(BaseModel):
+    booking_id: str
+    email: Optional[str] = None
+    holder: Optional[dict[str, Any]] = None
+    guests: Optional[list[dict[str, Any]]] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
+    occupancies: Optional[list[dict[str, Any]]] = None
+    prebook_id: Optional[str] = None
+
+
+class WatchUpsertRequest(BaseModel):
+    origin: str
+    destination: str
+    currency: str = "INR"
+    email: Optional[str] = None
+    id: Optional[str] = None
+
+
 class PaymentIntentRequest(BaseModel):
     prebook_id: str
     kind: str  # flight | hotel
@@ -629,6 +658,12 @@ class MarketingPreviewRequest(BaseModel):
     to_email: str
 
 
+class MarketingBroadcastRequest(BaseModel):
+    template: str = "daily_digest"
+    segment_id: str
+    limit: int = 25
+
+
 class MarketingOfferUpsertRequest(BaseModel):
     id: Optional[str] = None
     code: str
@@ -646,6 +681,13 @@ class AuthProfileUpdateRequest(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     newsletter: Optional[bool] = None
+
+
+class AccountStateRequest(BaseModel):
+    travellers: Optional[list[Any]] = None
+    prefs: Optional[dict[str, Any]] = None
+    contact: Optional[dict[str, Any]] = None
+    saved: Optional[list[Any]] = None
 
 
 class GoogleAuthRequest(BaseModel):
@@ -971,19 +1013,47 @@ def attach_suggestions(
     session: Optional[dict[str, Any]] = None,
 ) -> ChatResponse:
     """Fill ChatResponse.suggestions when the handler didn't set them."""
-    if resp.suggestions:
-        return resp
-    slots = (session or {}).get("trip_slots") or {}
-    dest = slots.get("destination")
-    resp.suggestions = build_followup_suggestions(
-        message,
-        specialist=str(resp.active_specialist or "supervisor"),
-        intent=resp.intent,
-        reply=resp.response or "",
-        destination=dest if isinstance(dest, str) else None,
-        has_flights=bool(resp.flights),
-        has_ui_prompts=bool(resp.ui_prompts),
-    ) or None
+    if not resp.suggestions:
+        slots = (session or {}).get("trip_slots") or {}
+        dest = slots.get("destination")
+        resp.suggestions = build_followup_suggestions(
+            message,
+            specialist=str(resp.active_specialist or "supervisor"),
+            intent=resp.intent,
+            reply=resp.response or "",
+            destination=dest if isinstance(dest, str) else None,
+            has_flights=bool(resp.flights),
+            has_ui_prompts=bool(resp.ui_prompts),
+        ) or None
+    if resp.credits is None:
+        try:
+            from supervisor.credits import (
+                consume,
+                current_turn,
+                lane_from_specialist,
+                snapshot,
+            )
+
+            ctx = current_turn()
+            if ctx:
+                live = bool(resp.flights) or (
+                    isinstance(resp.cards, dict)
+                    and str(resp.cards.get("type") or "")
+                    in {"flights", "hotels", "trains", "buses", "places", "events"}
+                )
+                lane = lane_from_specialist(resp.active_specialist, has_live_cards=live)
+                if ctx.get("consume") and str(resp.mode or "") != "error" and not resp.error:
+                    resp.credits = consume(ctx["subject"], lane=lane, plan=ctx.get("plan"))
+                else:
+                    resp.credits = snapshot(ctx["subject"], plan=ctx.get("plan"))
+        except Exception:
+            pass
+    try:
+        from supervisor.credits import end_turn as _end_credit_turn
+
+        _end_credit_turn()
+    except Exception:
+        pass
     return resp
 
 
@@ -1862,8 +1932,10 @@ def health():
 @app.post("/api/feedback")
 async def submit_site_feedback(req: FeedbackRequest, request: Request):
     """Public product feedback — logged + emailed to support when SMTP is set."""
+    from supervisor.auth import user_from_token
     from supervisor.feedback import submit_feedback
 
+    user = user_from_token(_bearer_token(request))
     result = await submit_feedback(
         message=req.message,
         email=req.email,
@@ -1872,6 +1944,7 @@ async def submit_site_feedback(req: FeedbackRequest, request: Request):
         page_path=req.page_path,
         user_agent=(request.headers.get("user-agent") or "")[:400],
         device_id=_device_from(request),
+        user_id=str(user["id"]) if user and user.get("id") else None,
     )
     if not result.get("ok"):
         raise HTTPException(
@@ -1932,7 +2005,7 @@ async def marketing_subscribe(req: NewsletterSubscribeRequest):
             html_body = mtpl.signup_spark_html(
                 name="",
                 send_id="SEND_ID_PLACEHOLDER",
-                unsub_token="",
+                unsub_token=str(result.get("unsubscribe_token") or ""),
                 api_base=api_base,
             )
             await send_marketing(
@@ -2148,6 +2221,40 @@ async def marketing_preview(req: MarketingPreviewRequest, request: Request):
     return await preview_template(req.template, req.to_email)
 
 
+@app.post("/api/internal/marketing/broadcast")
+async def marketing_broadcast(req: MarketingBroadcastRequest, request: Request):
+    if not _marketing_admin_ok(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from supervisor.marketing_mailer import broadcast_to_segment
+
+    result = await broadcast_to_segment(
+        template=req.template,
+        segment_id=req.segment_id,
+        limit=req.limit,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "broadcast_failed")
+    return result
+
+
+@app.get("/api/admin/marketing/catalog")
+def marketing_admin_catalog(request: Request):
+    if not _marketing_admin_ok(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from supervisor.marketing_campaigns import marketing_catalog
+
+    return marketing_catalog()
+
+
+@app.get("/api/admin/marketing/queue")
+def marketing_admin_queue(request: Request, limit: int = 40):
+    if not _marketing_admin_ok(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from supervisor import marketing_store as mstore
+
+    return {"ok": True, "runs": mstore.list_workflow_queue(limit=limit)}
+
+
 @app.get("/api/admin/marketing/stats")
 def marketing_admin_stats(request: Request):
     if not _marketing_admin_ok(request):
@@ -2319,7 +2426,7 @@ def capabilities():
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, request: Request):
     """Vero command router — see supervisor/architecture.py."""
     from supervisor.architecture import (
         apply_slot_answers,
@@ -2332,12 +2439,57 @@ async def chat(req: ChatRequest):
         tracking_list_stub,
         pdf_generation_stub,
     )
+    from supervisor.auth import user_from_token
+    from supervisor.credits import (
+        begin_turn,
+        exhausted_reply,
+        peek,
+        plan_for_user,
+        subject_key,
+    )
     from supervisor.flight_structured import structured_search
+
+    user = user_from_token(_bearer_token(request))
+    uid = str((user or {}).get("id") or req.user_id or "").strip() or None
+    did = _device_from(request)
+    credit_plan = plan_for_user(uid)
+    credit_subject = subject_key(
+        user_id=uid, device_id=did, thread_id=req.session_id or req.message[:24]
+    )
+    credit_snap = peek(credit_subject, plan=credit_plan)
+    begin_turn(
+        credit_subject,
+        credit_plan,
+        consume=credit_snap.get("remaining", 0) >= 1,
+        remaining=credit_snap.get("remaining"),
+    )
 
     session_id = req.session_id or str(uuid.uuid4())
     session = _get_session(session_id)
-    if req.user_id:
+    if uid:
+        session["user_id"] = uid
+    elif req.user_id:
         session["user_id"] = req.user_id
+    if credit_snap.get("remaining", 0) < 1:
+        return attach_suggestions(
+            ChatResponse(
+                response=exhausted_reply(
+                    plan=credit_plan, reset_at=credit_snap.get("resetAt")
+                ),
+                session_id=session_id,
+                route_path=["start", "supervisor", "credits"],
+                routed_to="vero",
+                active_specialist="supervisor",
+                intent="credits_exhausted",
+                architecture_stage="credits",
+                mode="degraded",
+                session_context=_session_prefs_context(session),
+                credits=credit_snap,
+                suggestions=["Buy Vero credits", "Search flights", "Search hotels"],
+            ),
+            req.message,
+            session,
+        )
     _restore_prefs_from_client(session, req.session_context)
 
     # Merge structured widget answers before slot extraction
@@ -2849,8 +3001,10 @@ async def flights_attach_services(req: FlightAttachServicesRequest):
 @app.post("/api/flights/complete")
 async def flights_complete(req: FlightCompleteRequest, request: Request):
     """Issue ticket after prebook + (optional) Payment SDK card capture."""
+    from supervisor.auth import user_from_token
     from supervisor.flight_structured import structured_complete
     from supervisor.ledger import persist_flight_complete, safe_call
+    from supervisor.loyalty_ledger import loyalty_on_booking_confirmed
     from supervisor.payment_guards import assert_mock_payment_allowed
 
     mock_block = assert_mock_payment_allowed(mock_payment=bool(req.mock_payment))
@@ -2926,6 +3080,24 @@ async def flights_complete(req: FlightCompleteRequest, request: Request):
         )
         if pid and pay_ref:
             mark_completed(prebook_id=pid, payment_id=pay_ref)
+        booking = result.get("booking") if isinstance(result.get("booking"), dict) else {}
+        booking_id = str(
+            result.get("booking_id")
+            or booking.get("booking_id")
+            or booking.get("bookingId")
+            or result.get("booking_ref")
+            or ""
+        )
+        user = user_from_token(_bearer_token(request))
+        await loyalty_on_booking_confirmed(
+            user_id=str(user["id"]) if user and user.get("id") else None,
+            guest_email=mail,
+            booking_id=booking_id,
+            booking_kind="flight",
+            amount=req.expected_amount or booking.get("price") or last_pb.get("price"),
+            currency=req.currency or booking.get("currency") or last_pb.get("currency") or "INR",
+            check_out_date=None,
+        )
     _save_session(req.session_id, session)
     return result
 
@@ -3197,6 +3369,20 @@ async def liteapi_integrations_status():
     return build_liteapi_catalog(loyalty=loyalty)
 
 
+@app.post("/api/webhooks/stripe")
+async def stripe_billing_webhook(request: Request):
+    """Stripe Billing webhooks for Vero credit packs (+ legacy Plus events)."""
+    from supervisor.billing import process_stripe_webhook
+
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature") or request.headers.get("Stripe-Signature")
+    out = process_stripe_webhook(payload=payload, signature=sig)
+    if not out.get("ok"):
+        code = 400 if out.get("error") == "invalid_signature" else 400
+        raise HTTPException(status_code=code, detail=out.get("message") or out.get("error"))
+    return out
+
+
 @app.post("/api/webhooks/liteapi")
 async def liteapi_webhook(request: Request):
     """LiteAPI (Nuitee Connect) booking lifecycle webhooks."""
@@ -3296,6 +3482,30 @@ async def hotels_get_booking(booking_id: str, request: Request, email: str | Non
     return await structured_hotel_get_booking(booking_id=booking_id)
 
 
+@app.post("/api/hotels/bookings/amend")
+async def hotels_amend_booking(req: HotelAmendRequest, request: Request):
+    from supervisor.hotel_structured import (
+        structured_hotel_amend_dates,
+        structured_hotel_amend_guest,
+    )
+
+    _require_booking_device_access(request, req.booking_id, email=req.email)
+    if req.check_in or req.check_out or req.prebook_id:
+        return await structured_hotel_amend_dates(
+            booking_id=req.booking_id,
+            check_in=req.check_in or "",
+            check_out=req.check_out or "",
+            occupancies=req.occupancies,
+            prebook_id=req.prebook_id,
+            guest_info={"holder": req.holder} if req.holder else None,
+        )
+    return await structured_hotel_amend_guest(
+        booking_id=req.booking_id,
+        holder=req.holder,
+        guests=req.guests,
+    )
+
+
 @app.post("/api/hotels/bookings/cancel")
 async def hotels_cancel_booking(req: HotelBookingIdRequest, request: Request):
     from supervisor.hotel_structured import structured_hotel_cancel_booking
@@ -3323,6 +3533,24 @@ async def hotels_cancel_booking(req: HotelBookingIdRequest, request: Request):
             reason="hotel_cancel_api",
         )
         result["loyalty"] = {"reversed": True}
+        try:
+            from supervisor.email_service import send_booking_cancellation
+            from supervisor.booking_access import ledger_guest_email
+
+            mail = (req.email or "").strip() or ledger_guest_email(req.booking_id)
+            if mail:
+                await send_booking_cancellation(
+                    kind="hotel",
+                    to_email=mail,
+                    details={
+                        "booking_ref": req.booking_id,
+                        "booking_id": req.booking_id,
+                        "status": "cancelled",
+                        "loyalty_reversed": True,
+                    },
+                )
+        except Exception:
+            traceback.print_exc()
     return result
 
 
@@ -3369,6 +3597,24 @@ async def flights_cancel_booking(req: FlightBookingIdRequest, request: Request):
             reason="flight_cancel_api",
         )
         result["loyalty"] = {"reversed": True}
+        try:
+            from supervisor.email_service import send_booking_cancellation
+            from supervisor.booking_access import ledger_guest_email
+
+            mail = (req.email or "").strip() or ledger_guest_email(req.booking_id)
+            if mail:
+                await send_booking_cancellation(
+                    kind="flight",
+                    to_email=mail,
+                    details={
+                        "booking_ref": req.booking_id,
+                        "booking_id": req.booking_id,
+                        "status": "cancelled",
+                        "loyalty_reversed": True,
+                    },
+                )
+        except Exception:
+            traceback.print_exc()
     return result
 
 
@@ -3393,6 +3639,12 @@ def payments_intent(req: PaymentIntentRequest, request: Request):
 
 
 
+def _auth_user(request: Request) -> dict[str, Any] | None:
+    from supervisor.auth import user_from_token
+
+    return user_from_token(_bearer_token(request))
+
+
 @app.get("/api/trips")
 def trips_list(request: Request):
     from supervisor.db import configured
@@ -3401,9 +3653,11 @@ def trips_list(request: Request):
     if not configured():
         return {"ok": False, "error": "db_unset", "trips": []}
     device_id = _device_from(request)
-    if not device_id:
+    user = _auth_user(request)
+    user_id = str(user["id"]) if user and user.get("id") else None
+    if not device_id and not user_id:
         return {"ok": False, "error": "missing_device", "trips": []}
-    return {"ok": True, "trips": list_trips(device_id)}
+    return {"ok": True, "trips": list_trips(device_id, user_id=user_id)}
 
 
 @app.put("/api/trips")
@@ -3416,7 +3670,9 @@ def trips_upsert(req: TripUpsertRequest, request: Request):
     device_id = _device_from(request)
     if not device_id:
         raise HTTPException(status_code=400, detail="Missing X-Itinero-Device header.")
-    result = upsert_trip(device_id, req.trip)
+    user = _auth_user(request)
+    user_id = str(user["id"]) if user and user.get("id") else None
+    result = upsert_trip(device_id, req.trip, user_id=user_id)
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=result.get("error") or "upsert_failed")
     return result
@@ -3430,9 +3686,11 @@ def trips_delete(trip_id: str, request: Request):
     if not configured():
         raise HTTPException(status_code=503, detail="Database is not configured.")
     device_id = _device_from(request)
-    if not device_id:
+    user = _auth_user(request)
+    user_id = str(user["id"]) if user and user.get("id") else None
+    if not device_id and not user_id:
         raise HTTPException(status_code=400, detail="Missing X-Itinero-Device header.")
-    ok = delete_trip(device_id, trip_id)
+    ok = delete_trip(device_id, trip_id, user_id=user_id)
     return {"ok": ok}
 
 
@@ -3528,6 +3786,213 @@ def auth_logout(request: Request):
     return logout(_bearer_token(request))
 
 
+@app.get("/api/account/state")
+def account_state_get(request: Request):
+    from supervisor.account_profile import get_state
+
+    user = _auth_user(request)
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Sign in required.")
+    return get_state(str(user["id"]))
+
+
+@app.put("/api/account/state")
+def account_state_put(req: AccountStateRequest, request: Request):
+    from supervisor.account_profile import put_state
+
+    user = _auth_user(request)
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Sign in required.")
+    result = put_state(
+        str(user["id"]),
+        travellers=req.travellers,
+        prefs=req.prefs,
+        contact=req.contact,
+        saved=req.saved,
+    )
+    if not result.get("ok") and result.get("error") == "db_unset":
+        raise HTTPException(status_code=503, detail="Database is not configured.")
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "save_failed")
+    return result
+
+
+class BillingCheckoutRequest(BaseModel):
+    pack_id: str = "traveler"
+    currency: str = "INR"
+    interval: str | None = None  # month (default, autocard) | once
+
+
+class BillingCheckoutCompleteRequest(BaseModel):
+    session_id: str
+
+
+@app.get("/api/billing/plans")
+def billing_plans(currency: str = "INR"):
+    """Public plan catalog. Vero is always free."""
+    from supervisor.billing import catalog
+
+    return catalog(currency=currency)
+
+
+@app.get("/api/billing/me")
+def billing_me(request: Request):
+    from supervisor.auth import user_from_token
+    from supervisor.billing import snapshot_for_user
+    from supervisor.credits import snapshot as credit_snapshot, subject_key
+
+    user = user_from_token(_bearer_token(request))
+    uid = (user or {}).get("id") if user else None
+    snap = snapshot_for_user(uid)
+    credits = credit_snapshot(
+        subject_key(user_id=uid, device_id=_device_from(request)),
+        plan=snap.get("plan"),
+    )
+    return {
+        "ok": True,
+        "veroFree": True,
+        **snap,
+        "credits": credits,
+        "signedIn": bool(user and user.get("id")),
+    }
+
+
+@app.get("/api/watches")
+def watches_list(request: Request):
+    from supervisor.watches import list_watches
+
+    user = _auth_user(request)
+    user_id = str(user["id"]) if user and user.get("id") else None
+    return {
+        "ok": True,
+        "watches": list_watches(user_id=user_id, device_id=_device_from(request)),
+        "limit": (
+            int((user or {}).get("plan", {}).get("priceWatchLimit") or 0)
+            if user
+            else 1
+        )
+        or None,
+    }
+
+
+@app.post("/api/watches")
+def watches_upsert(req: WatchUpsertRequest, request: Request):
+    from supervisor.watches import upsert_watch
+
+    user = _auth_user(request)
+    user_id = str(user["id"]) if user and user.get("id") else None
+    email = req.email or (user.get("email") if user else None)
+    out = upsert_watch(
+        user_id=user_id,
+        device_id=_device_from(request),
+        origin=req.origin,
+        destination=req.destination,
+        currency=req.currency,
+        email=email,
+        watch_id=req.id,
+    )
+    if not out.get("ok"):
+        code = 409 if out.get("error") == "watch_limit" else 400
+        raise HTTPException(status_code=code, detail=out.get("message") or out.get("error"))
+    return out
+
+
+@app.delete("/api/watches/{watch_id}")
+def watches_delete(watch_id: str, request: Request):
+    from supervisor.watches import delete_watch
+
+    user = _auth_user(request)
+    user_id = str(user["id"]) if user and user.get("id") else None
+    ok = delete_watch(watch_id=watch_id, user_id=user_id, device_id=_device_from(request))
+    return {"ok": ok}
+
+
+@app.post("/api/watches/{watch_id}/check")
+async def watches_check_one(watch_id: str, request: Request):
+    from supervisor.watches import check_watch, list_watches
+
+    user = _auth_user(request)
+    user_id = str(user["id"]) if user and user.get("id") else None
+    owned = list_watches(user_id=user_id, device_id=_device_from(request))
+    if not any(w.get("id") == watch_id for w in owned) and not _admin_secret_ok(request):
+        raise HTTPException(status_code=403, detail="Not your watch.")
+    return await check_watch(watch_id, send_email=True)
+
+
+@app.post("/api/watches/check")
+async def watches_check_due(request: Request):
+    from supervisor.watches import check_due
+
+    if not _admin_secret_ok(request) and not _marketing_admin_ok(request):
+        raise HTTPException(status_code=403, detail="Admin token required.")
+    return await check_due(send_email=True)
+
+
+@app.get("/api/billing/credits")
+def billing_credits(request: Request):
+    from supervisor.auth import user_from_token
+    from supervisor.credits import snapshot as credit_snapshot, plan_for_user, subject_key
+
+    user = user_from_token(_bearer_token(request))
+    uid = (user or {}).get("id") if user else None
+    plan = plan_for_user(uid)
+    return credit_snapshot(
+        subject_key(user_id=uid, device_id=_device_from(request)),
+        plan=plan,
+    )
+
+
+@app.post("/api/billing/checkout")
+def billing_checkout(req: BillingCheckoutRequest, request: Request):
+    from supervisor.auth import user_from_token
+    from supervisor.billing import create_checkout_session
+
+    user = user_from_token(_bearer_token(request))
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Sign in to buy credits.")
+    out = create_checkout_session(
+        user_id=str(user["id"]),
+        email=user.get("email"),
+        name=user.get("displayName") or user.get("name"),
+        pack_id=req.pack_id,
+        interval=req.interval,
+        currency=req.currency,
+    )
+    if not out.get("ok"):
+        code = 401 if out.get("error") == "unauthorized" else 400
+        raise HTTPException(status_code=code, detail=out.get("message") or out.get("error"))
+    return out
+
+
+@app.post("/api/billing/checkout/complete")
+def billing_checkout_complete(req: BillingCheckoutCompleteRequest, request: Request):
+    from supervisor.auth import user_from_token
+    from supervisor.billing import complete_checkout_session
+
+    user = user_from_token(_bearer_token(request))
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Sign in to finish checkout.")
+    out = complete_checkout_session(user_id=str(user["id"]), session_id=req.session_id)
+    if not out.get("ok"):
+        code = 403 if out.get("error") == "forbidden" else 400
+        raise HTTPException(status_code=code, detail=out.get("message") or out.get("error"))
+    return out
+
+
+@app.post("/api/billing/portal")
+def billing_portal(request: Request):
+    from supervisor.auth import user_from_token
+    from supervisor.billing import create_portal_session
+
+    user = user_from_token(_bearer_token(request))
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Sign in required.")
+    out = create_portal_session(user_id=str(user["id"]))
+    if not out.get("ok"):
+        raise HTTPException(status_code=400, detail=out.get("message") or out.get("error"))
+    return out
+
+
 @app.post("/api/vero/filter")
 async def vero_filter(req: VeroFilterRequest):
     """Let Vero Filter — LLM turns natural language into structured result filters."""
@@ -3580,12 +4045,29 @@ async def loyalty_settings():
 
 
 @app.get("/api/loyalty/estimate")
-async def loyalty_estimate(amount: float, currency: str = "INR"):
+async def loyalty_estimate(request: Request, amount: float, currency: str = "INR"):
     """Estimated Itinero points for a booking total."""
+    from supervisor.auth import user_from_token
+    from supervisor.billing import loyalty_multiplier_for
     from supervisor.liteapi_loyalty import estimate_loyalty_earn, fetch_loyalty_settings
 
     settings = await fetch_loyalty_settings()
-    return estimate_loyalty_earn(amount=amount, currency=currency, settings=settings)
+    est = estimate_loyalty_earn(amount=amount, currency=currency, settings=settings)
+    user = user_from_token(_bearer_token(request))
+    uid = str((user or {}).get("id") or "") or None
+    mult = loyalty_multiplier_for(uid)
+    pts = int(est.get("points") or 0)
+    if est.get("ok") and pts > 0 and mult > 1:
+        pts = max(1, int(round(pts * mult)))
+        est = {
+            **est,
+            "points": pts,
+            "loyaltyMultiplier": mult,
+            "label": f"Earn ~{pts:,} {(est.get('programName') or 'Itinero Rewards')} points (2× member)",
+        }
+    else:
+        est = {**est, "loyaltyMultiplier": mult}
+    return est
 
 
 @app.get("/api/loyalty/balance")
@@ -3988,6 +4470,7 @@ class PackageCancelRequest(BaseModel):
 @app.post("/api/packages/bookings/{booking_id}/cancel")
 async def packages_cancel(booking_id: str, req: PackageCancelRequest, request: Request):
     """Cancel package stay/flight via LiteAPI and refund Itinero Stripe (pi_)."""
+    from supervisor.loyalty_ledger import loyalty_on_booking_cancelled
     from supervisor.packages_structured import cancel_package
 
     mail = (req.email or "").strip()
@@ -3999,6 +4482,27 @@ async def packages_cancel(booking_id: str, req: PackageCancelRequest, request: R
             status_code=404 if result.get("error") == "not_found" else 403,
             detail=result.get("message") or result.get("error") or "Cancel failed.",
         )
+    if result.get("ok"):
+        await loyalty_on_booking_cancelled(
+            booking_id=booking_id,
+            reason="package_cancel_api",
+        )
+        result["loyalty"] = {"reversed": True}
+        try:
+            from supervisor.email_service import send_booking_cancellation
+
+            await send_booking_cancellation(
+                kind="package",
+                to_email=mail,
+                details={
+                    "booking_ref": booking_id,
+                    "booking_id": booking_id,
+                    "status": "cancelled",
+                    "loyalty_reversed": True,
+                },
+            )
+        except Exception:
+            traceback.print_exc()
     return result
 
 

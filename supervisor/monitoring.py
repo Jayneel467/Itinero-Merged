@@ -145,5 +145,13 @@ def readiness_missing(*, production: bool) -> list[str]:
         }
         if packages_on and not stripe:
             missing.append("stripe_secret_key")
+        if stripe:
+            wh = (
+                os.getenv("STRIPE_WEBHOOK_SECRET")
+                or os.getenv("ITINERO_STRIPE_WEBHOOK_SECRET")
+                or ""
+            ).strip()
+            if not wh:
+                missing.append("stripe_webhook_secret")
 
     return missing

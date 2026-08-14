@@ -1,7 +1,7 @@
 .page {
   background:
     radial-gradient(ellipse 70% 40% at 50% -8%, rgba(249, 114, 17, 0.1), transparent 55%),
-    #f4f6fb;
+    var(--surface-page, #f4f6fb);
   min-height: 100vh;
   padding: 20px 20px 96px;
 }
@@ -86,7 +86,7 @@
 }
 
 .badgeHeld {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: #001439;
   border: 1px solid rgba(255, 255, 255, 0.55);
 }
@@ -136,13 +136,13 @@
 }
 
 .btnLight {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: #001439;
   border: 1px solid #e4e7ec;
 }
 
 .btnDanger {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: #b42318;
   border: 1px solid #fecdca;
 }
@@ -166,7 +166,7 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid #e8eaef;
   border-radius: 20px;
   box-shadow: 0 12px 32px rgba(16, 24, 40, 0.06);
@@ -347,7 +347,7 @@
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .veroKicker {
@@ -373,10 +373,53 @@
 
 .hotelRow {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   padding: 12px 0;
   border-top: 1px solid #f2f4f7;
+}
+
+.amendBox {
+  flex: 1 1 100%;
+  background: #f8fafc;
+  border: 1px solid #e8eaef;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.amendRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+
+.amendRow input {
+  flex: 1 1 140px;
+  border: 1px solid #e8eaef;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.amendOffers {
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.amendOffers li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-elevated, #fff);
+  border: 1px solid #e8eaef;
+  border-radius: 10px;
+  padding: 10px 12px;
 }
 
 .hotelRow:first-of-type {

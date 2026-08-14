@@ -6,8 +6,13 @@
   padding: 16px 29px;
   position: sticky;
   top: 0;
-  z-index: 100;
-  transition: padding 0.3s ease, background-color 0.3s ease;
+  z-index: 200;
+  isolation: isolate;
+  overflow: visible;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  transition: padding 0.3s ease, background-color 0.3s ease, width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   background-color: rgba(242, 242, 242, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -20,8 +25,6 @@
 .navbar--scrolled .navbar__inner {
   box-shadow: 0 4px 30px rgba(0, 20, 56, 0.1);
   background-color: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
@@ -34,9 +37,12 @@
   /* Always pad the pill so hamburger/logo never sit flush / merge */
   padding: 8px 18px;
   border-radius: var(--radius-pill);
-  transition: all 0.3s ease;
+  transition: padding 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   border: 1px solid transparent;
   min-height: 56px;
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
 }
 
 /* ── Hamburger ───────────────────────────────────── */
@@ -111,6 +117,7 @@
   gap: 10px;
   flex-shrink: 0;
   margin-left: auto;
+  overflow: visible;
 }
 
 .navbar__currency {
@@ -416,7 +423,10 @@
 
   .navbar__actions {
     gap: 6px;
-    min-width: 0;
+    flex-shrink: 0;
+  }
+  .navbar__trips {
+    display: none;
   }
   .navbar__notification {
     padding: 3px;
@@ -462,10 +472,6 @@
   }
   .navbar__actions {
     gap: 4px;
-  }
-  .navbar__actions [data-sky-toggle] {
-    width: 48px !important;
-    height: 28px !important;
   }
   .navbar__notification {
     width: 36px;

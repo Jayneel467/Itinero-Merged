@@ -165,7 +165,7 @@ export default function EventsPage() {
                   : `${data.events.length} event${data.events.length === 1 ? "" : "s"}`}
               </p>
               <p className={styles.honesty}>
-                Live prices and seats. Checkout opens on the official ticketing site.
+                Live listings are strongest in US, UK, and Europe cities. Checkout opens on the official ticketing site.
               </p>
             </div>
           </div>

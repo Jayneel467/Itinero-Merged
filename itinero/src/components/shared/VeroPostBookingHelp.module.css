@@ -1,0 +1,64 @@
+.wrap {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #001439;
+  color: #fff;
+}
+
+.face {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.copy h3 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.copy p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #c4d2e8;
+}
+
+.btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: none;
+  background: #e96e33;
+  color: #fff;
+  font-weight: 800;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #d45f28;
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    width: 100%;
+    margin-left: 0;
+  }
+}

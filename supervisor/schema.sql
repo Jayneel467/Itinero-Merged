@@ -75,6 +75,11 @@ CREATE TABLE IF NOT EXISTS trips (
 CREATE INDEX IF NOT EXISTS trips_device_updated_idx
   ON trips (device_id, updated_at DESC);
 
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS user_id TEXT;
+CREATE INDEX IF NOT EXISTS trips_user_updated_idx
+  ON trips (user_id, updated_at DESC)
+  WHERE user_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS bookings (
   id TEXT PRIMARY KEY,
   trip_id TEXT REFERENCES trips(id) ON DELETE SET NULL,
@@ -97,6 +102,40 @@ CREATE UNIQUE INDEX IF NOT EXISTS bookings_supplier_uidx
 
 CREATE INDEX IF NOT EXISTS bookings_payment_idx ON bookings (payment_id);
 CREATE INDEX IF NOT EXISTS bookings_device_idx ON bookings (device_id);
+
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS user_id TEXT;
+CREATE INDEX IF NOT EXISTS bookings_user_idx
+  ON bookings (user_id)
+  WHERE user_id IS NOT NULL;
+
+-- Price watches (server-side; email on drop). Guest rows use device_id until login.
+CREATE TABLE IF NOT EXISTS price_watches (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  device_id TEXT,
+  email TEXT,
+  origin TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  baseline_price NUMERIC,
+  last_price NUMERIC,
+  best_date DATE,
+  last_checked_at TIMESTAMPTZ,
+  last_alerted_at TIMESTAMPTZ,
+  last_error TEXT,
+  active BOOLEAN NOT NULL DEFAULT true,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS price_watches_user_route_uidx
+  ON price_watches (user_id, origin, destination)
+  WHERE user_id IS NOT NULL AND active;
+CREATE INDEX IF NOT EXISTS price_watches_device_idx
+  ON price_watches (device_id)
+  WHERE device_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS price_watches_active_idx
+  ON price_watches (active, last_checked_at);
 
 CREATE TABLE IF NOT EXISTS payments (
   id TEXT PRIMARY KEY,
@@ -283,10 +322,17 @@ CREATE TABLE IF NOT EXISTS marketing_leads (
   acq_campaign TEXT,
   landing_path TEXT,
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  unsubscribe_token TEXT,
+  unsubscribed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS marketing_leads_email_uidx
   ON marketing_leads (lower(email));
+ALTER TABLE marketing_leads ADD COLUMN IF NOT EXISTS unsubscribe_token TEXT;
+ALTER TABLE marketing_leads ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS marketing_leads_unsub_token_uidx
+  ON marketing_leads (unsubscribe_token)
+  WHERE unsubscribe_token IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS marketing_offers (
   id TEXT PRIMARY KEY,
@@ -377,3 +423,84 @@ CREATE TABLE IF NOT EXISTS ab_subject_locks (
   locked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   stats JSONB NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- ── Vero credits (daily free pool + prepaid wallet) ───────────────────
+-- Free daily refresh + purchased packs (never expire). No subscriptions required.
+CREATE TABLE IF NOT EXISTS vero_credits (
+  subject TEXT NOT NULL,
+  day DATE NOT NULL,
+  used INT NOT NULL DEFAULT 0,
+  allowance INT NOT NULL DEFAULT 40,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (subject, day)
+);
+CREATE INDEX IF NOT EXISTS vero_credits_day_idx ON vero_credits (day);
+
+CREATE TABLE IF NOT EXISTS vero_credit_wallet (
+  subject TEXT PRIMARY KEY,
+  balance INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS vero_credit_purchases (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  subject TEXT NOT NULL,
+  pack_id TEXT NOT NULL,
+  credits INT NOT NULL,
+  amount_minor INT NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  stripe_session_id TEXT,
+  stripe_payment_intent TEXT,
+  status TEXT NOT NULL DEFAULT 'paid',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS vero_credit_purchases_session_uidx
+  ON vero_credit_purchases (stripe_session_id)
+  WHERE stripe_session_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS vero_credit_purchases_user_idx
+  ON vero_credit_purchases (user_id);
+
+-- ── Legacy Itinero Plus subscriptions (kept for existing rows; new sales = packs) ──
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL DEFAULT 'free',
+  interval TEXT,
+  status TEXT NOT NULL DEFAULT 'inactive',
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  stripe_price_id TEXT,
+  current_period_end TIMESTAMPTZ,
+  cancel_at_period_end BOOLEAN NOT NULL DEFAULT false,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_user_uidx ON subscriptions (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_stripe_sub_uidx
+  ON subscriptions (stripe_subscription_id)
+  WHERE stripe_subscription_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS subscriptions_customer_idx
+  ON subscriptions (stripe_customer_id)
+  WHERE stripe_customer_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+  event_id TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS stripe_webhook_events_type_idx
+  ON stripe_webhook_events (event_type, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS account_profiles (
+  user_id TEXT PRIMARY KEY,
+  travellers JSONB NOT NULL DEFAULT '[]'::jsonb,
+  prefs JSONB NOT NULL DEFAULT '{}'::jsonb,
+  contact JSONB NOT NULL DEFAULT '{}'::jsonb,
+  saved JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE account_profiles ADD COLUMN IF NOT EXISTS saved JSONB NOT NULL DEFAULT '[]'::jsonb;

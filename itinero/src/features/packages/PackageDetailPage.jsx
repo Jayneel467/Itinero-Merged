@@ -32,6 +32,7 @@ import ActivityKit from "./components/ActivityKit";
 import PackageTripHub from "./components/PackageTripHub";
 import { intelForPackage } from "./utils/packageIntel";
 import { formatEstimateRange, formatTransfer } from "./utils/itineraryFormat";
+import { isSaved, onSavedChange, toggleSaved } from "@/features/account/savedService";
 import styles from "./PackageDetailPage.module.css";
 
 function isFlightExclusion(text) {
@@ -125,6 +126,14 @@ export default function PackageDetailPage() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [dayPreview, setDayPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const savedId = `package:${slug || ""}`;
+  const [saved, setSaved] = useState(() => isSaved(savedId));
+
+  useEffect(() => {
+    const sync = () => setSaved(isSaved(`package:${slug || ""}`));
+    sync();
+    return onSavedChange(sync);
+  }, [slug]);
 
   const recDays = pkg?.recommendedDurationDays || [];
   const defaultNights = Math.max(
@@ -618,9 +627,28 @@ export default function PackageDetailPage() {
           <Link to="/packages" className={styles.backLink}>
             <ArrowLeft size={16} /> Back to packages
           </Link>
-          <button type="button" className={styles.veroBtn} onClick={() => openVero()}>
-            Customize with Vero
-          </button>
+          <div className={styles.topBarActions}>
+            <button
+              type="button"
+              className={saved ? styles.saveBtnOn : styles.saveBtn}
+              onClick={() => {
+                const next = toggleSaved({
+                  id: `package:${pkg?.slug || slug}`,
+                  type: "package",
+                  title: pkg?.title || "Package",
+                  subtitle: (pkg?.destinations || []).slice(0, 3).join(" · ") || "Package",
+                  url: `/packages/${pkg?.slug || slug}`,
+                  image: pkg?.coverImage || "",
+                });
+                setSaved(Boolean(next));
+              }}
+            >
+              {saved ? "Saved" : "Save"}
+            </button>
+            <button type="button" className={styles.veroBtn} onClick={() => openVero()}>
+              Customize with Vero
+            </button>
+          </div>
         </div>
 
         <header className={styles.head}>

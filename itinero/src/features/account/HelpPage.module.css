@@ -86,7 +86,7 @@
 
 .chip:hover {
   border-color: #fdba74;
-  background: #fffaf5;
+  background: var(--color-primary-bg, rgba(249, 114, 17, 0.1));
 }
 
 .hint {
@@ -104,6 +104,59 @@
 
 .hint a:hover {
   text-decoration: underline;
+}
+
+.find {
+  margin-top: 28px;
+  padding: 18px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-elevated, #fff);
+}
+
+.find h2 {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.find p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.findRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.findInput {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  background: var(--surface-page, #f2f2f2);
+  color: var(--ink);
+}
+
+.findBtn {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 750;
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .contact {
@@ -147,7 +200,7 @@
 }
 
 .emailBtn:hover {
-  background: #fff3e8;
+  background: color-mix(in srgb, #f97211 22%, var(--surface-elevated, #fff));
 }
 
 .fine {

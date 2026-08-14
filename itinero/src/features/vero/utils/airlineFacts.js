@@ -243,7 +243,7 @@ export function baggageFacts({
         : "supplier fare shows **0 kg checked** included",
       extra:
         (lane?.extra ? `${lane.extra} ` : "") +
-        `Published ${spec?.name || "carrier"} policy is often more generous than this LiteAPI line (e.g. cabin ~7 kg) - confirm in the airline app / boarding pass before you fly.`,
+        `Published ${spec?.name || "carrier"} policy is often more generous than this fare line (e.g. cabin ~7 kg) - confirm in the airline app / boarding pass before you fly.`,
     };
   }
 
@@ -262,7 +262,7 @@ export function baggageFacts({
       ticketK ||
       lane?.checkedShort ||
       (domestic
-        ? "15 kg check-in on a typical India domestic economy fare (Lite/unbundled can be 0 kg)"
+        ? "15 kg check-in on a typical India domestic economy fare (basic/unbundled can be 0 kg)"
         : "check-in kg is printed on your e-ticket for this international sector"),
     extra: lane?.extra || "If you need more weight, buy extra kg online before the airport counter.",
   };
@@ -275,15 +275,15 @@ export function formatBaggageReply(facts, { flightNo, origin, dest, originCity, 
   let ticketNote;
   if (f.supplierZero) {
     ticketNote =
-      "That’s what **LiteAPI / Nuitee stored on this PNR** (often “0 checked / 0 carry-on” in their portal). It is **not** always the same as IndiGo’s published cabin rule - check the airline app or airport counter before you pack.";
+      "That’s what **this ticket stored** (often “0 checked / 0 carry-on”). It is **not** always the same as IndiGo’s published cabin rule - check the airline app or airport counter before you pack.";
   } else if (f.fromTicket) {
     ticketNote = "This is what’s on **your ticket snapshot** in Itinero.";
   } else if (f.domestic) {
     ticketNote =
-      "Your e-ticket didn’t store a bag line, so this is **published domestic allowance** for this carrier - Lite/unbundled fares can drop check-in to 0 kg.";
+      "Your e-ticket didn’t store a bag line, so this is **published domestic allowance** for this carrier - basic/unbundled fares can drop check-in to 0 kg.";
   } else {
     ticketNote =
-      "Your e-ticket didn’t store a bag line, so this is the **usual published allowance** for this carrier - not a live read of the Nuitee portal.";
+      "Your e-ticket didn’t store a bag line, so this is the **usual published allowance** for this carrier - confirm in the airline app.";
   }
   const liteHint =
     !f.fromTicket && String(f.code) === "QP" && f.domestic

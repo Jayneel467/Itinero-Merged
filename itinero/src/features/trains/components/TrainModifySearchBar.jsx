@@ -141,6 +141,9 @@ export default function TrainModifySearchBar({
   onSearch,
   fromPlaceholder = "Station or city",
   toPlaceholder = "Station or city",
+  fromLabel = "From",
+  toLabel = "To",
+  dateLabel = "Date",
   stationSuggest = true,
   cityOptions = null,
   placeSuggest = false,
@@ -189,7 +192,7 @@ export default function TrainModifySearchBar({
   return (
     <form className={`${styles.bar}${className ? ` ${className}` : ""}`} onSubmit={submit} ref={barRef}>
       <SuggestField
-        label="From"
+        label={fromLabel}
         value={origin}
         placeholder={fromPlaceholder}
         enabled={suggestOn}
@@ -226,7 +229,7 @@ export default function TrainModifySearchBar({
         <ArrowLeftRight size={16} />
       </button>
       <SuggestField
-        label="To"
+        label={toLabel}
         value={dest}
         placeholder={toPlaceholder}
         enabled={suggestOn}
@@ -250,7 +253,7 @@ export default function TrainModifySearchBar({
         }}
       />
       <label className={styles.field}>
-        <span>Date</span>
+        <span>{dateLabel}</span>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </label>
       <button type="submit" className={styles.search}>

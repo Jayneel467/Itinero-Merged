@@ -11,4 +11,5 @@ export { default as ActionButton } from './ActionButton';
 export { default as ActionRow } from './ActionRow';
 export { default as FilterDrawer } from './FilterDrawer';
 export { default as LoyaltyEarnBanner } from './LoyaltyEarnBanner';
+export { default as VeroPostBookingHelp } from './VeroPostBookingHelp';
 // export { default as SearchBar } from './SearchBar';

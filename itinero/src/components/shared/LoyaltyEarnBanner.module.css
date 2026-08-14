@@ -6,7 +6,7 @@
   border-radius: 12px;
   border: 1px solid rgba(249, 114, 17, 0.28);
   background: linear-gradient(135deg, rgba(249, 114, 17, 0.08), rgba(249, 114, 17, 0.03));
-  color: var(--color-navy, #001438);
+  color: var(--text-primary, var(--color-navy, #001438));
 }
 
 .banner svg {

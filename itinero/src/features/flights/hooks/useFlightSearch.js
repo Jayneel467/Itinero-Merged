@@ -81,6 +81,7 @@ const EMPTY_FLIGHT_FILTERS = {
   arrivalTimes: [],
   maxDurationHours: null,
   excludeLayoverRegions: [],
+  includeLayoverAirports: [],
 };
 
 function layoverAirports(flight) {
@@ -88,10 +89,20 @@ function layoverAirports(flight) {
   if (!Array.isArray(segs) || segs.length < 2) return [];
   const codes = [];
   for (let i = 0; i < segs.length - 1; i++) {
-    const code = String(segs[i]?.arrival?.airport || "").toUpperCase().slice(0, 3);
+    const code = String(
+      segs[i]?.arrival?.airport || segs[i]?.to || ""
+    )
+      .toUpperCase()
+      .slice(0, 3);
     if (code) codes.push(code);
   }
   return codes;
+}
+
+function layoverCodesForFilter(flight) {
+  const fromCard = Array.isArray(flight?.layoverCodes) ? flight.layoverCodes : [];
+  const fromSegs = layoverAirports(flight);
+  return [...new Set([...fromCard, ...fromSegs].map((c) => String(c || "").toUpperCase().slice(0, 3)).filter(Boolean))];
 }
 
 function flightTouchesMiddleEastLayover(flight) {
@@ -872,6 +883,13 @@ export default function useFlightSearch() {
       if (filters.excludeLayoverRegions?.includes("middle_east")) {
         if (flightTouchesMiddleEastLayover(f)) return false;
       }
+      if (filters.includeLayoverAirports?.length) {
+        const want = new Set(
+          filters.includeLayoverAirports.map((c) => String(c || "").toUpperCase().slice(0, 3))
+        );
+        const codes = layoverCodesForFilter(f);
+        if (!codes.some((c) => want.has(c))) return false;
+      }
       return true;
     });
 
@@ -950,6 +968,7 @@ export default function useFlightSearch() {
         arrivalTimes: f.arrivalTimes || [],
         maxDurationHours: f.maxDurationHours ?? null,
         excludeLayoverRegions: f.excludeLayoverRegions || [],
+        includeLayoverAirports: f.includeLayoverAirports || [],
       });
       if (f.sortBy) setSortBy(f.sortBy);
       setVisible(INITIAL_BATCH);

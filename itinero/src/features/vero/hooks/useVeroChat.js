@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { veroService } from "../services/veroService";
+import { useBillingOptional } from "@/features/billing/BillingContext";
+import { useVeroUiOptional } from "@/context/VeroUiContext";
 import { detectSpokenLang } from "../utils/spokenLanguage";
 import { useLanguageOptional } from "@/context/LanguageContext";
 import { persistPreferredName, travelerAddressPayload } from "../utils/travelerAddress";
@@ -23,6 +25,12 @@ import {
  * Threads are saved to localStorage for History - open always starts fresh.
  */
 export default function useVeroChat({ onItineroActions } = {}) {
+  const billing = useBillingOptional();
+  const applyCreditsRef = useRef(billing?.applyCredits);
+  applyCreditsRef.current = billing?.applyCredits;
+  const veroUi = useVeroUiOptional();
+  const pageContextRef = useRef(veroUi?.pageContext || null);
+  pageContextRef.current = veroUi?.pageContext || null;
   const langCtx = useLanguageOptional();
   const preferredSpoken = langCtx?.spokenLanguage || "en-IN";
   const onActionsRef = useRef(onItineroActions);
@@ -123,6 +131,7 @@ export default function useVeroChat({ onItineroActions } = {}) {
         message: outbound || displayText || "Continue with the details I picked.",
         session_id: sessionIdRef.current || undefined,
         session_context: sessionContextRef.current || undefined,
+        page_context: pageContextRef.current || undefined,
         history: historyRef.current.slice(0, -1).map((m) => ({
           role: m.role,
           content: m.content,
@@ -147,6 +156,7 @@ export default function useVeroChat({ onItineroActions } = {}) {
       if (typeof res.preferred_name === "string") {
         persistPreferredName(res.preferred_name);
       }
+      if (res.credits) applyCreditsRef.current?.(res.credits);
 
       const rawReply = res.reply || res.response || "Sorry - I couldn't reply just now.";
       const actions = extractItineroActions(rawReply);

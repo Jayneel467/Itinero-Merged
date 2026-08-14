@@ -11,7 +11,7 @@ Vero routes and answers with **model judgment** by default. Regex / stubs / inst
 |-------|----------|------------------------|
 | Capability router (`supervisor/intent_router.py`) | LLM JSON classify (`VERO_LLM_ROUTER=1`) | Mid-booking / payment sticky; narrow pending trip slots |
 | Chat dispatch (`supervisor/main.py`) | visa / hotels / trains / sports → live `research` | Flight payment path; companion safety |
-| LLM lane (`general_agent/llm/model.py`) | Ambiguous → tools model thinks | Inventory verbs → OpenAI tools; post-tool → DeepSeek synth |
+| LLM lane (`general_agent/llm/model.py`) | Chat/plan → DeepSeek (cheap default) | Inventory / money → OpenAI tools; post-tool → DeepSeek synth; daily budget degrade |
 | Page-aware | Explore / soft Q → LLM + page brief | Live-unknown refusals; PNR/baggage; on-screen cheapest/fastest |
 | Catalog | Gemini authors packages | Ops rate limits / admin auth |
 
@@ -21,10 +21,13 @@ Vero routes and answers with **model judgment** by default. Regex / stubs / inst
 
 | Surface | Model | Role |
 |---------|--------|------|
-| **Vero tools / booking** | OpenAI (`ITINERO_MODEL`) | Flights, hotels, pay, search tools |
-| **Vero plans / synth** | DeepSeek (`DEEPSEEK_API_KEY`) | Explicit itinerary language + post-tool writeups |
-| **Capability router** | OpenAI mini (`VERO_ROUTER_MODEL`) | Message → flights / itinerary / research / payment / supervisor |
+| **Vero chat / plan / culture** | DeepSeek (`DEEPSEEK_API_KEY`) | Default free lane (CFO) |
+| **Vero tools / booking** | OpenAI (`ITINERO_MODEL`) | Flights, hotels, pay, live search only |
+| **Vero post-tool synth** | DeepSeek | Writeups after tools |
+| **Capability router** | OpenAI mini (`VERO_ROUTER_MODEL`) | Tiny classify (`max_tokens=80`) |
 | **Catalog factory** | Gemini (`GEMINI_API_KEY`) | Packages + Explore author (not Vero) |
+
+Cost planner: [AI_COST.md](./AI_COST.md) — daily budget, fair-use, Vero never paywalled.
 
 ## Env
 
@@ -48,10 +51,10 @@ CATALOG_LLM_MODEL=gemini-2.5-flash
 ## Lane rules
 
 - After tool results → DeepSeek **synth** (no tools bound)
-- Explicit plan language (`itinerary`, `N-day trip`, `trip outline`) → DeepSeek **planner**
-- Soft “suggest / explore / where to eat” → **tools** model (may call Places)
+- Chat / culture / packing / explicit plans → DeepSeek **planner** (default)
+- Live inventory words (flights, hotels, restaurants search, pay) → OpenAI **tools**
 - Negations like “no flights” do **not** force OpenAI tools
-- Inventory / booking verbs → OpenAI **tools**
+- Budget **protect** / device OpenAI quota → DeepSeek unless pay/book/cancel
 
 ## QA
 

@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter } from "react-router-dom";
 import AppProviders from "@/app/providers";
 import AppRouter from "@/app/router";
+import { APP_CONFIG } from "@/app/config";
 
 /**
  * Root application component.
@@ -10,7 +11,7 @@ import AppRouter from "@/app/router";
 export default function App() {
   return (
     <AppProviders>
-      <BrowserRouter basename="/itinero">
+      <BrowserRouter basename={APP_CONFIG.BASE_PATH || "/itinero"}>
         <AppRouter />
       </BrowserRouter>
     </AppProviders>

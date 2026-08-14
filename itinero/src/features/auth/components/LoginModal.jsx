@@ -279,11 +279,11 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
               Let&apos;s get you going.
             </h2>
             <p className={styles.brandCopy}>
-              Sign in or create an account to save searches, create Price Alerts, see Private Deals, and more.
+              Sign in or create an account to keep trips, Saved hearts, price alerts, and Vero credits with you.
             </p>
             <div className={styles.brandFoot}>
               <img src={VERO} alt="" className={styles.vero} draggable={false} />
-              <p className={styles.speech}>Vero keeps your trips, alerts, and deals in one place.</p>
+              <p className={styles.speech}>Vero keeps your trips, alerts, and credits in one place.</p>
             </div>
           </div>
 

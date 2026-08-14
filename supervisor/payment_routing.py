@@ -327,7 +327,7 @@ async def maybe_refund_customer_after_cancel(
         "ok": True,
         "skipped": True,
         "reason": rail,
-        "message": "Customer refund handled by LiteAPI Payment SDK cancel."
+        "message": "Customer refund is handled when the booking cancel completes."
         if rail == "liteapi"
         else "No customer payment to refund.",
     }

@@ -9,6 +9,6 @@
 .page {
   flex: 1;
   min-height: 0;
-  height: calc(100dvh - 88px);
-  background: #f3f5f8;
+  height: calc(100dvh - 96px);
+  background: var(--surface-page, #f3f5f8);
 }

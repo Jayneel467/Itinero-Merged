@@ -25,6 +25,17 @@ def _conninfo() -> str:
     url = database_url()
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://") :]
+    # Neon pooler is PgBouncer — SCRAM channel binding usually fails there.
+    if "-pooler." in url.lower() and "channel_binding=" in url.lower():
+        from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+        parts = urlsplit(url)
+        query = [
+            (k, v)
+            for k, v in parse_qsl(parts.query, keep_blank_values=True)
+            if k.lower() != "channel_binding"
+        ]
+        url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
     return url
 
 
@@ -35,13 +46,21 @@ def init_db() -> bool:
         return False
     from psycopg_pool import ConnectionPool
 
+    def _pool_int(name: str, default: int, lo: int, hi: int) -> int:
+        try:
+            return max(lo, min(int(os.getenv(name) or str(default)), hi))
+        except ValueError:
+            return default
+
     if _pool is None:
+        # Neon pooler: keep min 0 (no idle compute). 4 was too small for
+        # chat + search + webhook + watches at once.
         _pool = ConnectionPool(
             conninfo=_conninfo(),
-            min_size=0,
-            max_size=4,
-            timeout=20,
-            kwargs={"connect_timeout": 20},
+            min_size=_pool_int("DB_POOL_MIN", 0, 0, 8),
+            max_size=_pool_int("DB_POOL_MAX", 12, 2, 32),
+            timeout=_pool_int("DB_POOL_TIMEOUT", 15, 5, 60),
+            kwargs={"connect_timeout": _pool_int("DB_CONNECT_TIMEOUT", 8, 3, 30)},
             open=True,
         )
     sql = _SCHEMA_PATH.read_text(encoding="utf-8")
@@ -65,7 +84,10 @@ def ping() -> str:
         with connection() as conn:
             conn.execute("SELECT 1")
         return "ready"
-    except Exception:
+    except Exception as exc:
+        import logging
+
+        logging.getLogger("itinero.db").warning("postgres ping failed: %s", type(exc).__name__)
         return "error"
 
 

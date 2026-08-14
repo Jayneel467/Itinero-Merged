@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { AUTH_EVENT } from "@/features/auth/session";
 import { tripService, subscribeTrips } from "./tripService";
 
 const TripContext = createContext(undefined);
@@ -22,6 +23,14 @@ export function TripProvider({ children }) {
 
   useEffect(() => {
     tripService.syncFromServer().then(refresh).catch(() => {});
+  }, [refresh]);
+
+  useEffect(() => {
+    const onAuth = () => {
+      tripService.syncFromServer().then(refresh).catch(() => refresh());
+    };
+    window.addEventListener(AUTH_EVENT, onAuth);
+    return () => window.removeEventListener(AUTH_EVENT, onAuth);
   }, [refresh]);
 
   useEffect(() => {

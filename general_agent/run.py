@@ -31,7 +31,7 @@ for _p in [_ROOT, _GA_DIR]:
 
 # ── Imports ────────────────────────────────────────────────────────────────
 from typing import Any, Optional
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -131,6 +131,7 @@ class ChatResponse(BaseModel):
     preferred_name: Optional[str] = None
     address_style: Optional[str] = None
     agent_meta: Optional[dict[str, Any]] = None
+    credits: Optional[dict[str, Any]] = None
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────
@@ -204,8 +205,25 @@ def health_ready():
     return body
 
 
+def _credit_identity(request: Request, thread_id: str) -> tuple[str, str]:
+    """Return (subject, plan) for Claude-style Vero credits."""
+    try:
+        from supervisor.auth import user_from_token
+        from supervisor.credits import plan_for_user, subject_key
+        from supervisor.db import normalize_device_id
+
+        auth = (request.headers.get("authorization") or "").strip()
+        token = auth[7:].strip() if auth.lower().startswith("bearer ") else None
+        user = user_from_token(token) if token else None
+        uid = str((user or {}).get("id") or "").strip() or None
+        did = normalize_device_id(request.headers.get("x-itinero-device"))
+        return subject_key(user_id=uid, device_id=did, thread_id=thread_id), plan_for_user(uid)
+    except Exception:
+        return f"thread:{thread_id[:80]}", "free"
+
+
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(req: ChatRequest):
+def chat(req: ChatRequest, request: Request):
     """
     Send a user message to Vero and get back the reply + structured cards
     (flights / hotels) when available.
@@ -214,6 +232,30 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     logger.info("Chat | thread=%s | msg=%s…", req.thread_id, req.message[:60])
+
+    credit_snap = None
+    try:
+        from supervisor.credits import begin_turn, exhausted_reply, peek
+
+        subject, plan = _credit_identity(request, req.thread_id)
+        credit_snap = peek(subject, plan=plan)
+        begin_turn(
+            subject,
+            plan,
+            consume=credit_snap.get("remaining", 0) >= 1,
+            remaining=credit_snap.get("remaining"),
+        )
+        if credit_snap.get("remaining", 0) < 1:
+            return ChatResponse(
+                reply=exhausted_reply(plan=plan, reset_at=credit_snap.get("resetAt")),
+                thread_id=req.thread_id,
+                routed_to="vero",
+                active_specialist="vero",
+                route_path=["vero", "credits"],
+                credits=credit_snap,
+            )
+    except Exception:
+        logger.debug("vero credits peek skipped", exc_info=True)
 
     try:
         agent = _get_agent()
@@ -224,6 +266,7 @@ def chat(req: ChatRequest):
             voice_mode=bool(req.voice_mode),
             spoken_language=req.spoken_language,
             traveler=req.traveler,
+            cost_subject=(credit_snap or {}).get("subject") if credit_snap else None,
         )
     except Exception as exc:
         logger.exception("Agent error: %s", exc)
@@ -232,6 +275,12 @@ def chat(req: ChatRequest):
             detail = "I hit a snag — say that again and I’ll continue."
         else:
             detail = "I ran into a temporary connection issue. Please try your request again."
+        try:
+            from supervisor.credits import end_turn as _end_credits
+
+            _end_credits()
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=detail)
 
     logger.info(
@@ -240,6 +289,22 @@ def chat(req: ChatRequest):
         bool(res.get("cards")),
         res["reply"][:80],
     )
+    out_credits = credit_snap
+    try:
+        from supervisor.credits import consume, current_turn, end_turn
+
+        ctx = current_turn()
+        lane = str(res.get("vero_last_lane") or "planner")
+        if ctx and ctx.get("consume"):
+            out_credits = consume(ctx["subject"], lane=lane, plan=ctx.get("plan"))
+        elif ctx:
+            from supervisor.credits import snapshot as credit_snapshot
+
+            out_credits = credit_snapshot(ctx["subject"], plan=ctx.get("plan"))
+        end_turn()
+    except Exception:
+        logger.debug("vero credits consume skipped", exc_info=True)
+
     return ChatResponse(
         reply=res["reply"],
         thread_id=req.thread_id,
@@ -251,6 +316,7 @@ def chat(req: ChatRequest):
         preferred_name=res.get("preferred_name"),
         address_style=res.get("address_style"),
         agent_meta=res.get("agent_meta"),
+        credits=out_credits,
     )
 
 

@@ -13,6 +13,9 @@ import {
   travellerTypeLabel,
   upsertTraveller,
 } from "@/features/booking/utils/savedTravellers";
+import { useBillingOptional } from "@/features/billing/BillingContext";
+import { useAuthOptional } from "@/features/auth/context/AuthContext";
+import { hydrateAccountFromServer, persistAccountToServer } from "@/features/profile/accountSync";
 
 const TITLES = ["Mr", "Ms", "Mrs", "Mx"];
 const GENDERS = [
@@ -42,6 +45,9 @@ const blankForm = () => emptyTraveller(0);
  * Manage on-device travellers used to prefill flight checkout.
  */
 export default function TravellersSection() {
+  const billing = useBillingOptional();
+  const auth = useAuthOptional();
+  const travellerCap = billing?.travellerLimit || MAX_TRAVELLERS;
   const [store, setStore] = useState(() => loadSavedPaxStore());
   const [formOpen, setFormOpen] = useState(false);
   const [draft, setDraft] = useState(blankForm);
@@ -56,6 +62,18 @@ export default function TravellersSection() {
     setContactEmail(next.email || "");
     setContactPhone(next.phone || "");
   }, []);
+
+  useEffect(() => {
+    if (!auth?.isAuthenticated) return undefined;
+    let cancelled = false;
+    hydrateAccountFromServer().then(() => {
+      if (cancelled) return;
+      refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.isAuthenticated]);
 
   const refresh = () => {
     const next = loadSavedPaxStore();
@@ -85,8 +103,9 @@ export default function TravellersSection() {
   const saveDraft = (e) => {
     e?.preventDefault?.();
     try {
-      upsertTraveller(draft);
+      upsertTraveller(draft, { max: travellerCap });
       refresh();
+      persistAccountToServer();
       closeForm();
     } catch (err) {
       setError(err?.message || "Could not save traveller.");
@@ -97,6 +116,7 @@ export default function TravellersSection() {
     if (!window.confirm("Remove this traveller from saved details?")) return;
     removeTraveller(id);
     refresh();
+    persistAccountToServer();
     if (draft.id === id) closeForm();
   };
 
@@ -106,17 +126,19 @@ export default function TravellersSection() {
       phone: contactPhone.trim(),
     });
     refresh();
-    setContactMsg("Contact saved for checkout.");
+    persistAccountToServer();
+    setContactMsg(auth?.isAuthenticated ? "Contact saved to your account." : "Contact saved for checkout.");
     setTimeout(() => setContactMsg(""), 2500);
   };
 
   const travellers = store.passengers || [];
-  const atCap = travellers.length >= MAX_TRAVELLERS;
+  const atCap = travellers.length >= travellerCap;
 
   return (
     <div className="detailCard travellersCard">
       <p className="emptyCopy travellersIntro">
-        Saved travellers prefill flight checkout on this device. You can add up to {MAX_TRAVELLERS}.
+        Saved travellers prefill flight checkout. You can add up to {travellerCap}
+        {auth?.isAuthenticated ? " — they sync with your account." : " on this device."}
       </p>
 
       {travellers.length ? (
@@ -310,7 +332,7 @@ export default function TravellersSection() {
 
       <div className="travellerContact">
         <p className="travellerFormTitle">Checkout contact</p>
-        <p className="emptyCopy">Used as the booking contact email / mobile on this device.</p>
+        <p className="emptyCopy">Used as the booking contact email / mobile.</p>
         <div className="travellerFormGrid">
           <label>
             Email

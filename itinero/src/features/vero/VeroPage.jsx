@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout";
+import VeroCreditMeter from "@/features/billing/VeroCreditMeter";
 import { NAVBAR_IMAGES } from "@/constants/images";
 import useVeroChat from "./hooks/useVeroChat";
 import useVeroVoice from "./hooks/useVeroVoice";
@@ -185,6 +186,11 @@ export default function VeroPage() {
         }
         if (action.type === "open_profile") {
           navigate("/profile");
+          veroUi?.openVero?.();
+          return;
+        }
+        if (action.type === "open_plus") {
+          navigate("/plus");
           veroUi?.openVero?.();
           return;
         }
@@ -464,6 +470,7 @@ export default function VeroPage() {
               <Menu size={20} strokeWidth={2} />
             </button>
 
+            <VeroCreditMeter compact />
             <div className="vero-page__topbar-actions">
               <button
                 type="button"

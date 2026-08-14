@@ -8,7 +8,7 @@ import { useHomeLocation } from "@/context/HomeLocationContext";
 import { HOME_ORIGIN_SESSION_KEY } from "@/services/homeLocation";
 import { useVeroUi } from "@/context/VeroUiContext";
 import { buildExplorePageContext } from "@/features/vero/utils/pageContext";
-import { isSaved, toggleSaved } from "@/features/account/savedService";
+import { isSaved, onSavedChange, toggleSaved } from "@/features/account/savedService";
 import useExploreFromPrices from "./hooks/useExploreFromPrices";
 import { PlacesPhotoImg } from "@/components/shared";
 import ExploreMap from "./components/ExploreMap";
@@ -150,6 +150,8 @@ export default function ExplorePage() {
   const [dislikeFor, setDislikeFor] = useState(null);
   const [tasteTick, setTasteTick] = useState(0);
   const [catalogTick, setCatalogTick] = useState(0);
+
+  useEffect(() => onSavedChange(() => setTasteTick((n) => n + 1)), []);
 
   const homeMarket = normalizeMarketCode(home.countryCode || home.passportCountry || "");
 

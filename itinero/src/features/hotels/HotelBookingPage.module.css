@@ -1,11 +1,11 @@
 .pageContainer {
-  background-color: #FAFAFA;
+  background: var(--surface-page, #FAFAFA);
   min-height: 100vh;
   padding-bottom: 80px;
 }
 
 .searchBarWrapper {
-  background-color: white;
+  background-color: var(--surface-elevated, white);
   border-bottom: 1px solid #E5E7EB;
   padding: 16px 24px;
   display: flex;
@@ -13,7 +13,7 @@
 }
 
 .stepperWrapper {
-  background-color: white;
+  background-color: var(--surface-elevated, white);
   border-bottom: 1px solid #E5E7EB;
   margin-bottom: 32px;
 }

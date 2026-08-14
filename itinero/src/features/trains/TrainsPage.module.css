@@ -1,10 +1,10 @@
 .page {
-  --ink: #001438;
+  --ink: var(--text-primary, #001438);
   --accent: #f97211;
-  --muted: #637588;
-  --line: #e8edf2;
+  --muted: var(--text-secondary, #637588);
+  --line: var(--border-subtle, #e8edf2);
   --nav-offset: 76px;
-  --surface: #f4f6fb;
+  --surface: var(--surface-page, #f4f6fb);
   background:
     radial-gradient(1200px 480px at 12% -10%, rgba(249, 114, 17, 0.12), transparent 55%),
     radial-gradient(900px 420px at 88% 0%, rgba(0, 20, 56, 0.08), transparent 50%),
@@ -283,7 +283,7 @@
   transform: translateY(-2px);
   border-color: rgba(249, 114, 17, 0.35);
   box-shadow: 0 10px 28px rgba(0, 20, 56, 0.08);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .corridorTile:hover::before {
@@ -443,7 +443,7 @@
 
 .modeLight {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-radius: 999px;
   padding: 10px 16px;
@@ -489,7 +489,7 @@
   flex: 0 0 auto;
   min-width: 108px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border-radius: 12px;
   padding: 10px 12px;
   text-align: left;
@@ -557,7 +557,7 @@
   align-items: center;
   gap: 8px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-radius: 999px;
   padding: 8px 14px;
@@ -619,7 +619,7 @@
 }
 
 .sideCard {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px;
@@ -675,7 +675,7 @@
 
 .sortWrap select {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border-radius: 10px;
   min-height: 36px;
   padding: 0 10px;
@@ -705,7 +705,7 @@
 .featChip {
   flex: 0 0 auto;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-radius: 999px;
   padding: 8px 12px;
@@ -743,7 +743,7 @@
   padding: 40px 16px;
   color: var(--muted);
   text-align: center;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px dashed var(--line);
   border-radius: 18px;
 }
@@ -784,7 +784,7 @@
 
 .retryGhost {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   font-weight: 700;
   border-radius: 10px;
@@ -800,7 +800,7 @@
 .panel {
   max-width: 900px;
   margin: 16px auto 0;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 18px 18px 20px;

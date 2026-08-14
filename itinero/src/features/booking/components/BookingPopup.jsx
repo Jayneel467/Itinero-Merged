@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, CreditCard, Download, ExternalLink, X } from "lucide-react";
+import { scrubProviderCopy } from "@/utils/scrubProviderCopy";
 import {
   readLocalStripePublishableKey,
   resolveLiteApiPublishableKey,
@@ -123,7 +123,7 @@ function softenBookingError(message) {
       "We couldn't hold this fare. Check name, phone, email, date of birth, and ID - then try again."
     );
   }
-  return raw.replace(/^LiteAPIError:\s*/i, "").trim() || "Booking failed.";
+  return scrubProviderCopy(raw.replace(/^LiteAPIError:\s*/i, "").trim()) || "Booking failed.";
 }
 
 function emptyPassenger(type = 0) {
@@ -412,7 +412,7 @@ export default function BookingPopup({
           }));
         if (cancelled) return;
         if (!pk) {
-          setApiError("LiteAPI Payment SDK could not load a Stripe key. Try again in a moment.");
+          setApiError("Card checkout could not load. Try again in a moment.");
           return;
         }
 
@@ -659,9 +659,7 @@ export default function BookingPopup({
     }
     if (resolved.prebook_id) {
       throw new Error(
-        "Hold created, but LiteAPI Payment SDK keys are missing. " +
-          "Enable Payment SDK on the LiteAPI account and try again. " +
-          `Hold ID: ${resolved.prebook_id}`
+        `Hold created, but card checkout keys are missing. Try again in a moment. Hold ID: ${resolved.prebook_id}`
       );
     }
     throw new Error(prebookRes?.message || "Prebook succeeded but no hold ID was returned.");
@@ -1475,9 +1473,9 @@ export default function BookingPopup({
                 </p>
               ) : null}
 
-              <h4>LiteAPI Payment SDK</h4>
+              <h4>Secure card checkout</h4>
               <p className={styles.muted} style={{ marginBottom: 12 }}>
-                Secure card checkout via Stripe (sandbox test card{" "}
+                Secure card checkout (sandbox test card{" "}
                 <code>4242 4242 4242 4242</code>).
               </p>
 

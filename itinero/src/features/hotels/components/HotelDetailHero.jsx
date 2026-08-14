@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapPin, Wifi, Waves, Coffee, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { isSaved, onSavedChange, toggleSaved } from "@/features/account/savedService";
 import styles from "../HotelDetailPage.module.css";
 
 /**
@@ -8,6 +9,14 @@ import styles from "../HotelDetailPage.module.css";
  */
 export default function HotelDetailHero({ hotel }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const savedId = hotel?.id ? `hotel:${hotel.id}` : "";
+  const [saved, setSaved] = useState(() => isSaved(savedId));
+
+  useEffect(() => {
+    const sync = () => setSaved(savedId ? isSaved(savedId) : false);
+    sync();
+    return onSavedChange(sync);
+  }, [savedId]);
 
   const images = useMemo(() => {
     const live = Array.isArray(hotel?.images)
@@ -45,7 +54,29 @@ export default function HotelDetailHero({ hotel }) {
   return (
     <div className={styles.HotelDetailHero_heroContainer}>
       <div className={styles.HotelDetailHero_headerInfo}>
-        <h1 className={styles.HotelDetailHero_hotelName}>{name}</h1>
+        <div className={styles.HotelDetailHero_nameRow}>
+          <h1 className={styles.HotelDetailHero_hotelName}>{name}</h1>
+          {hotel?.id ? (
+            <button
+              type="button"
+              className={`${styles.HotelDetailHero_save}${saved ? ` ${styles.HotelDetailHero_saveOn}` : ""}`}
+              aria-pressed={saved}
+              onClick={() => {
+                const next = toggleSaved({
+                  id: savedId,
+                  type: "hotel",
+                  title: name,
+                  subtitle: location || "Stay",
+                  url: `/hotel/${hotel.id}/booking`,
+                  image: images[0] || hotel.image || "",
+                });
+                setSaved(Boolean(next));
+              }}
+            >
+              {saved ? "Saved" : "Save"}
+            </button>
+          ) : null}
+        </div>
 
         <div className={styles.HotelDetailHero_ratingRow}>
           <div className={styles.HotelDetailHero_stars}>

@@ -11,7 +11,7 @@ export default function NotFoundPage() {
           <p className={styles.kicker}>404</p>
           <h1 className={styles.title}>Page not found</h1>
           <p className={styles.copy}>
-            That route doesn’t exist. Head home or search flights and hotels.
+            That route doesn’t exist. Head home, search, or open Help.
           </p>
           <ActionRow>
             <ActionButton to="/" pill>
@@ -19,6 +19,9 @@ export default function NotFoundPage() {
             </ActionButton>
             <ActionButton to="/flights" variant="navy" pill>
               Search flights
+            </ActionButton>
+            <ActionButton to="/help" variant="ghost" pill>
+              Help
             </ActionButton>
           </ActionRow>
         </div>

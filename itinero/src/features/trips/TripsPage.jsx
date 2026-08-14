@@ -90,10 +90,21 @@ function isUpcoming(trip) {
   return trip.status === "confirmed" || trip.status === "held" || trip.status === "draft";
 }
 
+function partnerHandoffOnly(trip) {
+  const types = (trip.legs || []).map((l) => String(l.type || "").toLowerCase()).filter(Boolean);
+  if (!types.length) return false;
+  return types.every((t) => t === "train" || t === "bus" || t === "event");
+}
+
 function canCancelTrip(trip) {
   const status = String(trip.status || "").toLowerCase();
   if (status === "cancelled" || status === "abandoned" || status === "cancel_pending") return false;
-  return true;
+  if (status === "draft" || status === "held") return true;
+  if (partnerHandoffOnly(trip)) return false;
+  const hasPackage = (trip.legs || []).some((l) => l.type === "package" && l.packageBookingId);
+  const hasFlight = Boolean(flightSupplierId(trip));
+  const hasHotel = hotelSupplierIds(trip).length > 0;
+  return hasPackage || hasFlight || hasHotel;
 }
 
 function confirmationMatchesTrip(trip, confirmation) {
@@ -195,17 +206,20 @@ function summarizeTrip(trip) {
     };
   }
   if (train) {
+    const pnr = train.pnr || "";
     return {
       kind: "Train",
       title: `${train.from_code || trip.origin || ""} → ${train.to_code || trip.destination || ""}`.trim() || trip.title || "Train",
       detail: [train.number, train.name, train.class_code].filter(Boolean).join(" · "),
-      pnr: train.pnr || train.bookingId || "",
-      paid: trip.status === "confirmed",
+      pnr: pnr || train.bookingId || "",
+      paid: Boolean(pnr),
+      handoff: !pnr,
       Icon: TrainFront,
     };
   }
   if (bus) {
     const kindLabel = bus.kind === "coach" ? "Coach" : "Transit";
+    const pnr = bus.pnr || "";
     return {
       kind: kindLabel,
       title:
@@ -215,8 +229,9 @@ function summarizeTrip(trip) {
       detail: [bus.operator, bus.bus_type, bus.dep && bus.arr ? `${bus.dep}-${bus.arr}` : bus.dep]
         .filter(Boolean)
         .join(" · "),
-      pnr: bus.bookingId || "",
-      paid: trip.status === "confirmed",
+      pnr: pnr || bus.bookingId || "",
+      paid: Boolean(pnr),
+      handoff: !pnr,
       Icon: Bus,
     };
   }
@@ -433,7 +448,7 @@ export default function TripsPage() {
       }
       if (!packageLeg?.packageBookingId && !flightId && !hotelIds.length && paymentId) {
         setActionErr(
-          "No supplier booking on this trip. Contact support with your payment reference for a refund."
+          "No airline/hotel ticket on this trip. Contact support with your payment reference for a refund."
         );
         return;
       } else if (!packageLeg?.packageBookingId && !flightId && !hotelIds.length) {
@@ -546,7 +561,7 @@ export default function TripsPage() {
                         <Icon size={14} aria-hidden /> {sum.kind}
                       </span>
                       <span className={`${styles.status} ${statusTone(trip.status)}`}>
-                        {sum.paid ? "Paid" : statusLabel(trip.status)}
+                        {sum.paid ? "Paid" : sum.handoff ? "Partner ticket" : statusLabel(trip.status)}
                       </span>
                     </div>
 

@@ -44,7 +44,7 @@ jobs:
             echo "::warning::GEMINI_API_KEY missing — search_curate author steps will fail"
           fi
           if [ "${{ github.event.inputs.digests || 'true' }}" = "true" ]; then
-            python -m supervisor.marketing_runner --digests --drain
+            python -m supervisor.marketing_runner --digests --drain --watches
           else
-            python -m supervisor.marketing_runner --drain
+            python -m supervisor.marketing_runner --drain --watches
           fi

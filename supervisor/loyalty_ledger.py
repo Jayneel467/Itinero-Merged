@@ -313,6 +313,15 @@ def schedule_earn(
 
     est = estimate_loyalty_earn(amount=amount, currency=currency, settings=settings or {})
     points = int(est.get("points") or 0)
+    try:
+        from supervisor.billing import loyalty_multiplier_for
+
+        mult = loyalty_multiplier_for(user_id=(user_id or "").strip() or None)
+        if mult > 1 and points > 0:
+            points = max(1, int(round(points * mult)))
+            est = {**est, "points": points, "loyaltyMultiplier": mult}
+    except Exception:
+        pass
     if not est.get("enabled") or points <= 0:
         return {"ok": False, "skipped": True, "reason": "no_points"}
 

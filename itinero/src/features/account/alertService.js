@@ -1,11 +1,14 @@
 /**
- * On-device price watches + alert feed.
+ * Price watches + alert feed.
+ * Local cache + supervisor persistence (email on drop when signed in).
  * Prices come from live price-calendar only - never invented.
  */
 import { flightService } from "@/features/flights/services/flightService";
 import { sampleNearTermDates } from "@/features/flights/hooks/useLiveRoutePrices";
 import { findAirportByCode } from "@/constants/airports";
 import { loadAccountPrefs } from "@/features/profile/accountPrefs";
+import api from "@/services/api";
+import { ENDPOINTS } from "@/services/endpoints";
 
 const WATCH_KEY = "itinero_price_watches_v1";
 const FEED_KEY = "itinero_alert_feed_v1";
@@ -47,7 +50,7 @@ export function saveWatches(rows) {
   return rows;
 }
 
-export function addWatch({ origin, destination, currency = "INR" }) {
+export function addWatch({ origin, destination, currency = "INR", limit = 8 }) {
   const from = String(origin || "").trim().toUpperCase();
   const to = String(destination || "").trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to) || from === to) {
@@ -61,8 +64,15 @@ export function addWatch({ origin, destination, currency = "INR" }) {
   if (existing.some((w) => w.origin === from && w.destination === to)) {
     return { ok: false, error: "You’re already watching that route." };
   }
-  if (existing.length >= 8) {
-    return { ok: false, error: "You can watch up to 8 routes on this device." };
+  const cap = Math.max(1, Math.min(Number(limit) || 8, 8));
+  if (existing.length >= cap) {
+    return {
+      ok: false,
+      error:
+        cap <= 1
+          ? `You can watch up to ${cap} flight routes.`
+          : `You can watch up to ${cap} routes.`,
+    };
   }
   const row = {
     id: uid(),
@@ -79,11 +89,64 @@ export function addWatch({ origin, destination, currency = "INR" }) {
     lastError: null,
   };
   saveWatches([row, ...existing]);
+  api
+    .post(ENDPOINTS.WATCHES.UPSERT, {
+      id: row.id,
+      origin: row.origin,
+      destination: row.destination,
+      currency: row.currency,
+    })
+    .then((data) => {
+      if (data?.watch?.id && data.watch.id !== row.id) {
+        const next = listWatches().map((w) => (w.id === row.id ? { ...w, ...data.watch, id: data.watch.id } : w));
+        saveWatches(next);
+      }
+    })
+    .catch(() => {});
   return { ok: true, watch: row };
 }
 
 export function removeWatch(id) {
   saveWatches(listWatches().filter((w) => w.id !== id));
+  if (id) api.delete(ENDPOINTS.WATCHES.ONE(id)).catch(() => {});
+}
+
+export async function syncWatchesWithServer() {
+  try {
+    const data = await api.get(ENDPOINTS.WATCHES.LIST);
+    const remote = Array.isArray(data?.watches) ? data.watches : [];
+    const local = listWatches();
+    const byRoute = new Map(local.map((w) => [`${w.origin}-${w.destination}`, w]));
+    for (const watch of remote) {
+      if (!watch?.origin || !watch?.destination) continue;
+      const key = `${String(watch.origin).toUpperCase()}-${String(watch.destination).toUpperCase()}`;
+      const cur = byRoute.get(key);
+      byRoute.set(key, {
+        ...(cur || {}),
+        ...watch,
+        origin: String(watch.origin).toUpperCase(),
+        destination: String(watch.destination).toUpperCase(),
+        originLabel: watch.originLabel || cityLabel(watch.origin),
+        destinationLabel: watch.destinationLabel || cityLabel(watch.destination),
+      });
+    }
+    saveWatches([...byRoute.values()]);
+    for (const w of local) {
+      if (!remote.some((r) => r.origin === w.origin && r.destination === w.destination)) {
+        api
+          .post(ENDPOINTS.WATCHES.UPSERT, {
+            id: w.id,
+            origin: w.origin,
+            destination: w.destination,
+            currency: w.currency || "INR",
+          })
+          .catch(() => {});
+      }
+    }
+    return listWatches();
+  } catch {
+    return listWatches();
+  }
 }
 
 export function listFeed() {
@@ -237,7 +300,7 @@ export async function refreshWatch(id) {
       title: `Watching ${watch.origin} → ${watch.destination}`,
       body: `Live min ${formatMoney(probe.minPrice, watch.currency)}${
         probe.bestDate ? ` around ${probe.bestDate}` : ""
-      }. We’ll flag real drops on this device.`,
+      }. We’ll email real drops when you’re signed in.`,
       price: probe.minPrice,
       currency: watch.currency,
       bestDate: probe.bestDate,

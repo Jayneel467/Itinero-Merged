@@ -1,1 +1,21 @@
-/* Hero layout remains supplied by the existing Tailwind classes in HeroSection. */
+/* Hero always has a navy base so white type stays readable if the photo fails. */
+
+.hero-section {
+  background-color: #001438;
+  color: #fff;
+  isolation: isolate;
+}
+
+.hero-section__title {
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 12, 32, 0.45);
+}
+
+.hero-section__tab {
+  background: transparent;
+  color: #fff;
+}
+
+.hero-section__tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+}

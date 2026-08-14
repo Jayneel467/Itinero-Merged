@@ -271,6 +271,169 @@ export function buildPassengerPageContext(flight = null) {
   };
 }
 
+/** Post-pay confirmation — Vero answers PNR/gate/cancel on THIS ticket. */
+export function buildBookingSuccessPageContext({
+  airline = null,
+  flightNumber = null,
+  origin = null,
+  destination = null,
+  pnr = null,
+  bookingId = null,
+  departDate = null,
+  depTerminal = null,
+  arrTerminal = null,
+  baggageCabin = null,
+  baggageChecked = null,
+  refundable = null,
+  changeable = null,
+} = {}) {
+  const o = origin ? String(origin).toUpperCase().slice(0, 3) : null;
+  const d = destination ? String(destination).toUpperCase().slice(0, 3) : null;
+  const booking = {
+    airline: airline || null,
+    airline_code: inferAirlineCode(airline, flightNumber) || null,
+    flight_number: flightNumber || null,
+    origin: o,
+    destination: d,
+    origin_label: airportLabel(o) || o,
+    destination_label: airportLabel(d) || d,
+    pnr: pnr || bookingId || null,
+    booking_id: bookingId || pnr || null,
+    depart_date: departDate || null,
+    dep_terminal: depTerminal || null,
+    arr_terminal: arrTerminal || null,
+    baggage_cabin: baggageCabin || null,
+    baggage_checked: baggageChecked || null,
+    refundable: typeof refundable === "boolean" ? refundable : null,
+    changeable: typeof changeable === "boolean" ? changeable : null,
+  };
+  return {
+    screen: "booking_success",
+    path: "/flights/booking-success",
+    booking,
+    detail: {
+      id: bookingId || pnr || null,
+      title: [airline, flightNumber].filter(Boolean).join(" ") || "Flight",
+      status: "confirmed",
+      origin: o,
+      destination: d,
+      departDate,
+      legs: [{ type: "flight", ...booking }],
+    },
+    help_hint:
+      "User just paid. Vague follow-ups (PNR, gate, baggage, cancel) mean THIS ticket. Do not start a new search.",
+  };
+}
+
+/** Hotel voucher page — Vero answers confirmation / cancel / amend on THIS stay. */
+export function buildHotelConfirmationPageContext({
+  hotelName = null,
+  location = null,
+  checkIn = null,
+  checkOut = null,
+  bookingId = null,
+  confirmation = null,
+  guestName = null,
+  tripId = null,
+  nights = null,
+  guests = null,
+  hotelId = null,
+} = {}) {
+  const hotelLeg = {
+    type: "hotel",
+    status: "confirmed",
+    hotel_name: hotelName || null,
+    location: location || null,
+    check_in: checkIn || null,
+    check_out: checkOut || null,
+    booking_id: bookingId || null,
+    confirmation: confirmation || bookingId || null,
+    guest_name: guestName || null,
+    nights: nights || null,
+    guests: guests || null,
+    hotel_id: hotelId || null,
+  };
+  return {
+    screen: "booking_success",
+    path: hotelId ? `/hotel/${hotelId}/confirmation` : "/hotels",
+    booking: hotelLeg,
+    detail: {
+      id: tripId || bookingId || null,
+      title: hotelName || "Hotel stay",
+      status: "confirmed",
+      legs: [hotelLeg],
+    },
+    help_hint:
+      "User just paid for THIS hotel. Vague follow-ups (confirmation, cancel, change dates, guest name) mean this stay. Cancel/amend on My Trips. Do not start a new hotel search.",
+  };
+}
+
+/** Package confirmation — Vero stays on this itinerary. */
+export function buildPackageConfirmationPageContext({
+  title = null,
+  bookingId = null,
+  tripId = null,
+  checkIn = null,
+  checkOut = null,
+  hotelName = null,
+  hotelBookingId = null,
+  hotelConfirmation = null,
+  airline = null,
+  flightNumber = null,
+  origin = null,
+  destination = null,
+  pnr = null,
+  guestName = null,
+} = {}) {
+  const o = origin ? String(origin).toUpperCase().slice(0, 3) : null;
+  const d = destination ? String(destination).toUpperCase().slice(0, 3) : null;
+  const legs = [];
+  if (hotelName || hotelBookingId) {
+    legs.push({
+      type: "hotel",
+      status: "confirmed",
+      hotel_name: hotelName || null,
+      check_in: checkIn || null,
+      check_out: checkOut || null,
+      booking_id: hotelBookingId || null,
+      confirmation: hotelConfirmation || hotelBookingId || null,
+    });
+  }
+  if (airline || flightNumber || o) {
+    legs.push({
+      type: "flight",
+      status: "confirmed",
+      airline: airline || null,
+      flight_number: flightNumber || null,
+      origin: o,
+      destination: d,
+      origin_label: airportLabel(o) || o,
+      destination_label: airportLabel(d) || d,
+      pnr: pnr || null,
+      booking_id: pnr || null,
+    });
+  }
+  legs.push({
+    type: "package",
+    status: "confirmed",
+    title: title || null,
+    booking_id: bookingId || null,
+    guest_name: guestName || null,
+  });
+  return {
+    screen: "booking_success",
+    path: bookingId ? `/packages/confirmation/${bookingId}` : "/packages",
+    detail: {
+      id: tripId || bookingId || null,
+      title: title || "Package",
+      status: "confirmed",
+      legs,
+    },
+    help_hint:
+      "User just paid for THIS package. Vague follow-ups mean this itinerary. Cancel from My Trips. Do not start a new package search.",
+  };
+}
+
 export function buildExplorePageContext({
   origin = null,
   monthKey = "",
@@ -413,8 +576,8 @@ export function buildTripsPageContext({ trips = [], filter = "all", detail = nul
       sample_trips: samples,
     },
     help_hint: detail
-      ? `User is viewing trip ${detail.title} (${detail.status}). Vague follow-ups (terminal, gate, PNR, baggage, check-in, allowance) mean THIS booking. ${terminalHint} If baggage_cabin/checked on the ticket are 0 or missing, say LiteAPI/Nuitee often stores 0/0 and quote published carrier kg as secondary - never claim published kg is "on your ticket". Do not invent PNR/gates. If they want to cancel: you cannot cancel yourself - tell them to tap Cancel with supplier on this trip page, emit \`\`\`itinero-action {"type":"open_trips","tripId":"${detail.id}"}\`\`\`.`
-      : "User is on Trips. Bookings auto-save here when they start flight/hotel/package checkout. Help them resume drafts or review confirmations. Cancel flight/hotel: open the trip and tell them to tap Cancel with supplier - never claim you cancelled.",
+      ? `User is viewing trip ${detail.title} (${detail.status}). Vague follow-ups (terminal, gate, PNR, baggage, check-in, allowance) mean THIS booking. ${terminalHint} If baggage_cabin/checked on the ticket are 0 or missing, say the ticket snapshot often stores 0/0 and quote published carrier kg as secondary - never claim published kg is "on your ticket". Do not invent PNR/gates. Never name inventory suppliers or APIs. If they want to cancel: you cannot cancel yourself - tell them to tap Cancel booking on this trip page, emit \`\`\`itinero-action {"type":"open_trips","tripId":"${detail.id}"}\`\`\`.`
+      : "User is on Trips. Bookings auto-save here when they start flight/hotel/package checkout. Help them resume drafts or review confirmations. Cancel flight/hotel: open the trip and tell them to tap Cancel booking - never claim you cancelled.",
   };
 }
 
@@ -850,6 +1013,46 @@ export function welcomeFromPageContext(pageContext) {
     };
   }
 
+  if (pageContext.screen === "booking_success") {
+    const hotel = (pageContext.detail?.legs || []).find((l) => l?.type === "hotel");
+    const flight = (pageContext.detail?.legs || []).find((l) => l?.type === "flight") || pageContext.booking;
+    const pkg = (pageContext.detail?.legs || []).find((l) => l?.type === "package");
+    if (hotel && !flight?.airline && !flight?.flight_number) {
+      const name = hotel.hotel_name || pageContext.detail?.title || "this stay";
+      const ref = hotel.confirmation || hotel.booking_id;
+      return {
+        title: "Stay confirmed",
+        subtitle: name,
+        desc: "Confirmation, cancel, and date/name changes for this hotel — not a new search.",
+        botText: ref
+          ? `You're on the voucher for **${name}**. Confirmation **${ref}**. Ask cancel, dates, or guest name — I'll stay on this booking.`
+          : `You're on the voucher for **${name}**. Ask confirmation, cancel, or date change — I won't start a new hotel search.`,
+      };
+    }
+    if (pkg && !flight?.airline && !hotel?.hotel_name) {
+      const name = pkg.title || pageContext.detail?.title || "this package";
+      return {
+        title: "Package confirmed",
+        subtitle: name,
+        desc: "This itinerary is paid. Ask cancel or what's next — not a new package search.",
+        botText: `You're on the confirmation for **${name}**. Ask cancel, the stay, or the flight on this trip.`,
+      };
+    }
+    const label =
+      [flight?.airline, flight?.flight_number].filter(Boolean).join(" ") ||
+      pageContext.detail?.title ||
+      "this ticket";
+    const ref = flight?.pnr || flight?.booking_id;
+    return {
+      title: "Booking confirmed",
+      subtitle: label,
+      desc: "PNR, gate, bags, or cancel on this ticket — not a new search.",
+      botText: ref
+        ? `You're on the confirmation for **${label}**. PNR **${ref}**. Ask gate, bags, or cancel — I won't switch flights.`
+        : `You're on the confirmation for **${label}**. Ask PNR, gate, bags, or cancel on this ticket.`,
+    };
+  }
+
   if (pageContext.screen === "flights") {
     return {
       title: "Flights",
@@ -1119,6 +1322,17 @@ export function starterChipsFromPageContext(pageContext) {
       "2-week honeymoon packages",
       "Weekend escapes in India",
     ];
+  }
+  if (pageContext?.screen === "booking_success") {
+    const hotel = (pageContext.detail?.legs || []).find((l) => l?.type === "hotel");
+    const flight = (pageContext.detail?.legs || []).find((l) => l?.type === "flight") || pageContext.booking;
+    if (hotel && !(flight?.airline || flight?.flight_number)) {
+      return ["What's my confirmation?", "Can I change dates?", "Cancel this stay", "Open My Trips"];
+    }
+    if ((pageContext.detail?.legs || []).some((l) => l?.type === "package")) {
+      return ["What's included?", "Cancel this package", "Open My Trips", "Plan the next day"];
+    }
+    return ["What's my PNR?", "Which terminal?", "Can I cancel?", "Open My Trips"];
   }
   if (pageContext?.screen === "trips" && pageContext.detail) {
     return [

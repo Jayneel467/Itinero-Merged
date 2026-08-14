@@ -82,6 +82,9 @@ export function replyFromNavAction(action, pageContext) {
   if (action.type === "open_profile") {
     return "Opened **Account** on the left - travellers, preferences, and trips live there.";
   }
+  if (action.type === "open_plus") {
+    return "Opened **Vero credits** - pick a pack when you want more.";
+  }
   return null;
 }
 
@@ -113,7 +116,7 @@ const OUT_OF_PAGE_RE =
   /\b(weather|visa|passport|restaurant|food|eat|cuisine|itinerary|plan a trip|honeymoon|eliminate|constraint|package|capital|timezone|time zone|language|currency of|who is)\b/i;
 
 const BOOKING_OPS_RE =
-  /\b(baggage|bags?|luggage|check[- ]?in bag|cabin bag|hand ?bag|allowance|terminal|gate|pnr|booking (id|ref|reference)|boarding|cancel(?:l?able|ation)?|refund(?:able)?|changeable|non[- ]?refundable|non[- ]?changeable)\b|સામાન|बैगेज|सामान|टर्मिनल|पीएनआर/i;
+  /\b(baggage|bags?|luggage|check[- ]?in bag|cabin bag|hand ?bag|allowance|terminal|gate|pnr|booking (id|ref|reference)|confirmation|boarding|cancel(?:l?able|ation)?|refund(?:able)?|changeable|non[- ]?refundable|non[- ]?changeable|amend|change dates?|guest name)\b|સામાન|बैगेज|सामान|टर्मिनल|पीएनआर/i;
 
 const BLINDFOLD_RE =
   /without using|don'?t use (the )?(internet|api|maps|booking)|no (internet|api|tools|booking data)/i;
@@ -188,6 +191,25 @@ export function isOutOfPageQuestion(text) {
   return OUT_OF_PAGE_RE.test(t);
 }
 
+function firstHotelLeg(pageContext) {
+  const fromLegs = (pageContext?.detail?.legs || []).find((l) => l?.type === "hotel");
+  if (fromLegs) return fromLegs;
+  const b = pageContext?.booking;
+  if (b?.type === "hotel" || b?.hotel_name) {
+    return {
+      type: "hotel",
+      hotel_name: b.hotel_name,
+      location: b.location,
+      check_in: b.check_in,
+      check_out: b.check_out,
+      booking_id: b.booking_id,
+      confirmation: b.confirmation || b.booking_id,
+      guest_name: b.guest_name,
+    };
+  }
+  return null;
+}
+
 function firstFlightLeg(pageContext) {
   const legs = pageContext?.detail?.legs || [];
   const tripLeg = legs.find((l) => l?.type === "flight");
@@ -222,6 +244,31 @@ function answerBookingOps(text, pageContext) {
   const screen = pageContext?.screen;
   if (screen !== "trips" && screen !== "passenger_info" && screen !== "booking_success") return null;
   const flight = firstFlightLeg(pageContext);
+  const hotel = firstHotelLeg(pageContext);
+  if (!flight && hotel) {
+    const tripId = pageContext?.detail?.id;
+    const ref = hotel.confirmation || hotel.booking_id;
+    if (/\b(pnr|booking (id|ref|reference)|confirmation|ticket (number|no))\b/i.test(t)) {
+      return {
+        reply: ref
+          ? `Your **${hotel.hotel_name || "hotel"}** confirmation is **${ref}**. Show that at the front desk.`
+          : `No hotel confirmation is stored on this trip yet. Refresh the stay on the left after the booking confirms.`,
+      };
+    }
+    if (/\b(cancel|refund|change date|change name|amend|modify)\b/i.test(t)) {
+      return {
+        reply: [
+          `**${hotel.hotel_name || "This stay"}**${hotel.check_in ? ` (${hotel.check_in} → ${hotel.check_out || "?"})` : ""}:`,
+          "I can’t cancel or amend for you in chat.",
+          "On **My Trips** tap **Cancel** or **Change dates / name** — Rewards reverse on cancel.",
+        ].join("\n"),
+        action: tripId ? { type: "open_trips", tripId } : undefined,
+      };
+    }
+    return {
+      reply: `You're on **${hotel.hotel_name || "this stay"}**${ref ? ` · confirmation **${ref}**` : ""}. Ask cancel, dates, or guest name — I'll keep you on this booking, not a new search.`,
+    };
+  }
   if (!flight) return null;
 
   if (/\b(pnr|booking (id|ref|reference)|ticket (number|no))\b/i.test(t)) {
@@ -289,11 +336,11 @@ function answerBookingOps(text, pageContext) {
       lines.push(
         refundable
           ? "**Refund** - this fare is marked **refundable** on your snapshot (fees may still apply)."
-          : "**Refund** - this fare is marked **non-refundable** on your snapshot (LiteAPI / Nuitee)."
+          : "**Refund** - this fare is marked **non-refundable** on your snapshot."
       );
     } else {
       lines.push(
-        "**Refund** - not stored on this trip snapshot. Many IndiGo LiteAPI fares show **non-refundable** in the Nuitee portal - confirm there or in the airline app."
+        "**Refund** - not stored on this trip snapshot. Many IndiGo fares show **non-refundable** - confirm in the airline app."
       );
     }
 
@@ -305,13 +352,13 @@ function answerBookingOps(text, pageContext) {
       );
     } else {
       lines.push(
-        "**Changes** - not stored here; Nuitee often shows **non-changeable** for this product."
+        "**Changes** - not stored here; this product is often **non-changeable**."
       );
     }
 
     lines.push(
       "",
-      "I **cannot cancel for you**. On this trip page tap **Cancel with supplier** if you want to try - then check Stripe / airline confirmation."
+      "I **cannot cancel for you**. On this trip page tap **Cancel booking** if you want to try - then check the airline confirmation."
     );
 
     return {
@@ -573,13 +620,33 @@ export function formatLeftPageBrief(pageContext) {
     if (p.cheapest) bits.push(`cheapest ${p.cheapest.name} ${p.cheapest.price_per_night}`);
     return `${bits.join(" | ")}. Do not re-ask city/dates.`;
   }
-  if (pageContext.screen === "trips" && pageContext.detail) {
-    const d = pageContext.detail;
-    const f = (d.legs || []).find((l) => l?.type === "flight");
+  if (
+    (pageContext.screen === "trips" || pageContext.screen === "booking_success") &&
+    (pageContext.detail || pageContext.booking)
+  ) {
+    const d = pageContext.detail || {};
+    const hotel =
+      (d.legs || []).find((l) => l?.type === "hotel") ||
+      (pageContext.booking?.type === "hotel" || pageContext.booking?.hotel_name
+        ? pageContext.booking
+        : null);
+    const f =
+      (d.legs || []).find((l) => l?.type === "flight") ||
+      (pageContext.booking?.airline || pageContext.booking?.flight_number
+        ? pageContext.booking
+        : null);
+    const pkg = (d.legs || []).find((l) => l?.type === "package");
+    if (hotel && !f) {
+      const ref = hotel.confirmation || hotel.booking_id || "?";
+      return `[LEFT PAGE] Hotel ${hotel.hotel_name || d.title || "this stay"} (${d.status || "confirmed"}) ${hotel.check_in || "?"}→${hotel.check_out || "?"} confirmation=${ref}. Vague follow-ups (confirmation/cancel/amend) mean THIS stay. Cancel/amend on My Trips.`;
+    }
+    if (pkg && !f && !hotel) {
+      return `[LEFT PAGE] Package ${pkg.title || d.title || "this package"} (${d.status || "confirmed"}) booking=${pkg.booking_id || d.id || "?"}. Vague follow-ups mean THIS itinerary. Cancel on My Trips.`;
+    }
     const bag = f
-      ? ` Airline ${f.airline || ""} ${f.flight_number || ""} baggage_cabin=${f.baggage_cabin || "?"} baggage_checked=${f.baggage_checked || "?"}.`
+      ? ` Airline ${f.airline || ""} ${f.flight_number || ""} PNR=${f.pnr || f.booking_id || "?"} baggage_cabin=${f.baggage_cabin || "?"} baggage_checked=${f.baggage_checked || "?"}.`
       : "";
-    return `[LEFT PAGE] Trip ${d.title} (${d.status}) ${d.origin || ""}→${d.destination || ""}.${bag} Vague follow-ups (baggage/PNR/terminal) mean THIS booking. Quote kg - do not send them to the airline website.`;
+    return `[LEFT PAGE] Trip ${d.title || "this booking"} (${d.status || "confirmed"}) ${d.origin || f?.origin || ""}→${d.destination || f?.destination || ""}.${bag} Vague follow-ups (baggage/PNR/terminal) mean THIS booking. Quote kg - do not send them to the airline website.`;
   }
   if (pageContext.screen === "package_detail" && pageContext.package) {
     return `[LEFT PAGE] Package instance ${pageContext.package.title}. Same trip - preview then apply. Do not restart.`;

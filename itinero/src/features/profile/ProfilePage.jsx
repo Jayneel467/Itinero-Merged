@@ -34,7 +34,7 @@ import { useVeroUiOptional } from "@/context/VeroUiContext";
 import { isTrainsMarket } from "@/constants/regionalFeatures";
 import { useAuthOptional } from "@/features/auth/context/AuthContext";
 import { readLocalUser } from "@/features/auth/session";
-import { listSaved } from "@/features/account/savedService";
+import { listSaved, onSavedChange } from "@/features/account/savedService";
 import ProfileInterests from "@/features/profile/ProfileInterests";
 import {
   MAX_TRAVELLERS,
@@ -42,6 +42,7 @@ import {
 } from "@/features/booking/utils/savedTravellers";
 import { useTripsOptional } from "@/features/trips";
 import { loadAccountPrefs, saveAccountPrefs } from "./accountPrefs";
+import { hydrateAccountFromServer, persistAccountToServer } from "./accountSync";
 import TravellersSection from "./TravellersSection";
 import "./ProfilePage.css";
 
@@ -116,6 +117,20 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => {
+    if (!auth?.isAuthenticated) return undefined;
+    let cancelled = false;
+    hydrateAccountFromServer().then(() => {
+      if (cancelled) return;
+      setPrefs(loadAccountPrefs());
+      setPaxTick((n) => n + 1);
+      setSavedTick((n) => n + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.isAuthenticated]);
+
+  useEffect(() => {
     veroUi?.setPageContext?.({
       screen: "profile",
       profile: {
@@ -134,7 +149,11 @@ export default function ProfilePage() {
       tripsCtx?.refresh?.();
     };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    const stopSaved = onSavedChange(() => setSavedTick((n) => n + 1));
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      stopSaved();
+    };
   }, [tripsCtx]);
 
   const display = useMemo(() => {
@@ -257,7 +276,8 @@ export default function ProfilePage() {
     });
     setPrefs(next);
     setEditingPrefs(false);
-    setSaveMsg("Travel preferences saved on this device.");
+    setSaveMsg(auth?.isAuthenticated ? "Travel preferences saved to your account." : "Travel preferences saved on this device.");
+    persistAccountToServer({ prefs: next });
   };
 
   const products = [
@@ -287,6 +307,7 @@ export default function ProfilePage() {
 
   const hubLinks = [
     { to: "/trips", title: "My trips", copy: "Bookings, tickets, cancel & refunds", Icon: Briefcase, tone: "toneOrange" },
+    { to: "/plus", title: "Vero credits", copy: "Free daily · buy packs anytime", Icon: Sparkles, tone: "toneOrange" },
     { to: "/rewards", title: "Itinero Rewards", copy: "Points balance, earn & redeem", Icon: Sparkles, tone: "toneOrange" },
     { to: "/saved", title: "Saved", copy: "Ideas you want to come back to", Icon: Bookmark, tone: "toneNavy" },
     { to: "/notifications", title: "Alerts", copy: "Price drops and trip reminders", Icon: Bell, tone: "toneSky" },
@@ -358,9 +379,11 @@ export default function ProfilePage() {
 
         {!display.signedIn ? (
           <p className="guestNote">
-            Sign in to sync profile details. Trips and travellers on this device stay available either way.
+            Sign in to sync travellers and preferences across devices. Trips on this browser stay available either way.
           </p>
-        ) : null}
+        ) : (
+          <p className="guestNote">Travellers and travel preferences sync to your signed-in account.</p>
+        )}
 
         <nav className="jumpNav" aria-label="Account sections">
           {[

@@ -77,20 +77,20 @@ function confirmQuote({ kind, quote, paidAmount, paymentProvider, paymentId }) {
     kind === "package"
       ? "Cancel this package (stay + flights)?"
       : kind === "hotel"
-        ? "Cancel this stay with the supplier?"
-        : "Cancel this flight with the supplier?",
+        ? "Cancel this stay?"
+        : "Cancel this flight?",
     "",
   ];
   if (quote?.pending) {
     lines.push(quote.message || "A cancellation is already in progress with the airline.");
     lines.push("Connect stays CONFIRMED until they finalize - refund follows automatically.");
   } else if (quote?.ok && kind === "flight") {
-    lines.push("LiteAPI cancel quote (estimate until cancel completes):");
+    lines.push("Cancel quote (estimate until cancel completes):");
     lines.push(`• Estimated max refund: ${refund || "not stated"}`);
     lines.push(`• Cancellation fee / penalty: ${fee || "₹0 / not stated"}`);
     if (quote.is_voidable === true) lines.push("• Within void window");
-    if (quote.is_refundable === true) lines.push("• Supplier flags refundable");
-    if (quote.is_refundable === false) lines.push("• Supplier flags non-refundable");
+    if (quote.is_refundable === true) lines.push("• Marked refundable");
+    if (quote.is_refundable === false) lines.push("• Marked non-refundable");
     if (quote.confidence) lines.push(`• Quote confidence: ${quote.confidence}`);
     if (dest === "voucher") lines.push("• Refund type: airline voucher (not cash)");
     else lines.push(`• Refund destination: ${dest.replace(/_/g, " ")}`);
@@ -98,7 +98,7 @@ function confirmQuote({ kind, quote, paidAmount, paymentProvider, paymentId }) {
     lines.push(quote?.message || "Could not load a live refund quote. Cancel anyway?");
     } else if (kind === "package") {
     lines.push(
-      "We cancel stay/flights with the supplier first. Your card is refunded only after " +
+      "We cancel the stay and flights first. Your card is refunded only after " +
         "hotel/flight money is confirmed back (plus Itinero package fee) — never the full total up front."
     );
   } else {
@@ -111,14 +111,14 @@ function confirmQuote({ kind, quote, paidAmount, paymentProvider, paymentId }) {
   } else if (rail === "itinero_stripe") {
     lines.push(
       kind === "package"
-        ? "Itinero holds the card refund until supplier hotel/flight funds settle. Tap Cancel again later if refund is still waiting."
+        ? "Itinero holds the card refund until hotel/flight funds settle. Tap Cancel again later if refund is still waiting."
         : "Your card was charged on Itinero (Stripe). After cancel, we refund that charge to the original card."
     );
   } else if (rail === "legacy_unsupported") {
     lines.push("Legacy payment cannot be auto-refunded here — contact support after cancel.");
   } else {
     lines.push(
-      "LiteAPI credits any refund to your original card / wallet automatically when cancel finalizes."
+      "Any refund is credited to your original card when cancel finalizes."
     );
   }
   if (kind !== "package") {

@@ -1,5 +1,6 @@
 import api from "@/services/api";
 import { ENDPOINTS } from "@/services/endpoints";
+import { scrubProviderCopy } from "@/utils/scrubProviderCopy";
 
 /** Booking select/prebook/complete - longer than search calendar, still hard-capped. */
 const BOOKING_TIMEOUT_MS = 55_000;
@@ -8,7 +9,9 @@ function friendlyBookingError(error, fallback) {
   const raw = String(error?.message || error || "").trim();
   if (!raw) return fallback;
   // Strip noisy exception class prefixes from supervisor (`LiteAPIError: …`).
-  const cleaned = raw.replace(/^(LiteAPIError|ValidationError|FlightAgentError):\s*/i, "");
+  const cleaned = scrubProviderCopy(
+    raw.replace(/^(LiteAPIError|ValidationError|FlightAgentError):\s*/i, "")
+  );
   if (/unable to process prebook/i.test(cleaned)) {
     return (
       "Booking hold failed. Check passenger details (name, DOB, ID) match the ticket, " +

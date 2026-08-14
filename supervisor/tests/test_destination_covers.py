@@ -33,6 +33,39 @@ def test_fill_keeps_existing_cover():
     assert out["coverImage"] == existing
 
 
+def test_cover_does_not_confuse_romantic_or_leisure():
+    from supervisor.destination_covers import cover_for_city, cover_for_package, fill_package_cover
+
+    udaipur = cover_for_city("Udaipur")
+    rome = cover_for_city("Rome")
+    leh = cover_for_city("Leh")
+    goa = cover_for_city("Goa")
+    bali = cover_for_city("Bali")
+    mumbai = cover_for_city("Mumbai")
+
+    assert udaipur
+    assert rome and rome != udaipur
+    assert cover_for_city("Romantic Udaipur lakeside") == udaipur
+    assert cover_for_city("Romantic getaway") == ""
+    assert cover_for_city("Leisure Himalayan trek") == ""
+    assert cover_for_city("Leh monastery circuit") == leh
+
+    assert (
+        cover_for_package(
+            {
+                "destinations": ["Bali"],
+                "flight": {"gatewayCity": "Mumbai"},
+                "title": "Romantic Bali honeymoon",
+            }
+        )
+        == bali
+    )
+    assert cover_for_package({"flight": {"gatewayCity": "Mumbai"}, "title": "City break"}) != mumbai
+
+    wrong = fill_package_cover({"destinations": ["Udaipur"], "coverImage": goa})
+    assert wrong["coverImage"] == udaipur
+
+
 def test_list_packages_fills_empty_covers():
     from supervisor.packages_structured import list_packages
 
@@ -42,3 +75,36 @@ def test_list_packages_fills_empty_covers():
         pkg = by_slug.get(slug)
         assert pkg, slug
         assert str(pkg.get("coverImage") or "").startswith("http"), slug
+
+
+def test_live_catalog_stock_covers_match_destination():
+    """Launch gate: never serve Goa beach on an Udaipur card (wrong-city stock)."""
+    from supervisor.destination_covers import (
+        _KNOWN_PHOTO_IDS,
+        _photo_id,
+        cover_for_package,
+        fill_package_cover,
+    )
+    from supervisor.packages_structured import list_packages
+
+    bad = []
+    for pkg in list_packages().get("packages") or []:
+        filled = fill_package_cover(dict(pkg))
+        wanted = cover_for_package(filled)
+        got = str(filled.get("coverImage") or "")
+        if not wanted or not got:
+            continue
+        got_id = _photo_id(got)
+        if not got_id or got_id not in _KNOWN_PHOTO_IDS:
+            continue
+        if got_id != _photo_id(wanted):
+            bad.append(
+                {
+                    "slug": pkg.get("slug") or pkg.get("id"),
+                    "title": pkg.get("title"),
+                    "destinations": pkg.get("destinations"),
+                    "got": got_id,
+                    "wanted": _photo_id(wanted),
+                }
+            )
+    assert not bad, bad[:12]

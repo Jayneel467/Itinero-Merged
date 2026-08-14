@@ -48,10 +48,15 @@ Entry: `general_agent/agent.py`
 | Var | Default | Role |
 |-----|---------|------|
 | `VERO_LLM_ROUTER` | `1` | LLM capability classify |
-| `VERO_LLM_COMBO` | `1` | OpenAI tools + DeepSeek plan/synth |
-| `VERO_RECURSION_LIMIT` | `28` | LangGraph step budget |
-| `VERO_PROMPT_VERSION` | `2026.08.13.1` | Prompt pin |
-| `VERO_AGENT_BUILD` | `2026.08.13.prod1` | Build pin |
+| `VERO_LLM_COMBO` | `1` | OpenAI tools + DeepSeek chat/plan/synth |
+| `VERO_DAILY_BUDGET_USD` | `80` | CFO ceiling; conserve/protect degrade, never paywall |
+| `VERO_OPENAI_TURNS_PER_DEVICE_DAY` | `12` | Fair-use OpenAI tools / device |
+| `VERO_FREE_DAILY_CREDITS` | `40` | Claude-style Free daily pool |
+| `VERO_PLUS_DAILY_CREDITS` | `200` | Plus daily pool (same models) |
+| `VERO_RECURSION_LIMIT` | `28` | LangGraph step budget (shrinks in protect) |
+| `VERO_LLM_TIMEOUT_S` | `45` | OpenAI / DeepSeek HTTP timeout |
+| `VERO_PROMPT_VERSION` | `2026.08.13.2` | Prompt pin |
+| `VERO_AGENT_BUILD` | `2026.08.13.cost2` | Build pin |
 | `SENTRY_DSN` | — | Required in prod readiness |
 
 ## Definition of done (AI PR)

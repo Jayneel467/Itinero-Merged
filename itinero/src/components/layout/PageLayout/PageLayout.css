@@ -36,19 +36,28 @@
   }
 }
 
-/* Vero Chatbot Layout Shift */
-.vero-layout-wrapper {
-  transition: padding-right 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    margin-right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  width: 100%;
+/* Vero dock: shrink the visible page so left content reflows.
+   Never use padding-right (that overflows / clips chrome). */
+:root {
+  --vero-drawer-w: 0px;
 }
 
-.vero-is-open {
-  padding-right: min(400px, 36vw);
-}
-
-@media (max-width: 1024px) {
-  .vero-is-open {
-    padding-right: 0;
+@media (min-width: 900px) {
+  html[data-vero-open] {
+    --vero-drawer-w: min(400px, 38vw);
   }
+}
+
+.vero-layout-wrapper {
+  width: calc(100% - var(--vero-drawer-w, 0px));
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-vero-open] .navbar {
+  width: calc(100% - var(--vero-drawer-w, 0px));
+  max-width: 100%;
+  box-sizing: border-box;
 }

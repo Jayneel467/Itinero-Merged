@@ -1,16 +1,33 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
-import { FLIGHT_DEALS } from "@/constants/destinations";
-import DealCard from "@/features/home/components/DealCard";
+import { useCurrency } from "@/context/CurrencyContext";
+import { useHomeLocationOptional } from "@/context/HomeLocationContext";
+import useLiveRoutePrices, {
+  routeKey,
+  sampleNearTermDates,
+} from "@/features/flights/hooks/useLiveRoutePrices";
 import { interestService, trackInterestEvent } from "@/services/interestTracker";
 import "./DealsPage.css";
 
+const FALLBACK_ROUTES = [
+  { from: "AMD", city: "Ahmedabad", to: "DXB", destination: "Dubai" },
+  { from: "BOM", city: "Mumbai", to: "DEL", destination: "New Delhi" },
+  { from: "DEL", city: "Delhi", to: "BLR", destination: "Bengaluru" },
+  { from: "BOM", city: "Mumbai", to: "DXB", destination: "Dubai" },
+  { from: "BLR", city: "Bengaluru", to: "DEL", destination: "New Delhi" },
+  { from: "BOM", city: "Mumbai", to: "LHR", destination: "London" },
+  { from: "DEL", city: "Delhi", to: "BKK", destination: "Bangkok" },
+  { from: "BOM", city: "Mumbai", to: "SIN", destination: "Singapore" },
+];
+
 /**
- * Deals page - marketing offers + flight deal cards.
+ * Live near-term fares + promo codes. Never invents a price.
  */
 export default function DealsPage() {
   const navigate = useNavigate();
+  const { formatMoney } = useCurrency();
+  const home = useHomeLocationOptional();
   const [category, setCategory] = useState("all");
   const [offers, setOffers] = useState([]);
 
@@ -21,46 +38,94 @@ export default function DealsPage() {
       .catch(() => setOffers([]));
   }, []);
 
-  const deals = useMemo(() => {
-    const unique = [];
-    const seen = new Set();
-    for (const deal of FLIGHT_DEALS) {
-      if (seen.has(deal.id.replace(/-2$/, ""))) continue;
-      seen.add(deal.id.replace(/-2$/, ""));
-      unique.push(deal);
-    }
-    if (category === "all") return unique;
-    return unique.filter((d) => d.destination.toLowerCase().includes(category));
-  }, [category]);
+  const homeFrom = (home?.airportCode || "").toUpperCase();
+  const routes = useMemo(() => {
+    if (!homeFrom) return FALLBACK_ROUTES;
+    const dests = [
+      { to: "DXB", destination: "Dubai" },
+      { to: "DEL", destination: "New Delhi" },
+      { to: "BOM", destination: "Mumbai" },
+      { to: "BLR", destination: "Bengaluru" },
+      { to: "LHR", destination: "London" },
+      { to: "BKK", destination: "Bangkok" },
+      { to: "SIN", destination: "Singapore" },
+    ].filter((x) => x.to !== homeFrom);
+    return dests.map((d, i) => ({
+      from: homeFrom,
+      city: home?.city || homeFrom,
+      to: d.to,
+      destination: d.destination,
+      id: `${homeFrom}-${d.to}-${i}`,
+    }));
+  }, [homeFrom, home?.city]);
+
+  const { byKey, loading } = useLiveRoutePrices({
+    routes: routes.map((d) => ({ from: d.from, to: d.to })),
+    enabled: true,
+  });
+
+  const chips = useMemo(() => {
+    const names = ["all", ...new Set(routes.map((r) => r.destination.toLowerCase()))];
+    return names;
+  }, [routes]);
+
+  const visible = useMemo(() => {
+    if (category === "all") return routes;
+    return routes.filter((d) => d.destination.toLowerCase() === category);
+  }, [routes, category]);
+
+  const openLiveSearch = (deal) => {
+    const key = routeKey(deal.from, deal.to);
+    const fare = byKey[key];
+    const depart =
+      fare?.bestDate ||
+      sampleNearTermDates(1)[0] ||
+      (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 21);
+        return d.toISOString().slice(0, 10);
+      })();
+    trackInterestEvent("deal_click", {
+      city: deal.destination,
+      from: deal.from,
+      to: deal.to,
+    });
+    const params = new URLSearchParams({
+      from: deal.from,
+      to: deal.to,
+      fromCity: deal.city,
+      toCity: deal.destination,
+      depart,
+      adults: "1",
+      children: "0",
+      infants: "0",
+      cabin: "Economy",
+      trip: "One way",
+    });
+    navigate(`/flights?${params.toString()}`);
+  };
 
   return (
     <PageLayout>
       <section className="deals-page">
         <div className="deals-page__header">
-          <h1>Travel Deals & Offers</h1>
-          <p>Promo codes for packages plus limited-time fare ideas.</p>
+          <h1>Travel ideas</h1>
+          <p>
+            Live from-fares on popular routes. Promo codes (if any) sit first. Search to lock a real ticket —
+            we never invent a price here.
+          </p>
           {offers.length ? (
-            <div className="deals-page__offers" style={{ display: "grid", gap: 12, margin: "16px 0 8px" }}>
+            <div className="deals-page__offers">
               {offers.slice(0, 4).map((o) => (
-                <div
-                  key={o.id}
-                  style={{
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 16,
-                    padding: 16,
-                    background: "#fff8f3",
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#f97316", letterSpacing: "0.08em" }}>
-                    OFFER
-                  </p>
-                  <h3 style={{ margin: "6px 0", color: "#001439" }}>{o.title}</h3>
-                  <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>{o.copy}</p>
-                  <p style={{ margin: "10px 0 0", fontWeight: 800, letterSpacing: "0.06em" }}>{o.code}</p>
+                <div key={o.id} className="deals-page__offer">
+                  <p className="deals-page__offerKicker">OFFER</p>
+                  <h3>{o.title}</h3>
+                  <p>{o.copy}</p>
+                  {o.code ? <p className="deals-page__offerCode">{o.code}</p> : null}
                   <Link
                     to="/packages"
                     onClick={() => trackInterestEvent("deal_click", { code: o.code })}
-                    style={{ display: "inline-block", marginTop: 10, fontWeight: 700, color: "#f97316" }}
+                    className="deals-page__offerLink"
                   >
                     Browse packages →
                   </Link>
@@ -69,49 +134,57 @@ export default function DealsPage() {
             </div>
           ) : null}
           <div className="deals-page__filters">
-            {["all", "dubai", "singapore", "bangkok", "kool"].map((key) => (
+            {chips.map((key) => (
               <button
                 key={key}
                 type="button"
                 className={`deals-page__chip ${category === key ? "is-active" : ""}`}
                 onClick={() => setCategory(key)}
               >
-                {key === "all"
-                  ? "All deals"
-                  : key === "kool"
-                    ? "Kuala Lumpur"
-                    : key[0].toUpperCase() + key.slice(1)}
+                {key === "all" ? "All routes" : key[0].toUpperCase() + key.slice(1)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="deals-page__grid">
-          {deals.map((deal) => (
-            <div key={deal.id} className="deals-page__card-wrap">
-              <DealCard {...deal} />
-              <button
-                type="button"
-                className="deals-page__book"
-                onClick={() => {
-                  trackInterestEvent("deal_click", {
-                    city: deal.destination,
-                    from: deal.fromCode,
-                    to: deal.toCode,
-                  });
-                  navigate(`/flights?from=${deal.fromCode}&to=${deal.toCode}`);
-                }}
-              >
-                Book this deal
-              </button>
-            </div>
-          ))}
+          {visible.map((deal) => {
+            const key = routeKey(deal.from, deal.to);
+            const fare = byKey[key];
+            const isLoading = Boolean(loading[key]) || fare === undefined;
+            const min = fare?.minPrice;
+            const hasPrice = typeof min === "number" && min > 0;
+            return (
+              <article key={deal.id || key} className="deals-page__liveCard">
+                <p className="deals-page__liveFrom">{deal.city}</p>
+                <p className="deals-page__liveRoute">
+                  {deal.from} → {deal.to}
+                </p>
+                <p className="deals-page__liveDest">{deal.destination}</p>
+                <p className="deals-page__livePrice">
+                  {isLoading
+                    ? "Checking fares…"
+                    : hasPrice
+                      ? `From ${formatMoney(Math.round(min))}`
+                      : "Search live fares"}
+                </p>
+                <p className="deals-page__liveHint">
+                  {isLoading
+                    ? "Pulling near-term calendar"
+                    : hasPrice
+                      ? "Lowest near-term fare found"
+                      : "Open search for today’s price"}
+                </p>
+                <button type="button" className="deals-page__book" onClick={() => openLiveSearch(deal)}>
+                  Search this route
+                </button>
+              </article>
+            );
+          })}
         </div>
 
-        {deals.length === 0 && (
-          <p className="deals-page__empty">
-            No flight deals in this category — try Hiking or Beach on Explore, or another filter.
-          </p>
+        {visible.length === 0 && (
+          <p className="deals-page__empty">No routes in this filter. Try All routes, or open Flights.</p>
         )}
       </section>
     </PageLayout>

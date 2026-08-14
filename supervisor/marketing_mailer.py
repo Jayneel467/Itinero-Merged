@@ -525,3 +525,71 @@ async def preview_template(template: str, to_email: str, user_id: str | None = N
         template=template,
         user_id=user_id,
     )
+
+
+async def broadcast_to_segment(
+    *,
+    template: str,
+    segment_id: str,
+    limit: int = 25,
+) -> dict[str, Any]:
+    """Ops send of an existing template to a named segment. Caps still apply per user."""
+    allowed = {
+        "signup_spark",
+        "signup_trip_idea",
+        "signup_offer",
+        "daily_digest",
+        "booking_more_like",
+    }
+    tmpl = str(template or "daily_digest").strip()
+    if tmpl not in allowed:
+        return {"ok": False, "error": "unknown_template"}
+    segs = {str(s.get("id")): s for s in store.list_segments()}
+    seg = segs.get(str(segment_id or "").strip())
+    if not seg:
+        return {"ok": False, "error": "unknown_segment"}
+    cap = max(1, min(int(limit or 25), 50))
+    users = store.users_matching_segment(seg.get("rules") or {}, limit=cap)
+    sent = skipped = errors = 0
+    details: list[dict[str, Any]] = []
+    for row in users:
+        uid = str(row.get("user_id") or "")
+        try:
+            if tmpl == "signup_spark":
+                out = await send_signup_spark(uid)
+            elif tmpl == "signup_trip_idea":
+                out = await send_trip_idea(uid)
+            elif tmpl == "signup_offer":
+                out = await send_signup_offer(uid)
+            elif tmpl == "booking_more_like":
+                out = await send_booking_followup(uid, "")
+            else:
+                out = await send_digest_for_user(uid)
+            if out.get("ok") and not out.get("skipped"):
+                sent += 1
+            elif out.get("skipped") or out.get("ok"):
+                skipped += 1
+            else:
+                errors += 1
+            details.append(
+                {
+                    "user_id": uid,
+                    "result": out.get("reason")
+                    or out.get("error")
+                    or ("sent" if out.get("ok") and not out.get("skipped") else "skipped"),
+                }
+            )
+        except Exception as e:
+            errors += 1
+            details.append({"user_id": uid, "result": str(e)[:120]})
+    return {
+        "ok": True,
+        "segment_id": seg["id"],
+        "segment": seg.get("name"),
+        "template": tmpl,
+        "candidates": len(users),
+        "sent": sent,
+        "skipped": skipped,
+        "errors": errors,
+        "results": details[:20],
+    }

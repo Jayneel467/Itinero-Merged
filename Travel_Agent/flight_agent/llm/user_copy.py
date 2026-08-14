@@ -84,6 +84,8 @@ def sanitize_assistant_text(text: str, session: SessionContext | None = None) ->
     for old, new in (
         ("LiteAPI", "our flight system"),
         ("liteapi", "our flight system"),
+        ("Nuitee", "the booking record"),
+        ("Nuitée", "the booking record"),
         ("prebook", "booking hold"),
         ("Prebook", "Booking hold"),
         ("transactionId", "payment reference"),

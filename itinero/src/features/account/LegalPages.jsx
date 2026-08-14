@@ -80,7 +80,18 @@ export function TermsOfUsePage() {
           <p>
             Vero can search, compare, and guide next steps. Answers that depend on live data
             use tools when available. If we don’t have a fact, we say so - don’t treat chat
-            as a boarding pass, visa grant, or legal advice.
+            as a boarding pass, visa grant, or legal advice. <strong>Vero is free</strong> for
+            guests and members — a subscription is not required to use it.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>Vero credits</h2>
+          <p>
+            Everyone gets a free daily Vero credit pool that refreshes at UTC midnight. Extra
+            usage is sold as Vero credit packs (see <Link to="/plus">Vero credits</Link>).
+            Credits never expire. Search and book on Itinero never require credits. Payments
+            are processed by Stripe. You can manage or cancel billing anytime.
           </p>
         </section>
 
@@ -196,10 +207,9 @@ export function PrivacyPolicyPage() {
         <section className={styles.section}>
           <h2>Sharing</h2>
           <p>
-            We share what’s needed with airlines, hotels, payment processors (for example
-            Stripe / LiteAPI Payment SDK where used), and other suppliers to complete
-            a booking or payment. We don’t sell your personal data. We may disclose information
-            if required by law or to protect travellers and the service.
+            We share what’s needed with airlines, hotels, payment processors, and other
+            suppliers to complete a booking or payment. We don’t sell your personal data. We may
+            disclose information if required by law or to protect travellers and the service.
           </p>
         </section>
 
@@ -323,7 +333,7 @@ export function CancellationPolicyPage() {
           <h2>Payment partners</h2>
           <p>
             Refunds of card / UPI captures go back through the original payment method via our
-            payment partners (for example Stripe / LiteAPI rails). Bank posting
+            payment partners. Bank posting
             times are outside {LEGAL.brand}’s control.
           </p>
         </section>

@@ -78,11 +78,16 @@
   background: transparent;
 }
 
+.vero-page__topbar > [data-vero-credits] {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .vero-page__topbar-actions {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .vero-page__icon-btn {
@@ -293,22 +298,27 @@
 
 .vero-page__followup {
   border: 1px solid #ffd4b5;
-  background: #fff;
+  background: #fff4eb;
   color: #c2410c;
-  border-radius: 10px;
+  border-radius: 999px;
   padding: 8px 12px;
   font-size: 12.5px;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.25;
   cursor: pointer;
   min-height: 36px;
   text-align: left;
-  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  isolation: isolate;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .vero-page__followup:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: var(--vero-accent-soft);
+  background: #ffe8d6;
   border-color: #ffc08a;
 }
 
@@ -1651,4 +1661,19 @@
     padding: 6px;
     border-radius: 16px;
   }
+}
+
+html.dark .vero-shell {
+  --vero-ink: var(--text-primary, #e8edf4);
+  --vero-muted: var(--text-secondary, #9aa8b8);
+  --vero-accent-soft: color-mix(in srgb, #f97211 18%, var(--surface-elevated, #121a2b));
+  --vero-line: var(--border-subtle, #243044);
+  --vero-surface: var(--surface-elevated, #121a2b);
+  --vero-bg: var(--surface-page, #0a0f1a);
+  --vero-sidebar: var(--surface-muted, #0e1524);
+  --vero-nav-active: color-mix(in srgb, #f97211 22%, var(--surface-elevated, #121a2b));
+}
+
+html.dark .vero-shell-main {
+  background: var(--surface-page, #0a0f1a);
 }

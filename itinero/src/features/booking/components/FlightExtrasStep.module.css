@@ -6,7 +6,7 @@
 .intro {
   margin: 0;
   font-size: 0.9rem;
-  color: #4b5568;
+  color: var(--text-secondary, #4b5568);
   line-height: 1.45;
 }
 
@@ -32,8 +32,8 @@
 
 .paxTab {
   border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #4b5568;
+  background: var(--surface-elevated, #fff);
+  color: var(--text-secondary, #4b5568);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 0.8rem;
@@ -82,7 +82,7 @@
 
 .chip {
   border: 1px solid #e5e7eb;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border-radius: 8px;
   padding: 4px 10px;
   font-size: 0.75rem;
@@ -128,7 +128,7 @@
   min-height: 44px;
   border: 1px solid #dde3ec;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -178,7 +178,7 @@
   text-align: left;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   padding: 10px 12px;
   cursor: pointer;
   font-size: 0.875rem;
@@ -254,6 +254,6 @@
 
 .ghost {
   border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #4b5568;
+  background: var(--surface-elevated, #fff);
+  color: var(--text-secondary, #4b5568);
 }

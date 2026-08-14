@@ -64,7 +64,7 @@ export default function GuestDetailsForm({ value, onChange }) {
 
       <div className={styles.securityBanner}>
         <ShieldCheck size={18} aria-hidden />
-        <span>Card details stay with Stripe / LiteAPI. We never store your payment card.</span>
+        <span>Card details stay with our payment partner. We never store your payment card.</span>
       </div>
 
       <div className={styles.section}>

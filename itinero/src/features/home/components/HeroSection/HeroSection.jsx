@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Ticket, Train, Waypoints } from "lucide-react";
+import { BedDouble, Package, Plane, Ticket, Train, Waypoints } from "lucide-react";
 import ScrollReveal from "../../../../components/ScrollReveal";
 import SharedFlightSearchBar from "@/components/SharedFlightSearchBar";
 import SharedHotelSearchBar from "@/components/SharedHotelSearchBar/SharedHotelSearchBar";
@@ -9,38 +9,18 @@ import SharedPackageSearchBar from "@/components/SharedPackageSearchBar/SharedPa
 import SharedEventSearchBar from "@/components/SharedEventSearchBar/SharedEventSearchBar";
 import { useHomeLocationOptional } from "@/context/HomeLocationContext";
 import { isTrainsMarket } from "@/constants/regionalFeatures";
+import "./HeroSection.css";
+
+// Saved from the Pixano/Figma export in itinero-web (CDN links expired).
+const HERO_BG = `${import.meta.env.BASE_URL}hero-flights.png`;
 
 const ALL_TABS = [
-  {
-    id: "Flights",
-    iconUrl:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/wwpevqpz_expires_30_days.png",
-  },
-  {
-    id: "Hotels",
-    iconUrl:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/ey7f1g0t_expires_30_days.png",
-  },
-  {
-    id: "Packages",
-    iconUrl:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/d4zzs6iu_expires_30_days.png",
-  },
-  {
-    id: "Events",
-    Icon: Ticket,
-  },
-  {
-    id: "Trains",
-    Icon: Train,
-    badge: "India",
-    indiaOnly: true,
-  },
-  {
-    id: "Transits",
-    Icon: Waypoints,
-    badge: "Beta",
-  },
+  { id: "Flights", Icon: Plane },
+  { id: "Hotels", Icon: BedDouble },
+  { id: "Packages", Icon: Package },
+  { id: "Events", Icon: Ticket },
+  { id: "Trains", Icon: Train, badge: "India", indiaOnly: true },
+  { id: "Transits", Icon: Waypoints, badge: "Beta" },
 ];
 
 export default function HeroSection() {
@@ -70,15 +50,15 @@ export default function HeroSection() {
 
   return (
     <div
-      className="flex flex-col items-start self-stretch bg-cover bg-center pt-[40px] md:pt-[60px] 2xl:pt-[84px] mx-[8px] md:mx-[15px] rounded-[24px] overflow-visible lg:min-h-[calc(100vh-120px)] 2xl:min-h-0"
+      className="hero-section flex flex-col items-start self-stretch bg-cover bg-center pt-[40px] md:pt-[60px] 2xl:pt-[84px] mx-[8px] md:mx-[15px] rounded-[24px] overflow-visible lg:min-h-[calc(100vh-120px)] 2xl:min-h-0"
       style={{
-        backgroundImage:
-          "url(https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/6pn63j0i_expires_30_days.png)",
+        backgroundColor: "#001438",
+        backgroundImage: `linear-gradient(180deg, rgba(0, 20, 56, 0.35) 0%, rgba(0, 20, 56, 0.62) 72%, rgba(0, 20, 56, 0.78) 100%), url(${HERO_BG})`,
       }}
     >
       <ScrollReveal delay={0.1} className="w-full">
         <div className="flex flex-col items-center justify-center self-stretch mb-[20px] md:mb-[30px] 2xl:mb-[45px] text-center w-full px-4 md:px-0">
-          <span className="text-white text-[32px] sm:text-[44px] lg:text-[40px] 2xl:text-[70px] font-bold leading-tight">
+          <span className="hero-section__title text-[32px] sm:text-[44px] lg:text-[40px] 2xl:text-[70px] font-bold leading-tight">
             Discover more <span className="text-orange-500">everywhere</span>
           </span>
         </div>
@@ -95,7 +75,7 @@ export default function HeroSection() {
                   key={tab.id}
                   type="button"
                   onClick={() => handleTabClick(tab.id)}
-                  className="relative flex shrink-0 items-center justify-center text-left py-2 lg:py-2 2xl:py-3 px-3 md:px-4 lg:px-[16px] 2xl:px-[22px] gap-1.5 md:gap-2 lg:gap-[8px] 2xl:gap-[12px] rounded-[80px] border-0 cursor-pointer transition-colors whitespace-nowrap"
+                  className="hero-section__tab relative flex shrink-0 items-center justify-center text-left py-2 lg:py-2 2xl:py-3 px-3 md:px-4 lg:px-[16px] 2xl:px-[22px] gap-1.5 md:gap-2 lg:gap-[8px] 2xl:gap-[12px] rounded-[80px] border-0 cursor-pointer transition-colors whitespace-nowrap"
                 >
                   {isActive && (
                     <motion.div
@@ -105,20 +85,12 @@ export default function HeroSection() {
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
-                  {Icon ? (
-                    <Icon
-                      className="relative z-10 w-6 h-6 md:w-7 md:h-7 lg:w-[22px] lg:h-[22px] 2xl:w-10 2xl:h-10 text-white shrink-0"
-                      strokeWidth={2.1}
-                      aria-hidden
-                    />
-                  ) : (
-                    <img
-                      src={tab.iconUrl}
-                      className="relative z-10 w-6 h-6 md:w-8 md:h-8 lg:w-[24px] lg:h-[24px] 2xl:w-[45px] 2xl:h-11 object-contain shrink-0"
-                      alt=""
-                    />
-                  )}
-                  <span className="relative z-10 text-white text-[13px] md:text-[15px] lg:text-[15px] 2xl:text-[26px] font-semibold">
+                  <Icon
+                    className="relative z-10 w-6 h-6 md:w-7 md:h-7 lg:w-[22px] lg:h-[22px] 2xl:w-10 2xl:h-10 text-white shrink-0"
+                    strokeWidth={2.1}
+                    aria-hidden
+                  />
+                  <span className="relative z-10 text-white text-[13px] md:text-[15px] lg:text-[15px] 2xl:text-[26px] font-semibold drop-shadow-sm">
                     {tab.id}
                   </span>
                   {tab.badge ? (

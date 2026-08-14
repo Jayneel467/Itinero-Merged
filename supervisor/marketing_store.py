@@ -293,12 +293,16 @@ def create_lead(
     if "@" not in mail or "." not in mail.split("@")[-1]:
         return {"ok": False, "error": "invalid_email", "message": "Enter a valid email."}
     lid = "lead_" + _jid()[:18]
+    token = "unsub_" + uuid.uuid4().hex
     with connection() as conn:
         existing = conn.execute(
-            "SELECT id FROM marketing_leads WHERE lower(email) = %s",
+            """
+            SELECT id, unsubscribe_token FROM marketing_leads WHERE lower(email) = %s
+            """,
             (mail,),
         ).fetchone()
         if existing:
+            unsub = existing[1] or token
             conn.execute(
                 """
                 UPDATE marketing_leads SET
@@ -306,7 +310,9 @@ def create_lead(
                   acq_source = COALESCE(%s, acq_source),
                   acq_medium = COALESCE(%s, acq_medium),
                   acq_campaign = COALESCE(%s, acq_campaign),
-                  landing_path = COALESCE(%s, landing_path)
+                  landing_path = COALESCE(%s, landing_path),
+                  unsubscribe_token = COALESCE(unsubscribe_token, %s),
+                  unsubscribed_at = NULL
                 WHERE id = %s
                 """,
                 (
@@ -316,16 +322,23 @@ def create_lead(
                     acq_medium,
                     acq_campaign,
                     landing_path,
+                    unsub,
                     existing[0],
                 ),
             )
             conn.commit()
-            return {"ok": True, "id": existing[0], "email": mail, "created": False}
+            return {
+                "ok": True,
+                "id": existing[0],
+                "email": mail,
+                "created": False,
+                "unsubscribe_token": unsub,
+            }
         conn.execute(
             """
             INSERT INTO marketing_leads
-              (id, email, vibes, acq_source, acq_medium, acq_campaign, landing_path)
-            VALUES (%s, %s, %s::jsonb, %s, %s, %s, %s)
+              (id, email, vibes, acq_source, acq_medium, acq_campaign, landing_path, unsubscribe_token)
+            VALUES (%s, %s, %s::jsonb, %s, %s, %s, %s, %s)
             """,
             (
                 lid,
@@ -335,43 +348,81 @@ def create_lead(
                 acq_medium,
                 acq_campaign,
                 landing_path,
+                token,
             ),
         )
         conn.commit()
-    return {"ok": True, "id": lid, "email": mail, "created": True}
+    return {"ok": True, "id": lid, "email": mail, "created": True, "unsubscribe_token": token}
+
+
+def lead_is_unsubscribed(email: str) -> bool:
+    if not configured():
+        return False
+    mail = (email or "").strip().lower()
+    if not mail:
+        return False
+    try:
+        with connection() as conn:
+            row = conn.execute(
+                """
+                SELECT unsubscribed_at FROM marketing_leads WHERE lower(email) = %s
+                """,
+                (mail,),
+            ).fetchone()
+        return bool(row and row[0])
+    except Exception:
+        return False
 
 
 def unsubscribe_by_token(token: str) -> dict[str, Any]:
-    if not configured():
-        return {"ok": False, "error": "db_unset"}
     tok = (token or "").strip()
     if not tok:
         return {"ok": False, "error": "missing_token"}
+    if not configured():
+        return {"ok": False, "error": "db_unset"}
     with connection() as conn:
         row = conn.execute(
             "SELECT id FROM users WHERE unsubscribe_token = %s",
             (tok,),
         ).fetchone()
-        if not row:
+        if row:
+            uid = row[0]
+            conn.execute(
+                "UPDATE users SET newsletter = false, updated_at = now() WHERE id = %s",
+                (uid,),
+            )
+            conn.execute(
+                """
+                UPDATE user_interests SET mail_frequency = 'off', updated_at = now()
+                WHERE user_id = %s
+                """,
+                (uid,),
+            )
+            conn.execute(
+                """
+                UPDATE workflow_runs SET status = 'cancelled'
+                WHERE user_id = %s AND status = 'pending'
+                """,
+                (uid,),
+            )
+            conn.commit()
+            return {"ok": True, "message": "You're unsubscribed from marketing emails."}
+        lead = conn.execute(
+            "SELECT id, email FROM marketing_leads WHERE unsubscribe_token = %s",
+            (tok,),
+        ).fetchone()
+        if not lead:
             return {"ok": False, "error": "invalid_token", "message": "Link expired or invalid."}
-        uid = row[0]
         conn.execute(
-            "UPDATE users SET newsletter = false, updated_at = now() WHERE id = %s",
-            (uid,),
-        )
-        conn.execute(
-            """
-            UPDATE user_interests SET mail_frequency = 'off', updated_at = now()
-            WHERE user_id = %s
-            """,
-            (uid,),
+            "UPDATE marketing_leads SET unsubscribed_at = now() WHERE id = %s",
+            (lead[0],),
         )
         conn.execute(
             """
             UPDATE workflow_runs SET status = 'cancelled'
-            WHERE user_id = %s AND status = 'pending'
+            WHERE status = 'pending' AND lower(lead_email) = lower(%s)
             """,
-            (uid,),
+            (lead[1],),
         )
         conn.commit()
     return {"ok": True, "message": "You're unsubscribed from marketing emails."}
@@ -443,6 +494,39 @@ def due_workflow_runs(limit: int = 100) -> list[dict[str, Any]]:
                 "step": r[4],
                 "due_at": r[5],
                 "payload": r[6] or {},
+            }
+        )
+    return out
+
+
+def list_workflow_queue(limit: int = 40) -> list[dict[str, Any]]:
+    """Pending journeys (due + upcoming) for the marketing admin."""
+    if not configured():
+        return []
+    with connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, user_id, lead_email, workflow, step, due_at, payload, status
+            FROM workflow_runs
+            WHERE status = 'pending'
+            ORDER BY due_at ASC
+            LIMIT %s
+            """,
+            (max(1, min(int(limit), 200)),),
+        ).fetchall()
+    out = []
+    for r in rows:
+        due = r[5]
+        out.append(
+            {
+                "id": r[0],
+                "user_id": r[1],
+                "lead_email": r[2],
+                "workflow": r[3],
+                "step": r[4],
+                "due_at": due.isoformat() if hasattr(due, "isoformat") else due,
+                "payload": r[6] or {},
+                "status": r[7],
             }
         )
     return out
@@ -593,6 +677,8 @@ def marketing_send_allowed(
             return {"ok": False, "reason": "frequency_off"}
     elif not to_email:
         return {"ok": False, "reason": "no_recipient"}
+    elif lead_is_unsubscribed(to_email):
+        return {"ok": False, "reason": "lead_unsubscribed"}
 
     if already_sent_today(user_id, camp, to_email):
         return {"ok": False, "reason": "already_sent_today"}
@@ -1091,6 +1177,16 @@ def list_segments() -> list[dict[str, Any]]:
             "name": "Engaged (score ≥ 40)",
             "rules": {"min_score": 40},
         },
+        {
+            "id": "seg_newsletter",
+            "name": "All newsletter (digest-eligible)",
+            "rules": {"min_score": 0},
+        },
+        {
+            "id": "seg_heritage_in",
+            "name": "Heritage / palaces (IN)",
+            "rules": {"vibes_any": ["heritage", "city"], "home_country": "IN", "min_score": 0},
+        },
     ]
     if not configured():
         return defaults
@@ -1169,6 +1265,20 @@ def digest_recipients(limit: int = 200) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def users_matching_segment(rules: dict[str, Any], *, limit: int = 50) -> list[dict[str, Any]]:
+    recips = digest_recipients(limit=max(int(limit) * 8, 80))
+    matched: list[dict[str, Any]] = []
+    for row in recips:
+        uid = row.get("user_id")
+        if not uid:
+            continue
+        if user_matches_segment(str(uid), rules or {}):
+            matched.append(row)
+        if len(matched) >= max(1, min(int(limit), 100)):
+            break
+    return matched
 
 
 def get_user_email_row(user_id: str) -> dict[str, Any] | None:

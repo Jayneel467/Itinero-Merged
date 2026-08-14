@@ -32,6 +32,8 @@ html.dark .navbar {
 
 html.dark .navbar--scrolled .navbar__inner {
   background-color: var(--surface-navbar-scrolled);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border-color: var(--border-subtle);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35);
 }

@@ -25,6 +25,12 @@ export const ENDPOINTS = {
     ADMIN_STATS: "/api/admin/marketing/stats",
     ADMIN_OFFERS: "/api/admin/offers",
     ADMIN_SEGMENTS: "/api/admin/segments",
+    ADMIN_CATALOG: "/api/admin/marketing/catalog",
+    ADMIN_QUEUE: "/api/admin/marketing/queue",
+    ADMIN_RUN_DUE: "/api/internal/marketing/run-due",
+    ADMIN_PREVIEW: "/api/internal/marketing/preview",
+    ADMIN_BROADCAST: "/api/internal/marketing/broadcast",
+    GO_LIST: "/api/go",
   },
 
   // ── Flights (LiteAPI via supervisor) ─────
@@ -52,6 +58,7 @@ export const ENDPOINTS = {
     BOOK: "/api/hotels/book",
     BOOKING: (id) => `/api/hotels/bookings/${encodeURIComponent(id)}`,
     CANCEL: "/api/hotels/bookings/cancel",
+    AMEND: "/api/hotels/bookings/amend",
   },
 
   // ── FX (Frankfurter via supervisor) ─
@@ -71,6 +78,15 @@ export const ENDPOINTS = {
     HISTORY: "/api/loyalty/history",
     REDEEM_QUOTE: "/api/loyalty/redeem-quote",
     REDEEM: "/api/loyalty/redeem",
+  },
+
+  BILLING: {
+    PLANS: "/api/billing/plans",
+    ME: "/api/billing/me",
+    CREDITS: "/api/billing/credits",
+    CHECKOUT: "/api/billing/checkout",
+    CHECKOUT_COMPLETE: "/api/billing/checkout/complete",
+    PORTAL: "/api/billing/portal",
   },
 
   // ── Events (Ticketmaster Discovery via supervisor) ─
@@ -118,23 +134,29 @@ export const ENDPOINTS = {
     DESTINATIONS: "/api/explore/destinations",
   },
 
-  // ── Destinations (not live on supervisor) ─
   DESTINATIONS: {
-    LIST: "/api/v1/destinations",
-    TRENDING: "/api/v1/destinations/trending",
-    DETAILS: (id) => `/api/v1/destinations/${id}`,
+    LIST: "/api/explore/destinations",
+    TRENDING: "/api/explore/destinations",
+    DETAILS: (id) => `/api/explore/destinations?slug=${encodeURIComponent(id)}`,
   },
 
-  // ── Deals ───────────────────────────────
   DEALS: {
-    LIST: "/api/v1/deals",
-    FEATURED: "/api/v1/deals/featured",
+    LIST: "/api/offers",
+    FEATURED: "/api/offers",
   },
 
   TRIPS: {
     LIST: "/api/trips",
     UPSERT: "/api/trips",
     ONE: (id) => `/api/trips/${encodeURIComponent(id)}`,
+  },
+
+  WATCHES: {
+    LIST: "/api/watches",
+    UPSERT: "/api/watches",
+    ONE: (id) => `/api/watches/${encodeURIComponent(id)}`,
+    CHECK: (id) => `/api/watches/${encodeURIComponent(id)}/check`,
+    CHECK_DUE: "/api/watches/check",
   },
 
   // ── Booking / Trips manage ──────────────
@@ -161,6 +183,10 @@ export const ENDPOINTS = {
     GOOGLE: "/api/v1/auth/google",
     REFRESH: "/api/v1/auth/refresh",
     PROFILE: "/api/v1/auth/profile",
+  },
+
+  ACCOUNT: {
+    STATE: "/api/account/state",
   },
 
   // ── Vero AI (supervisor chat) ───────────

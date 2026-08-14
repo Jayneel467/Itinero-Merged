@@ -1,10 +1,13 @@
 """
-Vero dual-LLM: OpenAI (tools/booking) + DeepSeek (trip plans / synthesis).
+Vero dual-LLM + cost planner.
 
 Active combo (not failover):
-  - Tool turns → OpenAI with tools bound
-  - After tool results → DeepSeek synthesizes the user-facing answer (no tools)
-  - Pure itinerary / plan chat (no booking keywords) → DeepSeek planner
+  - Live inventory / booking → OpenAI with tools bound
+  - After tool results → DeepSeek synthesizes (no tools)
+  - Chat, culture, plans, “what’s it like” → DeepSeek planner (cheap default)
+
+CFO rule: Vero stays free. OpenAI is the expensive lane — use only when
+the user needs live search or money actions. See llm/cost_planner.py.
 
 Never uses Gemini here — Gemini is catalog-only.
 """
@@ -14,8 +17,10 @@ from __future__ import annotations
 import logging
 import os
 import re
+import threading
 from typing import Any, Literal
 
+import httpx
 from langchain_openai import ChatOpenAI
 
 from general_agent.config import MODEL_NAME, MODEL_TEMPERATURE, OPENAI_API_KEY
@@ -60,6 +65,12 @@ _PLAN_HINT = re.compile(
     re.I,
 )
 
+# Money path must stay on OpenAI even when daily budget is in protect mode.
+_MONEY_LOCK = re.compile(
+    r"\b(pay|payment|prebook|checkout|hold|book now|confirm booking|cancel|refund)\b",
+    re.I,
+)
+
 
 def _wants_tools(text: str) -> bool:
     """True when the user is asking for inventory/search/booking actions."""
@@ -94,27 +105,78 @@ def vero_llm_status() -> dict[str, Any]:
     }
 
 
+def _max_tokens(lane: str) -> int:
+    try:
+        from llm.cost_planner import max_output_tokens
+
+        return max_output_tokens(lane)
+    except Exception:
+        return 900 if lane == "tools" else 700
+
+
+_llm_lock = threading.Lock()
+_tools_client = None
+_planner_client = None
+
+
+def _timeout_s() -> float:
+    try:
+        return max(12.0, min(float(_env("VERO_LLM_TIMEOUT_S") or "45"), 90.0))
+    except ValueError:
+        return 45.0
+
+
+def _direct_http_client() -> httpx.Client:
+    """Talk to OpenAI/DeepSeek directly.
+
+    Cursor (and similar) inject HTTP(S)_PROXY=127.0.0.1:<ephemeral>. httpx
+    bakes that into a reused client; when the proxy dies, every chat turn
+    fails with Connection refused and Vero says "temporary connection issue".
+    """
+    return httpx.Client(trust_env=False, timeout=_timeout_s())
+
+
+def reset_llm_clients() -> None:
+    """Drop cached ChatOpenAI wrappers (tests / after config change)."""
+    global _tools_client, _planner_client
+    with _llm_lock:
+        _tools_client = None
+        _planner_client = None
+
+
 def get_tools_llm():
-    """OpenAI — only lane allowed to bind booking/search tools."""
-    return ChatOpenAI(
-        model=MODEL_NAME or "gpt-4o-mini",
-        temperature=MODEL_TEMPERATURE,
-        api_key=OPENAI_API_KEY,
-        max_retries=5,
-    )
+    """OpenAI — only lane allowed to bind booking/search tools. Client is reused."""
+    global _tools_client
+    with _llm_lock:
+        if _tools_client is None:
+            _tools_client = ChatOpenAI(
+                model=MODEL_NAME or "gpt-4o-mini",
+                temperature=MODEL_TEMPERATURE,
+                api_key=OPENAI_API_KEY,
+                max_retries=2,
+                timeout=_timeout_s(),
+                http_client=_direct_http_client(),
+            )
+        return _tools_client
 
 
 def get_planner_llm():
     """DeepSeek for plans/synthesis; falls back to OpenAI if key missing."""
-    if deepseek_configured():
-        return ChatOpenAI(
-            model=_env("DEEPSEEK_MODEL") or "deepseek-chat",
-            temperature=float(_env("DEEPSEEK_TEMPERATURE") or str(MODEL_TEMPERATURE)),
-            api_key=_env("DEEPSEEK_API_KEY"),
-            base_url=_env("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1",
-            max_retries=4,
-        )
-    return get_tools_llm()
+    global _planner_client
+    if not deepseek_configured():
+        return get_tools_llm()
+    with _llm_lock:
+        if _planner_client is None:
+            _planner_client = ChatOpenAI(
+                model=_env("DEEPSEEK_MODEL") or "deepseek-chat",
+                temperature=float(_env("DEEPSEEK_TEMPERATURE") or str(MODEL_TEMPERATURE)),
+                api_key=_env("DEEPSEEK_API_KEY"),
+                base_url=_env("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1",
+                max_retries=2,
+                timeout=_timeout_s(),
+                http_client=_direct_http_client(),
+            )
+        return _planner_client
 
 
 def get_llm():
@@ -123,8 +185,8 @@ def get_llm():
 
 
 def get_llm_with_tools():
-    """OpenAI with all Vero tools bound."""
-    return get_tools_llm().bind_tools(ALL_TOOLS)
+    """OpenAI with all Vero tools bound. Reuses the HTTP client."""
+    return get_tools_llm().bind(max_tokens=_max_tokens("tools")).bind_tools(ALL_TOOLS)
 
 
 def _last_human_text(messages: list) -> str:
@@ -174,9 +236,9 @@ def _recent_tool_results(messages: list) -> bool:
 def choose_lane(messages: list, trip_context: dict | None = None) -> Lane:
     """Pick tools (OpenAI) vs planner/synth (DeepSeek).
 
-    Thinking-first: ambiguous turns stay on the tools lane so the model can
-    decide whether to call tools. Only clear itinerary language → planner;
-    post-tool synthesis → synth. Hard lock: inventory/booking verbs → tools.
+    Cost-first (CFO): chat defaults to DeepSeek. OpenAI tools only when the
+    user needs live inventory/search/booking. Hard lock: money verbs → tools
+    even in budget protect mode. Vero is never paywalled.
     """
     combo = _env("VERO_LLM_COMBO", "1") not in ("0", "false", "off", "no")
     if not combo or not deepseek_configured():
@@ -187,19 +249,36 @@ def choose_lane(messages: list, trip_context: dict | None = None) -> Lane:
 
     text = _last_human_text(messages)
     if not text:
-        return "tools"
+        return "planner"
+
+    try:
+        from llm.cost_planner import budget_mode, device_over_openai_quota
+
+        mode = budget_mode()
+        subject = str((trip_context or {}).get("cost_subject") or "")
+        force_cheap = mode == "protect" or device_over_openai_quota(subject)
+    except Exception:
+        mode = "ok"
+        force_cheap = False
+
+    try:
+        remaining = (trip_context or {}).get("credits_remaining")
+        if remaining is not None and int(remaining) < 4:
+            force_cheap = True
+    except (TypeError, ValueError):
+        pass
 
     toolish = _wants_tools(text)
-    # Money / inventory / live facts always stay on OpenAI tools.
+    money = bool(_MONEY_LOCK.search(text))
     if toolish:
+        if force_cheap and not money:
+            return "planner"
         return "tools"
 
-    # Explicit multi-day plan language only → DeepSeek planner.
     if _PLAN_HINT.search(text):
         return "planner"
 
-    # Default: let the tools-capable model think (may answer without calling tools).
-    return "tools"
+    return "planner"
 
 
 def get_llm_for_turn(messages: list, trip_context: dict | None = None):
@@ -213,7 +292,7 @@ def get_llm_for_turn(messages: list, trip_context: dict | None = None):
         logger.info("vero_llm lane=tools provider=openai model=%s", MODEL_NAME)
         return get_llm_with_tools(), lane
 
-    planner = get_planner_llm()
+    planner = get_planner_llm().bind(max_tokens=_max_tokens(lane))
     logger.info(
         "vero_llm lane=%s provider=%s",
         lane,

@@ -76,6 +76,19 @@ def test_matching_device_allowed():
         require_booking_access(booking_id="HTL-1", device_id="mine", production=True)
 
 
+def test_matching_user_allowed():
+    from supervisor.booking_access import require_booking_access
+
+    with patch("supervisor.ledger.booking_owned_by_device", return_value=False):
+        with patch("supervisor.ledger.booking_owned_by_user", return_value=True):
+            require_booking_access(
+                booking_id="HTL-1",
+                device_id="other-phone",
+                user_id="user-1",
+                production=True,
+            )
+
+
 def test_matching_email_allowed():
     from supervisor.booking_access import require_booking_access
 

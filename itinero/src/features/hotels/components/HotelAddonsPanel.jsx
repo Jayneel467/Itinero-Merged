@@ -98,7 +98,7 @@ export default function HotelAddonsPanel({
   return (
     <section className={styles.panel} aria-label="Trip add-ons">
       <h3 className={styles.title}>Trip add-ons</h3>
-      <p className={styles.lead}>Powered by LiteAPI - bundled into your hotel payment (USD rates, shown converted).</p>
+      <p className={styles.lead}>Optional extras bundled into your hotel payment (USD rates, shown converted).</p>
 
       <div className={styles.block}>
         <div className={styles.blockHead}>
@@ -129,7 +129,7 @@ export default function HotelAddonsPanel({
       <div className={styles.block}>
         <div className={styles.blockHead}>
           <Smartphone size={18} aria-hidden />
-          <strong>eSIM data (eSimply)</strong>
+          <strong>eSIM data</strong>
         </div>
         <p className={styles.hint}>
           Stay connected in {countryCode}. Active {esimStart} → {esimEnd}.

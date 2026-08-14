@@ -59,6 +59,9 @@ def test_readiness_prod_requires_webhook_and_live_key(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("SENTRY_DSN", raising=False)
     monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
+    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET", raising=False)
+    monkeypatch.delenv("ITINERO_STRIPE_WEBHOOK_SECRET", raising=False)
 
     from supervisor.monitoring import readiness_missing
 
@@ -66,6 +69,7 @@ def test_readiness_prod_requires_webhook_and_live_key(monkeypatch):
     assert "liteapi_live_key" in missing
     assert "liteapi_webhook_secret" in missing
     assert "marketing_admin_token" in missing
+    assert "stripe_webhook_secret" in missing
 
 
 def test_money_path_flags_warn_on_sandbox_key_in_prod(monkeypatch):

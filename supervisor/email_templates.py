@@ -1057,3 +1057,113 @@ def build_booking_confirmation_message(
             filename=filename,
         )
     return msg
+
+
+def build_booking_cancellation_message(
+    *,
+    to: str,
+    kind: str,
+    details: dict,
+    from_addr: str,
+) -> EmailMessage:
+    from supervisor.email_copy import scrub_em_marks
+
+    k = (kind or "booking").strip().lower()
+    ref = html.escape(str(details.get("booking_ref") or details.get("booking_id") or "Itinero"))
+    title = html.escape(str(details.get("title") or details.get("hotel_name") or k.title()))
+    loyalty = details.get("loyalty_reversed")
+    loyalty_line = (
+        "<p style='color:#64748B;font-size:14px;'>Itinero Rewards earned on this booking were reversed.</p>"
+        if loyalty
+        else ""
+    )
+    subject = f"Your Itinero {k} booking was cancelled — {details.get('booking_ref') or ref}"
+    plain = (
+        f"Your Itinero {k} booking {details.get('booking_ref') or ''} was cancelled.\n"
+        f"{details.get('title') or details.get('hotel_name') or k}\n"
+        + ("Rewards on this booking were reversed.\n" if loyalty else "")
+        + "If you didn't request this, reply to this email.\n"
+    )
+    inner = f"""
+      {_email_brand_header(label="Cancellation")}
+      <tr>
+        <td style="background:#fff;padding:28px;">
+          <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{_ORANGE};">Cancelled</p>
+          <h1 style="margin:0 0 12px;font-size:22px;color:{_NAVY};">Booking {ref}</h1>
+          <p style="margin:0 0 16px;color:{_INK};font-size:15px;">{title} is cancelled. Any supplier refund follows the fare rules.</p>
+          {loyalty_line}
+          <p style="margin:18px 0 0;color:{_MUTED};font-size:13px;">This email is from Itinero only — ignore duplicate supplier mail if it arrives.</p>
+        </td>
+      </tr>
+    """
+    html_body = f"""<!DOCTYPE html><html><body style="margin:0;background:{_BG};font-family:Arial,sans-serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:{_BG};">
+        <tr><td align="center" style="padding:24px 12px;">
+          <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;">
+            {inner}
+          </table>
+        </td></tr>
+      </table>
+    </body></html>"""
+    msg = EmailMessage()
+    msg["Subject"] = scrub_em_marks(subject)
+    msg["From"] = from_addr
+    msg["To"] = to
+    msg.set_content(scrub_em_marks(plain))
+    msg.add_alternative(scrub_em_marks(html_body), subtype="html")
+    _attach_inline_brand(msg, include_vero=False)
+    return msg
+
+
+def build_price_watch_message(
+    *,
+    to: str,
+    details: dict,
+    from_addr: str,
+) -> EmailMessage:
+    from supervisor.email_copy import scrub_em_marks
+
+    origin = html.escape(str(details.get("origin") or ""))
+    dest = html.escape(str(details.get("destination") or ""))
+    price = details.get("price")
+    was = details.get("wasPrice")
+    cur = html.escape(str(details.get("currency") or "INR"))
+    best = html.escape(str(details.get("bestDate") or ""))
+    url = f"{_SITE}/flights?from={origin}&to={dest}" + (
+        f"&depart={best}" if details.get("bestDate") else ""
+    )
+    subject = f"Price drop · {details.get('origin')} → {details.get('destination')}"
+    plain = (
+        f"Live min fare {details.get('origin')} → {details.get('destination')} is now {cur} {price} "
+        f"(was {cur} {was})"
+        + (f" around {details.get('bestDate')}.\n" if details.get("bestDate") else ".\n")
+        + f"Book: {url}\n"
+    )
+    inner = f"""
+      {_email_brand_header(label="Price watch")}
+      <tr>
+        <td style="background:#fff;padding:28px;">
+          <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{_ORANGE};">Fare drop</p>
+          <h1 style="margin:0 0 12px;font-size:22px;color:{_NAVY};">{origin} → {dest}</h1>
+          <p style="margin:0 0 16px;color:{_INK};font-size:16px;">Live min <b>{cur} {html.escape(str(price))}</b> (was {cur} {html.escape(str(was))}){f" · best {best}" if best else ""}.</p>
+          <p style="margin:0;"><a href="{html.escape(url)}" style="display:inline-block;background:{_ORANGE};color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px;">See flights</a></p>
+        </td>
+      </tr>
+    """
+    html_body = f"""<!DOCTYPE html><html><body style="margin:0;background:{_BG};font-family:Arial,sans-serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:{_BG};">
+        <tr><td align="center" style="padding:24px 12px;">
+          <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;">
+            {inner}
+          </table>
+        </td></tr>
+      </table>
+    </body></html>"""
+    msg = EmailMessage()
+    msg["Subject"] = scrub_em_marks(subject)
+    msg["From"] = from_addr
+    msg["To"] = to
+    msg.set_content(scrub_em_marks(plain))
+    msg.add_alternative(scrub_em_marks(html_body), subtype="html")
+    _attach_inline_brand(msg, include_vero=True)
+    return msg

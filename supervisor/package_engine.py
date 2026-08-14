@@ -1287,8 +1287,8 @@ def pricing_breakdown(
         "payNow": int(bookable) if (can_pay and bookable > 0) else None,
         "currency": est.get("currency") or "INR",
         "honesty": (
-            "One payment to Itinero (Stripe). "
-            "We fulfill your hotel and flights via LiteAPI — package fee included in the total. "
+            "One payment to Itinero. "
+            "Hotel and flights are included in the total. "
             "Ground, meals, and darshan stay estimates — not charged here."
         ),
     }

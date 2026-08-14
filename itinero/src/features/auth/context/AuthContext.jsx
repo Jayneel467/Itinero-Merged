@@ -34,6 +34,15 @@ export function AuthProvider({ children }) {
             flushInterestEvents();
           })
           .catch(() => {});
+        import("@/features/trips/tripService")
+          .then(({ tripService }) => tripService.syncFromServer())
+          .catch(() => {});
+        import("@/features/account/alertService")
+          .then((m) => m.syncWatchesWithServer?.())
+          .catch(() => {});
+        import("@/features/profile/accountSync")
+          .then((m) => m.hydrateAccountFromServer())
+          .catch(() => {});
       } catch {
         /* ignore */
       }

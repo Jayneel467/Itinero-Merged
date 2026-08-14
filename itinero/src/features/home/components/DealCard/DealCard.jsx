@@ -1,8 +1,9 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import "./DealCard.css";
 
 /**
- * Single flight deal card showing discount, route, pricing, and CTA.
+ * Legacy deal card. Prefer DealsPage live fares. Navigates to search — never alerts.
  */
 export default function DealCard({
   discount,
@@ -15,9 +16,17 @@ export default function DealCard({
   dates,
   arrowIcon,
 }) {
+  const navigate = useNavigate();
+  const open = () => {
+    if (fromCode && toCode) {
+      navigate(`/flights?from=${encodeURIComponent(fromCode)}&to=${encodeURIComponent(toCode)}`);
+      return;
+    }
+    navigate("/flights");
+  };
   return (
     <div className="deal-card">
-      <button className="deal-card__badge" onClick={() => alert("Pressed!")}>
+      <button type="button" className="deal-card__badge" onClick={open}>
         <span>{discount}</span>
       </button>
       <span className="deal-card__city">{city}</span>
@@ -32,8 +41,8 @@ export default function DealCard({
         <span className="deal-card__original-price">{originalPrice}</span>
       </div>
       <span className="deal-card__dates">{dates}</span>
-      <button className="deal-card__cta" onClick={() => alert("Pressed!")}>
-        <span>View Deal</span>
+      <button type="button" className="deal-card__cta" onClick={open}>
+        <span>Search fares</span>
       </button>
     </div>
   );

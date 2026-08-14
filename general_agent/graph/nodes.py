@@ -18,11 +18,11 @@ When this grows into multi-agent, new specialist nodes get added here alongside
 import logging
 import re
 
-from langchain_core.messages import SystemMessage, AIMessage
+from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from models.state import AgentState
-from llm.model import get_llm_for_turn
+from llm.model import deepseek_configured, get_llm_for_turn, get_llm_with_tools, get_planner_llm
 from llm.prompts import build_system_prompt
 import itinerary_bridge
 
@@ -33,12 +33,51 @@ logger = logging.getLogger(__name__)
 _ESCALATION_SIGNAL = "ESCALATE_TO_ITINERARY"
 
 _PLANNER_EXTRA = (
-    "\n\n[Lane: planner/synth — DeepSeek] "
+    "\n\n[Lane: planner/synth — DeepSeek, cost-saver] "
     "You are writing the user-facing travel answer. Do NOT invent live fares, "
     "gates, or availability. If the history already contains tool results, "
     "synthesize them clearly. If the user needs live search or booking, say "
     "you'll look that up next (the tools lane will handle it)."
 )
+
+_MAX_TOOL_CHARS = 6000
+_MAX_AI_CHARS_CHEAP = 4000
+
+
+def _cap_message_content(message, limit: int):
+    content = getattr(message, "content", None)
+    if not isinstance(content, str) or len(content) <= limit:
+        return message
+    extra = ""
+    marker = "[CARDS_DATA:"
+    if marker in content:
+        i = content.index(marker)
+        extra = "\n" + content[i : i + 1200]
+    new_content = content[:limit] + "\n…[truncated for cost]" + extra
+    try:
+        return message.model_copy(update={"content": new_content})
+    except Exception:
+        if getattr(message, "type", None) == "tool":
+            return ToolMessage(
+                content=new_content,
+                tool_call_id=getattr(message, "tool_call_id", "") or "",
+            )
+        return AIMessage(content=new_content)
+
+
+def _trim_history_for_lane(messages: list, lane: str) -> list:
+    if lane not in ("planner", "synth"):
+        return messages
+    out = []
+    for m in messages:
+        t = getattr(m, "type", None)
+        if t == "tool":
+            out.append(_cap_message_content(m, _MAX_TOOL_CHARS))
+        elif t == "ai":
+            out.append(_cap_message_content(m, _MAX_AI_CHARS_CHEAP))
+        else:
+            out.append(m)
+    return out
 
 
 def agent_node(state: AgentState):
@@ -58,20 +97,23 @@ def agent_node(state: AgentState):
     # Strip existing system messages to avoid duplication
     non_system_messages = [m for m in messages if m.type != "system"]
 
-    # Windowing: Keep recent messages to prevent token inflation on long chats.
-    # IMPORTANT: never slice in the middle of a tool_calls / tool pair —
-    # OpenAI rejects any 'tool' message that isn't preceded by a 'tool_calls' AI message.
-    if len(non_system_messages) > 20:
-        non_system_messages = non_system_messages[-20:]
-        # Strip any orphan tool messages at the head of the window.
-        # They would be tool responses whose matching tool_calls AI message was cut off.
+    # Lane from recent history, then window to that lane (never mid tool-pair).
+    peek = non_system_messages[-24:] if len(non_system_messages) > 24 else non_system_messages
+    llm, lane = get_llm_for_turn(peek, trip_context)
+    try:
+        from llm.cost_planner import message_window as _cost_window
+
+        win = _cost_window(lane)
+    except Exception:
+        win = 10 if lane in ("planner", "synth") else 16
+    if len(non_system_messages) > win:
+        non_system_messages = non_system_messages[-win:]
         while non_system_messages and getattr(non_system_messages[0], "type", None) == "tool":
             non_system_messages = non_system_messages[1:]
-
-    llm, lane = get_llm_for_turn(non_system_messages, trip_context)
+    non_system_messages = _trim_history_for_lane(non_system_messages, lane)
 
     # Inject fresh system message (rebuilds with current datetime and trip state each turn)
-    system_body = build_system_prompt(trip_context)
+    system_body = build_system_prompt(trip_context, lane=lane)
     if lane in ("planner", "synth"):
         system_body = system_body + _PLANNER_EXTRA
     fresh_system = SystemMessage(content=system_body)
@@ -81,26 +123,37 @@ def agent_node(state: AgentState):
         response = llm.invoke(final_messages)
     except Exception as exc:
         logger.exception("agent_node LLM invocation error lane=%s: %s", lane, exc)
+        response = None
         # Planner/synth failure → one retry on OpenAI tools lane.
         if lane in ("planner", "synth"):
             try:
-                from llm.model import get_llm_with_tools
-
                 logger.warning("vero_llm falling back to OpenAI tools after %s failure", lane)
                 response = get_llm_with_tools().invoke(
-                    [SystemMessage(content=build_system_prompt(trip_context))] + non_system_messages
+                    [SystemMessage(content=build_system_prompt(trip_context, lane="tools"))]
+                    + non_system_messages
                 )
                 lane = "tools_fallback"
             except Exception as exc2:
                 logger.exception("agent_node OpenAI fallback failed: %s", exc2)
-                return {
-                    "messages": [
-                        AIMessage(
-                            content="I ran into a temporary connection issue. Please try your request again."
-                        )
-                    ]
-                }
         else:
+            # Tools/OpenAI failure (dead local proxy, timeout) → DeepSeek so chat still answers.
+            if deepseek_configured():
+                try:
+                    logger.warning("vero_llm falling back to DeepSeek planner after %s failure", lane)
+                    planner = get_planner_llm()
+                    response = planner.bind(max_tokens=700).invoke(
+                        [
+                            SystemMessage(
+                                content=build_system_prompt(trip_context, lane="planner")
+                                + _PLANNER_EXTRA
+                            )
+                        ]
+                        + non_system_messages
+                    )
+                    lane = "planner_fallback"
+                except Exception as exc2:
+                    logger.exception("agent_node planner fallback failed: %s", exc2)
+        if response is None:
             return {
                 "messages": [
                     AIMessage(
@@ -110,6 +163,14 @@ def agent_node(state: AgentState):
             }
 
     updates = {"messages": [response]}
+    try:
+        from llm.cost_planner import record_turn
+
+        subject = str((trip_context or {}).get("cost_subject") or "")
+        cost = record_turn(lane=lane, subject=subject)
+        updates["trip_context"] = {"vero_cost": cost, "vero_last_lane": lane}
+    except Exception:
+        pass
     logger.info("vero_llm lane=%s done tool_calls=%s", lane, bool(getattr(response, "tool_calls", None)))
 
     tool_calls = getattr(response, "tool_calls", None)

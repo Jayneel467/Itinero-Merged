@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { VeroUiProvider } from "@/context/VeroUiContext";
 import { TripProvider } from "@/features/trips/TripContext";
 import { AuthProvider } from "@/features/auth/context/AuthContext";
+import { BillingProvider } from "@/features/billing/BillingContext";
 import TasteModal from "@/features/marketing/TasteModal";
 import { captureAttributionFromUrl } from "@/services/attribution";
 import { initAcquisitionPixels } from "@/services/acquisitionPixels";
@@ -33,17 +34,19 @@ export default function AppProviders({ children }) {
   const tree = (
     <ThemeProvider>
       <AuthProvider>
-        <LanguageProvider>
-          <CurrencyProvider>
-            <HomeLocationProvider>
-              <VeroUiProvider>
-                <TripProvider>
-                  <MarketingBootstrap>{children}</MarketingBootstrap>
-                </TripProvider>
-              </VeroUiProvider>
-            </HomeLocationProvider>
-          </CurrencyProvider>
-        </LanguageProvider>
+        <BillingProvider>
+          <LanguageProvider>
+            <CurrencyProvider>
+              <HomeLocationProvider>
+                <VeroUiProvider>
+                  <TripProvider>
+                    <MarketingBootstrap>{children}</MarketingBootstrap>
+                  </TripProvider>
+                </VeroUiProvider>
+              </HomeLocationProvider>
+            </CurrencyProvider>
+          </LanguageProvider>
+        </BillingProvider>
       </AuthProvider>
     </ThemeProvider>
   );

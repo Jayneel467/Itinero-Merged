@@ -11,6 +11,8 @@ import VeroVoiceStage from '@/features/vero/components/VeroVoiceStage';
 import SuggestionChips from '@/features/vero/components/SuggestionChips';
 import { useVeroUiOptional } from '@/context/VeroUiContext';
 import { useLanguageOptional } from '@/context/LanguageContext';
+import { useBillingOptional } from '@/features/billing/BillingContext';
+import VeroCreditMeter from '@/features/billing/VeroCreditMeter';
 import {
   welcomeFromPageContext,
   extractItineroActions,
@@ -83,6 +85,9 @@ export default function VeroChatWidget({ isOpen, onClose, onOpen }) {
   const navigate = useNavigate();
   const veroUi = useVeroUiOptional();
   const langCtx = useLanguageOptional();
+  const billing = useBillingOptional();
+  const applyCreditsRef = useRef(billing?.applyCredits);
+  applyCreditsRef.current = billing?.applyCredits;
   const preferredSpoken = langCtx?.spokenLanguage || 'en-IN';
   const pageContext = veroUi?.pageContext || null;
 
@@ -308,11 +313,15 @@ export default function VeroChatWidget({ isOpen, onClose, onOpen }) {
         }
         if (action.type === "open_trips" || action.type === "open_cancel") {
           navigate(openTripsPath(action));
-          return "My Trips on the left - tap Cancel with supplier if you want to cancel";
+          return "My Trips on the left - tap Cancel booking if you want to cancel";
         }
         if (action.type === "open_profile") {
           navigate("/profile");
           return "Account on the left";
+        }
+        if (action.type === "open_plus") {
+          navigate("/plus");
+          return "Vero credits on the left";
         }
         if (action.type === "open_flights") {
           navigate("/flights");
@@ -475,6 +484,7 @@ export default function VeroChatWidget({ isOpen, onClose, onOpen }) {
           spoken_language: spokenLang,
           traveler: travelerAddressPayload(),
         });
+        if (res.credits) applyCreditsRef.current?.(res.credits);
         if (res.thread_id) setThreadId(res.thread_id);
         if (typeof res.preferred_name === "string") persistPreferredName(res.preferred_name);
         const rawReply = res.reply || "Sorry - I couldn't reply just now.";
@@ -821,6 +831,7 @@ export default function VeroChatWidget({ isOpen, onClose, onOpen }) {
               </p>
             </div>
           </div>
+          <VeroCreditMeter compact />
           <div className="vero-header-actions">
             <button
               type="button"

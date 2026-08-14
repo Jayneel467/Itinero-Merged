@@ -1,15 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://itinero.company/</loc></url>
+  <url><loc>https://itinero.company/flights</loc></url>
+  <url><loc>https://itinero.company/hotels</loc></url>
+  <url><loc>https://itinero.company/packages</loc></url>
   <url><loc>https://itinero.company/explore</loc></url>
   <url><loc>https://itinero.company/explore/theme/hiking</loc></url>
   <url><loc>https://itinero.company/explore/theme/biking</loc></url>
   <url><loc>https://itinero.company/explore/theme/beach</loc></url>
   <url><loc>https://itinero.company/explore/theme/trekking</loc></url>
-  <url><loc>https://itinero.company/packages</loc></url>
+  <url><loc>https://itinero.company/events</loc></url>
+  <url><loc>https://itinero.company/trains</loc></url>
+  <url><loc>https://itinero.company/transits</loc></url>
   <url><loc>https://itinero.company/deals</loc></url>
-  <url><loc>https://itinero.company/flights</loc></url>
-  <url><loc>https://itinero.company/hotels</loc></url>
+  <url><loc>https://itinero.company/vero</loc></url>
+  <url><loc>https://itinero.company/plus</loc></url>
+  <url><loc>https://itinero.company/saved</loc></url>
+  <url><loc>https://itinero.company/help</loc></url>
+  <url><loc>https://itinero.company/feedback</loc></url>
+  <url><loc>https://itinero.company/terms</loc></url>
+  <url><loc>https://itinero.company/privacy</loc></url>
+  <url><loc>https://itinero.company/cancellation</loc></url>
+  <url><loc>https://itinero.company/go</loc></url>
+  <url><loc>https://itinero.company/go/goa-sun</loc></url>
+  <url><loc>https://itinero.company/go/kerala-backwaters</loc></url>
+  <url><loc>https://itinero.company/go/rajasthan-forts</loc></url>
+  <url><loc>https://itinero.company/go/kashmir-lakes</loc></url>
+  <url><loc>https://itinero.company/go/golden-triangle</loc></url>
   <url><loc>https://itinero.company/go/weekend-himalaya</loc></url>
   <url><loc>https://itinero.company/go/beach-escape</loc></url>
   <url><loc>https://itinero.company/go/bike-europe</loc></url>

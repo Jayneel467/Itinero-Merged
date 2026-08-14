@@ -4,7 +4,9 @@
  */
 
 export const SAVED_PAX_KEY = "itinero_vero_saved_pax";
-export const MAX_TRAVELLERS = 8;
+export const MAX_TRAVELLERS_FREE = 2;
+export const MAX_TRAVELLERS_PLUS = 8;
+export const MAX_TRAVELLERS = MAX_TRAVELLERS_PLUS;
 
 export const TRAVELLER_TYPES = [
   { value: 0, label: "Adult" },
@@ -126,7 +128,7 @@ export function saveSavedPaxStore({ passengers, email, phone, phoneCc } = {}) {
   return next;
 }
 
-export function upsertTraveller(traveller) {
+export function upsertTraveller(traveller, { max = MAX_TRAVELLERS } = {}) {
   const store = loadSavedPaxStore();
   const next = emptyTraveller(traveller?.passengerType ?? 0);
   Object.assign(next, normalizeOne({ ...next, ...traveller }) || next);
@@ -137,8 +139,13 @@ export function upsertTraveller(traveller) {
   const idx = list.findIndex((p) => p.id === next.id);
   if (idx >= 0) list[idx] = next;
   else {
-    if (list.length >= MAX_TRAVELLERS) {
-      throw new Error(`You can save up to ${MAX_TRAVELLERS} travellers.`);
+    const cap = Math.max(1, Math.min(Number(max) || MAX_TRAVELLERS, MAX_TRAVELLERS));
+    if (list.length >= cap) {
+      throw new Error(
+        cap < MAX_TRAVELLERS
+          ? `You can save up to ${cap} travellers.`
+          : `You can save up to ${cap} travellers.`
+      );
     }
     list.push(next);
   }

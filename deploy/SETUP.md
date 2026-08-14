@@ -106,6 +106,7 @@ At minimum (see `supervisor/.env.example` / `general_agent/.env.example`):
 - LiteAPI / OpenAI / Maps / Tavily / weather keys
 - `SENTRY_DSN` (per service)
 - SMTP password, Google OAuth client (server), any R2 keys
+- Stripe Billing for Itinero Plus: `STRIPE_SECRET_KEY=sk_test_…` until you set `STRIPE_LIVE=1`, plus `STRIPE_WEBHOOK_SECRET`, webhook `https://YOUR_API/api/webhooks/stripe` (Vero stays free without Plus)
 
 Frontend build secrets (`VITE_*`) live in **CI secrets**, not on the nginx container after build.
 

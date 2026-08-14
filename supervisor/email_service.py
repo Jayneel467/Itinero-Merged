@@ -95,6 +95,7 @@ async def send_email(
     subject: str,
     plain: str,
     html: str | None = None,
+    reply_to: str | None = None,
 ) -> dict[str, Any]:
     mail = (to or "").strip()
     if not mail or "@" not in mail:
@@ -105,6 +106,9 @@ async def send_email(
         msg["Subject"] = scrub_em_marks(subject)
         msg["From"] = _from_addr()
         msg["To"] = mail
+        reply = (reply_to or "").strip()
+        if reply and "@" in reply:
+            msg["Reply-To"] = reply
         msg.set_content(scrub_em_marks(plain))
         if html:
             msg.add_alternative(scrub_em_marks(html), subtype="html")
@@ -238,3 +242,55 @@ async def send_package_confirmation(*, booking: dict[str, Any]) -> dict[str, Any
         "error": "smtp_not_configured",
         "message": "Package confirmation email requires SMTP_HOST, SMTP_USER, SMTP_PASSWORD.",
     }
+
+
+async def send_booking_cancellation(
+    *,
+    kind: str,
+    to_email: str,
+    details: dict[str, Any],
+) -> dict[str, Any]:
+    from supervisor.email_templates import build_booking_cancellation_message
+
+    mail = (to_email or "").strip()
+    if not mail or "@" not in mail:
+        return {"ok": False, "error": "invalid_email"}
+    from_addr = _from_addr(booking=True)
+    if _smtp_configured():
+        msg = build_booking_cancellation_message(
+            to=mail, kind=kind, details=details, from_addr=from_addr
+        )
+        try:
+            await asyncio.to_thread(_smtp_send_message, msg)
+            return {"ok": True, "channel": "smtp", "kind": kind}
+        except Exception:
+            traceback.print_exc()
+            return {"ok": False, "error": "smtp_error"}
+    if _dev_mode():
+        print(f"[itinero-email] DEV cancel {kind} → {mail}: {details.get('booking_ref')}", flush=True)
+        return {"ok": True, "channel": "dev", "kind": kind}
+    return {"ok": False, "error": "smtp_not_configured"}
+
+
+async def send_price_watch_alert(*, to_email: str, details: dict[str, Any]) -> dict[str, Any]:
+    from supervisor.email_templates import build_price_watch_message
+
+    mail = (to_email or "").strip()
+    if not mail or "@" not in mail:
+        return {"ok": False, "error": "invalid_email"}
+    from_addr = _from_addr(booking=True)
+    if _smtp_configured():
+        msg = build_price_watch_message(to=mail, details=details, from_addr=from_addr)
+        try:
+            await asyncio.to_thread(_smtp_send_message, msg)
+            return {"ok": True, "channel": "smtp", "kind": "price_watch"}
+        except Exception:
+            traceback.print_exc()
+            return {"ok": False, "error": "smtp_error"}
+    if _dev_mode():
+        print(
+            f"[itinero-email] DEV watch {details.get('origin')}→{details.get('destination')} → {mail}: {details.get('price')}",
+            flush=True,
+        )
+        return {"ok": True, "channel": "dev", "kind": "price_watch"}
+    return {"ok": False, "error": "smtp_not_configured"}

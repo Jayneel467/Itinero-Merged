@@ -406,17 +406,7 @@ export default function FlightCardDesign({
         <div className={styles["fc-airline-col"]}>
           <AirlineLogo name={airlineName} url={airlineLogo} styles={styles} />
           <div className={styles["fc-airline-info"]}>
-            <h4 
-              className={styles["fc-airline-name"]} 
-              onClick={() => navigate('/flights/overview')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  navigate('/flights/overview');
-                }
-              }}
-            >
+            <h4 className={styles["fc-airline-name"]}>
               {carriers.length > 1 ? carriers.join(" + ") : airlineName}
             </h4>
             <p className={styles["fc-flight-no"]}>

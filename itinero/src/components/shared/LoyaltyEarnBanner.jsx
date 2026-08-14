@@ -30,6 +30,7 @@ export default function LoyaltyEarnBanner({ estimate, loading = false, compact =
         </strong>
         {!compact ? (
           <span className={styles.note}>
+            {Number(estimate.loyaltyMultiplier) > 1 ? "Member 2× · " : ""}
             {estimate.accrualNote || "Points credited after check-out."}{" "}
             {estimate.disclaimer || ""}
           </span>

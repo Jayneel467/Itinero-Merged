@@ -17,7 +17,7 @@ from typing import Any
 log = logging.getLogger("itinero.vero.runtime")
 
 # Bump when shipping behavior changes that evals / ops should pin.
-AGENT_BUILD = (os.getenv("VERO_AGENT_BUILD") or "2026.08.13.prod1").strip()
+AGENT_BUILD = (os.getenv("VERO_AGENT_BUILD") or "2026.08.13.cost2").strip()
 
 
 def _default_prompt_version() -> str:
@@ -29,7 +29,7 @@ def _default_prompt_version() -> str:
             from general_agent.llm.prompts import PROMPT_VERSION as _pv  # type: ignore
             return str(_pv)
         except Exception:
-            return "2026.08.13.1"
+            return "2026.08.13.2"
 
 
 PROMPT_VERSION = (os.getenv("VERO_PROMPT_VERSION") or _default_prompt_version()).strip()
@@ -47,7 +47,18 @@ def _int_env(name: str, default: int) -> int:
 
 def recursion_limit() -> int:
     """LangGraph steps per turn (agent + tools + itinerary nodes)."""
-    return _int_env("VERO_RECURSION_LIMIT", 28)
+    base = _int_env("VERO_RECURSION_LIMIT", 28)
+    try:
+        from llm.cost_planner import budget_mode
+
+        mode = budget_mode()
+        if mode == "protect":
+            return min(base, 8)
+        if mode == "conserve":
+            return min(base, 16)
+    except Exception:
+        pass
+    return base
 
 
 def max_tool_rounds() -> int:
@@ -138,7 +149,7 @@ def extract_tool_names(messages: list[Any]) -> list[str]:
 
 
 def agent_identity() -> dict[str, Any]:
-    return {
+    ident = {
         "agent": "vero",
         "agent_build": AGENT_BUILD,
         "prompt_version": PROMPT_VERSION,
@@ -147,7 +158,25 @@ def agent_identity() -> dict[str, Any]:
         "llm_router": (os.getenv("VERO_LLM_ROUTER") or "1").strip(),
         "llm_combo": (os.getenv("VERO_LLM_COMBO") or "1").strip(),
         "model": (os.getenv("ITINERO_MODEL") or "gpt-4o-mini").strip(),
+        "veroFree": True,
+        "credits": "claude-style daily pool",
     }
+    try:
+        from llm.cost_planner import snapshot as cost_snapshot
+
+        ident["cost"] = {
+            k: cost_snapshot()[k]
+            for k in (
+                "budgetMode",
+                "daySpendUsd",
+                "dailyBudgetUsd",
+                "blendedUsd",
+                "turnsPerDayAtBlend",
+            )
+        }
+    except Exception:
+        pass
+    return ident
 
 
 def production_readiness() -> dict[str, Any]:

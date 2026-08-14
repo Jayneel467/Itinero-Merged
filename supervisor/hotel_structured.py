@@ -693,7 +693,7 @@ async def _verify_razorpay_payment(
     return {
         "ok": False,
         "error": "razorpay_disabled",
-        "message": "Razorpay is not supported. Pay with card (Stripe / LiteAPI Payment SDK).",
+        "message": "Card checkout is required. Pay with card on this page.",
     }
 
 
@@ -2712,7 +2712,7 @@ async def structured_hotel_book(
         return {
             "ok": False,
             "error": "razorpay_disabled",
-            "message": "Razorpay is not supported. Complete card payment with Stripe.",
+            "message": "Complete card payment on this page.",
         }
     if provider == "stripe" and not tid and not mock_payment:
         return {
@@ -2967,11 +2967,11 @@ async def structured_hotel_cancel_booking(
             elif liteapi_handles_refund:
                 if refund_amt is not None:
                     message = (
-                        f"Stay cancelled. LiteAPI refund {refund_amt} {currency} → {dest}."
+                        f"Stay cancelled. Refund {refund_amt} {currency} → {dest}."
                     )
                 else:
                     message = (
-                        f"Stay cancelled. LiteAPI credits any refund to {dest} per policy."
+                        f"Stay cancelled. Any refund is credited to {dest} per policy."
                     )
             elif rail == "legacy_unsupported":
                 message = (
@@ -3009,6 +3009,137 @@ async def structured_hotel_cancel_booking(
                 "itinero_stripe_refund": stripe_refund,
                 "pending": False,
                 "message": message,
+            }
+    except Exception as exc:
+        traceback.print_exc()
+        return {"ok": False, "error": type(exc).__name__, "message": str(exc)[:200]}
+
+
+async def structured_hotel_amend_guest(
+    *,
+    booking_id: str,
+    holder: dict[str, Any] | None = None,
+    guests: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Soft amend: guest name/email via LiteAPI PUT /bookings/{id}/amend."""
+    bid = (booking_id or "").strip()
+    if not bid:
+        return {"ok": False, "error": "missing_booking_id"}
+    if not _api_key():
+        return {"ok": False, "error": "missing_liteapi_key"}
+    body: dict[str, Any] = {}
+    if isinstance(holder, dict) and holder:
+        body["holder"] = holder
+    if isinstance(guests, list) and guests:
+        body["guests"] = guests
+    if not body:
+        return {"ok": False, "error": "missing_guest_fields", "message": "Provide holder or guests."}
+    try:
+        async with httpx.AsyncClient(timeout=40.0) as client:
+            r = await client.put(
+                f"{_LITEAPI_BOOK_BASE}/bookings/{bid}/amend",
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-API-Key": _api_key(),
+                },
+                json=body,
+            )
+            payload = r.json() if r.content else {}
+            if r.status_code >= 400:
+                return {
+                    "ok": False,
+                    "error": "amend_failed",
+                    "message": str(payload.get("message") or f"HTTP {r.status_code}"),
+                    "status_code": r.status_code,
+                }
+            data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+            return {"ok": True, "kind": "guest", "booking": data or payload, "booking_id": bid}
+    except Exception as exc:
+        traceback.print_exc()
+        return {"ok": False, "error": type(exc).__name__, "message": str(exc)[:200]}
+
+
+async def structured_hotel_amend_dates(
+    *,
+    booking_id: str,
+    check_in: str,
+    check_out: str,
+    occupancies: list[dict[str, Any]] | None = None,
+    prebook_id: str | None = None,
+    guest_info: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Hard amend: quote alternative prebooks, then confirm with prebook_id."""
+    bid = (booking_id or "").strip()
+    cin = (check_in or "").strip()[:10]
+    cout = (check_out or "").strip()[:10]
+    if not bid or not cin or not cout:
+        return {"ok": False, "error": "missing_dates", "message": "booking_id, check_in and check_out are required."}
+    if not _api_key():
+        return {"ok": False, "error": "missing_liteapi_key"}
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-API-Key": _api_key(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            if not (prebook_id or "").strip():
+                r = await client.get(
+                    f"{_LITEAPI_BOOK_BASE}/bookings/{bid}/alternative-prebooks",
+                    headers=headers,
+                    params={"checkin": cin, "checkout": cout},
+                )
+                payload = r.json() if r.content else {}
+                if r.status_code >= 400:
+                    return {
+                        "ok": False,
+                        "error": "amend_quote_failed",
+                        "message": str(payload.get("message") or f"HTTP {r.status_code}"),
+                        "status_code": r.status_code,
+                    }
+                data = payload.get("data") if payload.get("data") is not None else payload
+                offers = data if isinstance(data, list) else (data.get("prebooks") or data.get("offers") or [])
+                return {
+                    "ok": True,
+                    "kind": "date_quote",
+                    "booking_id": bid,
+                    "check_in": cin,
+                    "check_out": cout,
+                    "offers": offers if isinstance(offers, list) else [],
+                    "raw": data,
+                }
+
+            confirm_body: dict[str, Any] = {
+                "prebookId": (prebook_id or "").strip(),
+                "checkin": cin,
+                "checkout": cout,
+            }
+            if occupancies:
+                confirm_body["occupancies"] = occupancies
+            if isinstance(guest_info, dict) and guest_info:
+                confirm_body.update(guest_info)
+            r = await client.post(
+                f"{_LITEAPI_BOOK_BASE}/bookings/{bid}/amend",
+                headers=headers,
+                json=confirm_body,
+            )
+            payload = r.json() if r.content else {}
+            if r.status_code >= 400:
+                return {
+                    "ok": False,
+                    "error": "amend_confirm_failed",
+                    "message": str(payload.get("message") or f"HTTP {r.status_code}"),
+                    "status_code": r.status_code,
+                }
+            data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+            return {
+                "ok": True,
+                "kind": "date_confirm",
+                "booking_id": bid,
+                "check_in": cin,
+                "check_out": cout,
+                "booking": data or payload,
             }
     except Exception as exc:
         traceback.print_exc()

@@ -116,7 +116,7 @@ export default function PackageCheckoutPage() {
       ? Math.max(0, Number(loyaltyRedemption.chargeAmount) - promoDiscount)
       : total;
   const honesty =
-    pricing.honesty || "One secure payment to Itinero. Hotel and flights fulfilled via LiteAPI.";
+    pricing.honesty || "One secure payment to Itinero. Hotel and flights are included.";
   const needsFlightHold = payFlight > 0 && Boolean(flight?.offerId || flight?.id);
 
   const { estimate: loyaltyEstimate, loading: loyaltyLoading } = useLoyaltyEstimate(
@@ -473,7 +473,7 @@ export default function PackageCheckoutPage() {
                     />
                     <p className={styles.payHint}>
                       Single charge covers your stay{payFlight > 0 ? ", flights" : ""}
-                      {payMargin > 0 ? ", and package fee" : ""}. Hotel and flights are booked via LiteAPI after
+                      {payMargin > 0 ? ", and package fee" : ""}. Hotel and flights are booked after
                       payment.
                     </p>
                     <div ref={cardMountRef} className={styles.cardElement} />

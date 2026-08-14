@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Bell, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { PageLayout } from "@/components/layout";
 import { useCurrency } from "@/context/CurrencyContext";
+import { useBillingOptional } from "@/features/billing/BillingContext";
 import { useVeroUiOptional } from "@/context/VeroUiContext";
 import { AIRPORTS, findAirportByCode } from "@/constants/airports";
 import { useTripsOptional } from "@/features/trips";
@@ -10,6 +11,7 @@ import {
   loadAccountPrefs,
   saveAccountPrefs,
 } from "@/features/profile/accountPrefs";
+import { hydrateAccountFromServer, persistAccountToServer } from "@/features/profile/accountSync";
 import {
   addWatch,
   clearFeed,
@@ -30,6 +32,8 @@ const SUGGEST = ["BOM", "DEL", "BLR", "HYD", "MAA", "GOI", "DXB", "SIN"]
 
 export default function NotificationsPage() {
   const { currency } = useCurrency();
+  const billing = useBillingOptional();
+  const watchLimit = billing?.watchLimit || 8;
   const veroUi = useVeroUiOptional();
   const tripsCtx = useTripsOptional();
   const [prefs, setPrefs] = useState(() => loadAccountPrefs());
@@ -51,7 +55,13 @@ export default function NotificationsPage() {
     markAlertsRead();
     const trips = tripsCtx?.trips || [];
     syncTripReminders(trips);
-    reload();
+    import("./alertService")
+      .then((m) => m.syncWatchesWithServer?.())
+      .then(() => reload())
+      .catch(() => reload());
+    hydrateAccountFromServer().then((r) => {
+      if (r?.ok) setPrefs(loadAccountPrefs());
+    });
   }, [tripsCtx?.trips, reload]);
 
   useEffect(() => {
@@ -71,13 +81,14 @@ export default function NotificationsPage() {
   const patch = (key, value) => {
     const next = saveAccountPrefs({ [key]: value });
     setPrefs(next);
-    setNote("Saved on this device.");
+    setNote("Saved.");
+    persistAccountToServer({ prefs: next });
   };
 
   const onAddWatch = async (e) => {
     e.preventDefault();
     setFormError("");
-    const res = addWatch({ origin, destination, currency });
+    const res = addWatch({ origin, destination, currency, limit: watchLimit });
     if (!res.ok) {
       setFormError(res.error);
       return;
@@ -133,7 +144,8 @@ export default function NotificationsPage() {
         <h1 className={styles.title}>Alerts</h1>
         <p className={styles.lede}>
           Watch routes with live min fares. Trip reminders use your bookings. We never invent gates
-          or boarding status.
+          or boarding status. You can watch up to {watchLimit} route{watchLimit === 1 ? "" : "s"}.
+          Need more runway for Vero? <Link to="/plus">Buy credits</Link>.
         </p>
 
         <section className={styles.prefBlock}>
@@ -289,6 +301,7 @@ export default function NotificationsPage() {
               </button>
             ) : null}
           </div>
+          <p className={styles.inlineNote}>Fare-drop watches sync with your account. This activity list stays on this device.</p>
 
           {feed.length ? (
             <ul className={styles.feedList}>

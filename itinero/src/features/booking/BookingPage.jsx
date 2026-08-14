@@ -42,9 +42,9 @@ export default function BookingPage() {
             </Link>
           )}
           {type === "flight" && (
-            <Link className="booking-page__option" to="/flights/overview">
-              <strong>Resume flight overview</strong>
-              <span>Review fare details and passenger info.</span>
+            <Link className="booking-page__option" to="/flights">
+              <strong>Resume flight search</strong>
+              <span>Pick a live offer, then passenger info and payment.</span>
             </Link>
           )}
         </div>

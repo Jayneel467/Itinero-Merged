@@ -135,4 +135,12 @@ export const hotelService = {
       return { ok: false, error: error?.message || "cancel_failed" };
     }
   },
+
+  amendBooking: async (body) => {
+    try {
+      return await api.post(ENDPOINTS.HOTELS.AMEND, body, { timeoutMs: 55_000 });
+    } catch (error) {
+      return { ok: false, error: error?.message || "amend_failed" };
+    }
+  },
 };

@@ -1,9 +1,9 @@
 .page {
-  --ink: #001438;
+  --ink: var(--text-primary, #001438);
   --accent: #f97211;
-  --muted: #637588;
-  --line: #e8edf2;
-  --surface: #f6f8fa;
+  --muted: var(--text-secondary, #637588);
+  --line: var(--border-subtle, #e8edf2);
+  --surface: var(--surface-page, #f6f8fa);
   --nav-offset: 76px;
   max-width: 1120px;
   margin: 0 auto;
@@ -37,7 +37,7 @@
 .hero {
   display: grid;
   gap: 18px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid var(--line);
   border-radius: 22px;
   overflow: hidden;
@@ -163,7 +163,7 @@
 }
 
 .btnGhost {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border-color: var(--line);
 }
@@ -218,7 +218,7 @@
 .tocBtn {
   flex: 0 0 auto;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--muted);
   border-radius: 999px;
   padding: 7px 12px;
@@ -263,7 +263,7 @@
 .block {
   margin-top: 22px;
   scroll-margin-top: calc(var(--nav-offset) + 56px);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 22px 20px 24px;
@@ -471,7 +471,7 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .infoAccent {
@@ -644,7 +644,7 @@
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   cursor: pointer;
   padding: 0;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;

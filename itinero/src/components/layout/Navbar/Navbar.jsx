@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthOptional } from "@/features/auth/context/AuthContext";
-import { Bell, Menu } from "lucide-react";
+import { Bell, Bookmark, Briefcase, Menu } from "lucide-react";
 import Sidebar from "../Sidebar/Sidebar";
 import LoginModal from "../../../features/auth/components/LoginModal";
 import Switch from "../../ui/sky-toggle";
@@ -10,7 +10,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import { useHomeLocationOptional } from "@/context/HomeLocationContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
-import { listFeed, unreadAlertCount } from "@/features/account/alertService";
+import { listFeed, unreadAlertCount, syncWatchesWithServer } from "@/features/account/alertService";
 import "./Navbar.css";
 
 /**
@@ -37,14 +37,19 @@ export default function Navbar({ centerContent = null }) {
   useEffect(() => {
     const refreshBadge = () => setUnreadAlerts(unreadAlertCount(listFeed()));
     refreshBadge();
-    const onFocus = () => refreshBadge();
+    const onFocus = () => {
+      refreshBadge();
+      if (auth?.isAuthenticated) {
+        syncWatchesWithServer().then(refreshBadge).catch(() => {});
+      }
+    };
     window.addEventListener("focus", onFocus);
     const id = window.setInterval(refreshBadge, 15000);
     return () => {
       window.removeEventListener("focus", onFocus);
       window.clearInterval(id);
     };
-  }, []);
+  }, [auth?.isAuthenticated]);
 
   useEffect(() => {
     const openRegional = (e) => {
@@ -94,6 +99,22 @@ export default function Navbar({ centerContent = null }) {
           )}
 
           <div className="navbar__actions">
+            <Link
+              to="/trips"
+              className="navbar__bell navbar__trips"
+              aria-label="My trips"
+              title="My trips"
+            >
+              <Briefcase size={20} strokeWidth={2.2} color={iconColor} aria-hidden />
+            </Link>
+            <Link
+              to="/saved"
+              className="navbar__bell"
+              aria-label="Saved"
+              title="Saved"
+            >
+              <Bookmark size={20} strokeWidth={2.2} color={iconColor} aria-hidden />
+            </Link>
             <Link
               to="/notifications"
               className="navbar__bell"
@@ -157,7 +178,7 @@ export default function Navbar({ centerContent = null }) {
                 auth?.isAuthenticated ? navigate("/profile") : setIsLoginModalOpen(true)
               }
               aria-label="Account menu"
-              className="navbar__profile-btn hover:opacity-90 hover:scale-105 transition"
+              className="navbar__profile-btn hover:opacity-90"
             >
               <svg
                 width="18"

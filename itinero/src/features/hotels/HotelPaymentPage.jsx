@@ -200,7 +200,10 @@ export default function HotelPaymentPage() {
       },
     };
     saveHotelConfirmation(confirmState);
-    navigate(`/hotel/${id || "stay"}/confirmation`, {
+    const qs = booking.booking_id
+      ? `?booking=${encodeURIComponent(booking.booking_id)}`
+      : "";
+    navigate(`/hotel/${id || "stay"}/confirmation${qs}`, {
       replace: true,
       state: confirmState,
     });
@@ -245,7 +248,7 @@ export default function HotelPaymentPage() {
           return;
         }
         throw new Error(
-          "LiteAPI did not return a Payment SDK secret for this hold. Enable Payment SDK on the LiteAPI account and try again."
+          "Card checkout could not start for this hold. Try again in a moment."
         );
       }
 
@@ -289,7 +292,7 @@ export default function HotelPaymentPage() {
       setHoldNotice(
         refreshed
           ? `Live rate changed to ${formatMoney(Number(pb.price ?? displayTotal))}. Confirm the total, then pay in the form.`
-          : "Room held. Enter card details in the LiteAPI payment form."
+          : "Room held. Enter your card details below."
       );
     } catch (err) {
       setError(err?.message || "Could not hold this room.");
@@ -408,7 +411,7 @@ export default function HotelPaymentPage() {
         setSdkMounted(false);
         setError(
           err?.message ||
-            "LiteAPI Payment SDK could not start. Allow payment-wrapper.liteapi.travel / js.stripe.com and retry."
+            "Card checkout could not start. Allow js.stripe.com and retry."
         );
       }
     })();
@@ -527,27 +530,27 @@ export default function HotelPaymentPage() {
                   <p className={styles.payHint}>
                     {sandboxMode ? (
                       <>
-                        LiteAPI Payment SDK (sandbox) · test card{" "}
+                        Secure card checkout (sandbox) · test card{" "}
                         <code>4242 4242 4242 4242</code> · any future expiry · any CVC.
                       </>
                     ) : (
-                      "LiteAPI Payment SDK · secured checkout. We never store card numbers."
+                      "Secure card checkout. We never store card numbers."
                     )}
                   </p>
                   <div
                     id={PAY_MOUNT_ID}
                     ref={payMountRef}
                     className={styles.liteApiPayMount}
-                    aria-label="LiteAPI payment form"
+                    aria-label="Card payment form"
                   />
                   {!sdkMounted && !error ? (
-                    <p className={styles.payHint}>Opening LiteAPI payment form…</p>
+                    <p className={styles.payHint}>Opening card checkout…</p>
                   ) : null}
                 </>
               ) : (
                 <p className={styles.payHint}>
                   {isLoading
-                    ? "Holding the room and preparing LiteAPI Payment SDK…"
+                    ? "Holding the room and preparing card checkout…"
                     : error
                       ? "Fix the issue above, then retry."
                       : "Preparing secure payment…"}
@@ -567,8 +570,8 @@ export default function HotelPaymentPage() {
               showContinue={false}
               chargeHint={
                 sandboxMode
-                  ? "LiteAPI Payment SDK · test card 4242 4242 4242 4242"
-                  : "LiteAPI Payment SDK"
+                  ? "Secure checkout · test card 4242 4242 4242 4242"
+                  : "Secure card checkout"
               }
             />
             {hold?.prebook_id ? (

@@ -12,6 +12,74 @@ import httpx
 _OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 _MODEL = os.getenv("VERO_FILTER_MODEL") or os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
+# Common city / typo → layover airport IATA (connection point, not destination).
+_CITY_LAYOVER_AIRPORTS: dict[str, list[str]] = {
+    "pattaya": ["UTP"],
+    "pataya": ["UTP"],
+    "utapao": ["UTP"],
+    "bangkok": ["BKK", "DMK"],
+    "dubai": ["DXB", "DWC"],
+    "abu dhabi": ["AUH"],
+    "doha": ["DOH"],
+    "singapore": ["SIN"],
+    "delhi": ["DEL"],
+    "mumbai": ["BOM"],
+    "bombay": ["BOM"],
+    "istanbul": ["IST", "SAW"],
+    "london": ["LHR", "LGW", "STN", "LTN", "LCY"],
+    "paris": ["CDG", "ORY"],
+    "frankfurt": ["FRA"],
+    "amsterdam": ["AMS"],
+    "hong kong": ["HKG"],
+    "kuala lumpur": ["KUL"],
+    "colombo": ["CMB"],
+    "entebbe": ["EBB"],
+}
+
+
+def _norm_codes(raw: Any) -> list[str]:
+    out: list[str] = []
+    for item in raw or []:
+        code = str(item or "").strip().upper()
+        if re.fullmatch(r"[A-Z]{3}", code):
+            out.append(code)
+    return list(dict.fromkeys(out))
+
+
+def _resolve_layover_places(query: str) -> list[str]:
+    t = (query or "").lower()
+    codes: list[str] = []
+
+    for m in re.finditer(r"\b([a-z]{3})\b", t):
+        c = m.group(1).upper()
+        if c not in {"THE", "AND", "FOR", "VIA", "NOT", "OUT", "ALL", "ANY"}:
+            codes.append(c)
+
+    m = re.search(
+        r"(?:stop\s+(?:at|in|via)|layover\s+(?:at|in)|(?:via|through|connect(?:ing)?\s+(?:in|via|at))\s+)([a-z\s]{2,32})",
+        t,
+        re.I,
+    )
+    if m:
+        place = re.sub(r"\s+", " ", m.group(1).strip().lower())
+        for key, iatas in _CITY_LAYOVER_AIRPORTS.items():
+            if key in place or place in key:
+                codes.extend(iatas)
+
+    for key, iatas in _CITY_LAYOVER_AIRPORTS.items():
+        if re.search(rf"\b{re.escape(key)}\b", t):
+            codes.extend(iatas)
+
+    return list(dict.fromkeys(codes))
+
+
+def _layover_label(query: str, codes: list[str]) -> str:
+    t = (query or "").lower()
+    for key in _CITY_LAYOVER_AIRPORTS:
+        if key in t:
+            return key.title()
+    return " · ".join(codes) if codes else "layover"
+
 
 def _api_key() -> str:
     return (os.getenv("OPENAI_API_KEY") or "").strip()
@@ -159,6 +227,7 @@ def _flight_fallback(query: str, airlines: list[str]) -> dict[str, Any]:
         "arrivalTimes": [],
         "maxDurationHours": None,
         "excludeLayoverRegions": [],
+        "includeLayoverAirports": [],
         "sortBy": None,
     }
     notes: list[str] = []
@@ -177,6 +246,13 @@ def _flight_fallback(query: str, airlines: list[str]) -> dict[str, Any]:
     elif re.search(r"1 stop|one stop", t):
         filters["stops"] = ["1 Stop"]
         notes.append("1 stop")
+
+    layover_codes = _resolve_layover_places(query)
+    if layover_codes:
+        filters["includeLayoverAirports"] = layover_codes
+        if not filters["stops"]:
+            filters["stops"] = ["1 Stop", "2+ Stops"]
+        notes.append(f"stop at {_layover_label(query, layover_codes)}")
 
     if re.search(r"(middle\s*east|gulf|dubai|doha|abu\s*dhabi|dxb|doh|auh)", t) and re.search(
         r"(no|not|dont|don't|without|avoid|skip|exclude|which dont|that dont)", t
@@ -352,6 +428,7 @@ async def interpret_flight_filter(
                 "arrivalTimes": [],
                 "maxDurationHours": None,
                 "excludeLayoverRegions": [],
+                "includeLayoverAirports": [],
                 "sortBy": None,
             },
             "summary": "Filters cleared.",
@@ -371,9 +448,13 @@ async def interpret_flight_filter(
         "departureTimes (subset of ['morning','afternoon','evening']), "
         "arrivalTimes (same), maxDurationHours (number|null), "
         "excludeLayoverRegions (e.g. ['middle_east'] when user wants no Gulf/DXB/DOH/AUH layover), "
+        "includeLayoverAirports (string[] of 3-letter IATA codes when user wants a stop/layover/via "
+        "at a city — e.g. Pattaya/Pataya→UTP, Bangkok→BKK|DMK, Dubai→DXB, Singapore→SIN), "
         "sortBy ('cheapest'|'price_desc'|'fastest'|'recommended'|null), "
         "summary (short human string). "
-        "Understand phrases like 'airline which dont take layover in middle east'."
+        "When includeLayoverAirports is set, prefer stops ['1 Stop','2+ Stops'] unless user asked for direct. "
+        "Understand phrases like 'airline which dont take layover in middle east' and "
+        "'i want stop at pattaya'."
     )
     user = json.dumps(
         {
@@ -394,6 +475,9 @@ async def interpret_flight_filter(
 
         stops_ok = {"Direct", "1 Stop", "2+ Stops"}
         times_ok = {"morning", "afternoon", "evening"}
+        include_layover = _norm_codes(data.get("includeLayoverAirports"))
+        if not include_layover:
+            include_layover = _resolve_layover_places(q)
         filters = {
             "maxPrice": data.get("maxPrice"),
             "airlines": [a for a in (data.get("airlines") or []) if a in airline_list],
@@ -404,10 +488,13 @@ async def interpret_flight_filter(
             "excludeLayoverRegions": [
                 r for r in (data.get("excludeLayoverRegions") or []) if r in {"middle_east"}
             ],
+            "includeLayoverAirports": include_layover,
             "sortBy": data.get("sortBy")
             if data.get("sortBy") in {"cheapest", "price_desc", "fastest", "recommended", "price_asc"}
             else None,
         }
+        if include_layover and not filters["stops"]:
+            filters["stops"] = ["1 Stop", "2+ Stops"]
         summary = str(data.get("summary") or "").strip() or "Applied Vero filter."
         return {"domain": "flights", "filters": filters, "summary": summary, "mode": "llm"}
     except Exception as exc:

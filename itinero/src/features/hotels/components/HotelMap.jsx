@@ -110,7 +110,7 @@ export function HotelMap({
     <div className={styles.mapContainer}>
       {pinned.length === 0 ? (
         <div className={styles.mapEmpty}>
-          Map pins need coordinates from LiteAPI. Try another search - some properties omit lat/lng.
+          Map pins need coordinates from this search. Try another search - some properties omit lat/lng.
         </div>
       ) : (
         <MapContainer

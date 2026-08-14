@@ -42,10 +42,13 @@
   min-height: 280px;
   padding: 32px 28px;
   text-align: center;
-  background:
-    radial-gradient(520px 240px at 50% 35%, rgba(249, 114, 17, 0.08), transparent 60%),
-    linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%);
-  color: #667085;
+  background-color: var(--surface-muted, #eef2f6);
+  background-image:
+    radial-gradient(circle at 50% 42%, rgba(249, 114, 17, 0.12), transparent 42%),
+    linear-gradient(rgba(0, 20, 56, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 20, 56, 0.045) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+  color: var(--text-secondary, #667085);
 }
 
 .emptyIcon {
@@ -54,8 +57,8 @@
   border-radius: 16px;
   display: grid;
   place-items: center;
-  background: #fff;
-  border: 1px solid #e6eaef;
+  background: var(--surface-elevated, #fff);
+  border: 1px solid var(--border-subtle, #e6eaef);
   color: #f97211;
   box-shadow: 0 8px 20px rgba(0, 20, 56, 0.06);
   margin-bottom: 4px;
@@ -66,7 +69,7 @@
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #001438;
+  color: var(--text-primary, #001438);
 }
 
 .emptyCopy {
@@ -75,7 +78,7 @@
   font-size: 14px;
   line-height: 1.5;
   font-weight: 550;
-  color: #667085;
+  color: var(--text-secondary, #667085);
 }
 
 .planePin {

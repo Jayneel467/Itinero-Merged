@@ -1,5 +1,6 @@
 import { APP_CONFIG } from "@/app/config";
 import { ENDPOINTS } from "@/services/endpoints";
+import { getDeviceId } from "@/features/trips/utils/deviceId";
 
 /** Chat can include LiteAPI search - allow longer than a normal REST call. */
 const CHAT_TIMEOUT_MS = 120_000;
@@ -109,6 +110,7 @@ function normalizeChatResponse(data, fallbackThread) {
     error: data?.error || null,
     preferred_name: data?.preferred_name || null,
     address_style: data?.address_style || null,
+    credits: data?.credits || null,
   };
 }
 
@@ -120,6 +122,8 @@ async function postChat(base, payload, signal) {
   try {
     const token = localStorage.getItem("itinero_auth_token");
     if (token) headers.Authorization = `Bearer ${token}`;
+    const deviceId = getDeviceId();
+    if (deviceId) headers["X-Itinero-Device"] = deviceId;
   } catch {
     /* ignore */
   }

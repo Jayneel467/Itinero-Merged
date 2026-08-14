@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { SEARCH_FORM_IMAGES } from "@/constants/images";
 import useAirportSuggest from "@/features/flights/hooks/useAirportSuggest";
 import "./FlightSearchForm.css";
@@ -418,6 +419,7 @@ const TravelersDropdown = () => {
  * Flight search form with From, To, Dates, Travelers, and Search button.
  */
 export default function FlightSearchForm() {
+  const navigate = useNavigate();
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
   const [departDate, setDepartDate] = useState("");
@@ -491,7 +493,11 @@ export default function FlightSearchForm() {
       </div>
 
       {/* Search Button */}
-      <button className="search-form__submit" onClick={() => alert("Pressed!")}>
+      <button
+        type="button"
+        className="search-form__submit"
+        onClick={() => navigate("/flights")}
+      >
         <img src={SEARCH_FORM_IMAGES.searchIcon} className="search-form__submit-icon" alt="" />
         <span>Search</span>
       </button>

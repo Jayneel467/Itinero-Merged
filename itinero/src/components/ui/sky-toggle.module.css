@@ -1,0 +1,89 @@
+.track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 30px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+  box-sizing: border-box;
+}
+
+.track:focus {
+  outline: none;
+}
+
+.track:focus-visible {
+  box-shadow: 0 0 0 3px rgba(249, 114, 17, 0.35);
+}
+
+.trackLight {
+  background: #f4eae6;
+}
+
+.trackDark {
+  background: #1f2937;
+}
+
+.knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transform: translateY(-50%);
+  transition: left 0.25s ease, background-color 0.25s ease;
+}
+
+.knobLight {
+  left: 3px;
+  background: #f97211;
+  color: #fff;
+}
+
+.knobDark {
+  left: calc(100% - 27px);
+  background: #111827;
+  color: #fff;
+}
+
+.icon {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  .track {
+    width: 48px;
+    height: 28px;
+  }
+
+  .knob {
+    width: 22px;
+    height: 22px;
+  }
+
+  .knobLight {
+    left: 3px;
+  }
+
+  .knobDark {
+    left: calc(100% - 25px);
+  }
+
+  .icon {
+    width: 12px;
+    height: 12px;
+  }
+}

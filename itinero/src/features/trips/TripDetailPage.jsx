@@ -39,6 +39,21 @@ function prettyDate(iso) {
   });
 }
 
+function statusLabel(status, trip) {
+  const types = (trip?.legs || []).map((l) => String(l.type || "").toLowerCase()).filter(Boolean);
+  const handoffOnly =
+    types.length > 0 && types.every((t) => t === "train" || t === "bus" || t === "event");
+  if (handoffOnly) {
+    const hasPnr = (trip.legs || []).some((l) => l.pnr);
+    return hasPnr ? "Confirmed" : "Partner ticket";
+  }
+  if (status === "held") return "On hold";
+  if (status === "cancel_pending") return "Cancel pending";
+  if (status === "confirmed") return "Paid";
+  if (!status) return "Draft";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function badgeClass(status) {
   if (status === "confirmed") return styles.badge;
   if (status === "held" || status === "draft" || status === "cancel_pending") {
@@ -58,6 +73,15 @@ export default function TripDetailPage() {
   const [actionErr, setActionErr] = useState("");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [mailBusy, setMailBusy] = useState(false);
+  const [amendIdx, setAmendIdx] = useState(null);
+  const [amendForm, setAmendForm] = useState({
+    checkIn: "",
+    checkOut: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
+  const [amendOffers, setAmendOffers] = useState([]);
   const veroSrc = `${import.meta.env.BASE_URL}vero-chatbot.png`;
 
   const trip = useMemo(() => getTrip(id), [getTrip, id, trips]);
@@ -73,10 +97,18 @@ export default function TripDetailPage() {
       <PageLayout>
         <div className={styles.page}>
           <div className={styles.wrap}>
-            <p>Trip not found.</p>
-            <Link to="/trips" className={`${styles.btn} ${styles.btnPrimary}`}>
-              Back to trips
-            </Link>
+            <p>Trip not found on this account.</p>
+            <p className={styles.contact} style={{ marginTop: 8 }}>
+              Check My Trips, or paste the same id on Help → Find a booking.
+            </p>
+            <div className={styles.heroActions} style={{ marginTop: 16 }}>
+              <Link to="/trips" className={`${styles.btn} ${styles.btnPrimary}`}>
+                Back to trips
+              </Link>
+              <Link to="/help" className={`${styles.btn} ${styles.btnGhost}`}>
+                Help
+              </Link>
+            </div>
           </div>
         </div>
       </PageLayout>
@@ -311,7 +343,7 @@ export default function TripDetailPage() {
 
   async function refreshFlight(leg, idx) {
     if (!isSupplierBookingId(leg.bookingId)) {
-      setActionErr("This fare has no supplier ticket id. Refresh only works with a LiteAPI booking id.");
+      setActionErr("This fare has no live booking id. Refresh only works after the airline ticket is issued.");
       return;
     }
     const key = `f-refresh-${idx}`;
@@ -363,11 +395,11 @@ export default function TripDetailPage() {
         });
       } else if (leg.paymentId && String(leg.paymentId).startsWith("pay_")) {
         setActionErr(
-          "This looks like a legacy payment without a supplier ticket. Contact support with your booking reference for a refund."
+          "This looks like a legacy payment without an airline ticket id. Contact support with your booking reference for a refund."
         );
         return;
       } else {
-        setActionErr("No supplier ticket id on this fare - cannot cancel with LiteAPI.");
+        setActionErr("No airline ticket id on this fare — we can't cancel it from here. Contact support with your booking reference.");
         return;
       }
       if (res?.aborted) return;
@@ -420,6 +452,76 @@ export default function TripDetailPage() {
     }
   }
 
+  async function openHotelAmend(leg, idx) {
+    setAmendIdx(idx);
+    setAmendOffers([]);
+    setAmendForm({
+      checkIn: String(leg.checkIn || "").slice(0, 10),
+      checkOut: String(leg.checkOut || "").slice(0, 10),
+      firstName: trip?.contact?.name?.split?.(" ")?.[0] || "",
+      lastName: trip?.contact?.name?.split?.(" ")?.slice(1).join(" ") || "",
+      email: trip?.contact?.email || "",
+    });
+    setActionErr("");
+    setActionMsg("");
+  }
+
+  async function submitHotelAmend(leg, idx, { dates = false, prebookId = null } = {}) {
+    if (!isSupplierBookingId(leg.bookingId)) return;
+    const key = `h-amend-${idx}`;
+    setBusyKey(key);
+    setActionErr("");
+    setActionMsg("");
+    try {
+      const body = {
+        booking_id: leg.bookingId,
+        email: amendForm.email || trip?.contact?.email || undefined,
+      };
+      if (dates || prebookId) {
+        body.check_in = amendForm.checkIn;
+        body.check_out = amendForm.checkOut;
+        if (prebookId) body.prebook_id = prebookId;
+      } else {
+        body.holder = {
+          firstName: amendForm.firstName,
+          lastName: amendForm.lastName,
+          email: amendForm.email,
+        };
+      }
+      const res = await hotelService.amendBooking(body);
+      if (!res?.ok) throw new Error(res?.error || res?.message || "Change failed.");
+      if (res.kind === "date_quote") {
+        setAmendOffers(Array.isArray(res.offers) ? res.offers : []);
+        setActionMsg(
+          res.offers?.length
+            ? "Pick a new rate to confirm the date change."
+            : "No alternative dates returned for those nights."
+        );
+        return;
+      }
+      tripService.patchLegFromRemote({
+        tripId: trip.id,
+        legType: "hotel",
+        patch: {
+          checkIn: res.check_in || amendForm.checkIn || leg.checkIn,
+          checkOut: res.check_out || amendForm.checkOut || leg.checkOut,
+          hotelConfirmationCode:
+            res.booking?.hotelConfirmationCode ||
+            res.booking?.hotel_confirmation_code ||
+            leg.hotelConfirmationCode,
+        },
+      });
+      refresh();
+      setAmendIdx(null);
+      setAmendOffers([]);
+      setActionMsg(dates || prebookId ? "Stay dates updated." : "Guest details updated.");
+    } catch (err) {
+      setActionErr(err?.message || "Change failed.");
+    } finally {
+      setBusyKey("");
+    }
+  }
+
   async function cancelHotel(leg, idx) {
     if (!isSupplierBookingId(leg.bookingId)) return;
     const key = `h-cancel-${idx}`;
@@ -463,8 +565,11 @@ export default function TripDetailPage() {
       );
       return;
     }
+    const hotel = hotelLegs[0];
     openVero(
-      `I have a ${paid ? "confirmed" : trip.status} trip ${originCode || ""} to ${destCode || ""} on ${dateLabel}. Airline ${airlineName} ${flightNo}. Help with terminals, baggage, hotel near arrival, or next steps.`
+      hotel && !flight
+        ? `I have a ${trip.status} hotel stay ${hotel.hotelName || ""} ${hotel.checkIn || ""} to ${hotel.checkOut || ""}${hotel.hotelConfirmationCode ? ` confirmation ${hotel.hotelConfirmationCode}` : hotel.bookingId ? ` booking ${hotel.bookingId}` : ""}. Can I cancel or change dates?`
+        : `I have a ${paid ? "confirmed" : trip.status} trip ${originCode || ""} to ${destCode || ""} on ${dateLabel}. Airline ${airlineName} ${flightNo}${flight?.pnr ? ` PNR ${flight.pnr}` : ""}. What’s my PNR / gate, and can I cancel?`
     );
   };
 
@@ -489,7 +594,7 @@ export default function TripDetailPage() {
                   {heroMetaExtra}
                 </p>
               </div>
-              <span className={badgeClass(trip.status)}>{trip.status}</span>
+              <span className={badgeClass(trip.status)}>{statusLabel(trip.status, trip)}</span>
             </div>
             <div className={styles.heroActions}>
               {(trip.status === "draft" || trip.status === "held") && flightLegs.length > 0 ? (
@@ -534,7 +639,7 @@ export default function TripDetailPage() {
                 type="button"
                 className={`${styles.btn} ${styles.btnGhost}`}
                 onClick={() => {
-                  if (window.confirm("Remove this trip from this device?")) {
+                  if (window.confirm("Remove this trip from your account / this device?")) {
                     removeTrip(trip.id);
                     navigate("/trips");
                   }
@@ -613,13 +718,13 @@ export default function TripDetailPage() {
                 <div>
                   <div className={styles.refLabel}>Cabin bag</div>
                   <div className={styles.refValue}>
-                    {recap.baggageCabin || "Not on LiteAPI fare (often shows 0 in their portal)"}
+                    {recap.baggageCabin || "Not listed on this fare"}
                   </div>
                 </div>
                 <div>
                   <div className={styles.refLabel}>Checked bag</div>
                   <div className={styles.refValue}>
-                    {recap.baggageChecked || "Not on LiteAPI fare (often shows 0 in their portal)"}
+                    {recap.baggageChecked || "Not listed on this fare"}
                   </div>
                 </div>
                 <div>
@@ -671,7 +776,7 @@ export default function TripDetailPage() {
                       disabled={busyKey === "f-refresh-0"}
                       onClick={() => refreshFlight(flight, 0)}
                     >
-                      {busyKey === "f-refresh-0" ? <LoadingDots label="Refreshing" /> : "Refresh supplier ticket"}
+                      {busyKey === "f-refresh-0" ? <LoadingDots label="Refreshing" /> : "Refresh ticket"}
                     </button>
                   ) : null}
                   {String(flight.status || "").toLowerCase().includes("cancel") ? null : (
@@ -684,14 +789,14 @@ export default function TripDetailPage() {
                       {busyKey === "f-cancel-0"
                         ? <LoadingDots label="Cancelling" />
                         : isSupplierBookingId(flight.bookingId)
-                          ? "Cancel with supplier"
+                          ? "Cancel booking"
                           : "Request refund"}
                     </button>
                   )}
                 </div>
               ) : (
                 <p className={styles.contact} style={{ marginTop: 14 }}>
-                  No supplier ticket id on this fare. Contact support with your payment / booking reference for help.
+                  No airline ticket id on this fare. Contact support with your payment / booking reference for help.
                 </p>
               )}
             </section>
@@ -718,13 +823,97 @@ export default function TripDetailPage() {
                           Refresh
                         </button>
                         {String(leg.status || "").toLowerCase().includes("cancel") ? null : (
-                          <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => cancelHotel(leg, i)}>
-                            Cancel
-                          </button>
+                          <>
+                            <button type="button" className={`${styles.btn} ${styles.btnLight}`} onClick={() => openHotelAmend(leg, i)}>
+                              Change dates / name
+                            </button>
+                            <button type="button" className={`${styles.btn} ${styles.btnDanger}`} onClick={() => cancelHotel(leg, i)}>
+                              Cancel
+                            </button>
+                          </>
                         )}
                       </div>
                     ) : null}
                   </div>
+                  {amendIdx === i ? (
+                    <div className={styles.amendBox}>
+                      <p className={styles.refLabel}>Guest name / email</p>
+                      <div className={styles.amendRow}>
+                        <input
+                          placeholder="First name"
+                          value={amendForm.firstName}
+                          onChange={(e) => setAmendForm((f) => ({ ...f, firstName: e.target.value }))}
+                        />
+                        <input
+                          placeholder="Last name"
+                          value={amendForm.lastName}
+                          onChange={(e) => setAmendForm((f) => ({ ...f, lastName: e.target.value }))}
+                        />
+                        <input
+                          placeholder="Email"
+                          value={amendForm.email}
+                          onChange={(e) => setAmendForm((f) => ({ ...f, email: e.target.value }))}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnLight}`}
+                        disabled={busyKey === `h-amend-${i}`}
+                        onClick={() => submitHotelAmend(leg, i, { dates: false })}
+                      >
+                        {busyKey === `h-amend-${i}` ? <LoadingDots label="Saving" /> : "Update guest"}
+                      </button>
+                      <p className={styles.refLabel} style={{ marginTop: 12 }}>Stay dates</p>
+                      <div className={styles.amendRow}>
+                        <input
+                          type="date"
+                          value={amendForm.checkIn}
+                          onChange={(e) => setAmendForm((f) => ({ ...f, checkIn: e.target.value }))}
+                        />
+                        <input
+                          type="date"
+                          value={amendForm.checkOut}
+                          onChange={(e) => setAmendForm((f) => ({ ...f, checkOut: e.target.value }))}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnPrimary}`}
+                        disabled={busyKey === `h-amend-${i}`}
+                        onClick={() => submitHotelAmend(leg, i, { dates: true })}
+                      >
+                        {busyKey === `h-amend-${i}` ? <LoadingDots label="Checking" /> : "Quote new dates"}
+                      </button>
+                      {amendOffers.length > 0 ? (
+                        <ul className={styles.amendOffers}>
+                          {amendOffers.slice(0, 5).map((offer, oi) => {
+                            const pid = offer.prebookId || offer.prebook_id || offer.id;
+                            const price = offer.price || offer.amount || offer.retailRate;
+                            return (
+                              <li key={pid || oi}>
+                                <span>
+                                  {offer.roomName || offer.room_name || "Alternative rate"}
+                                  {price != null ? ` · ${price}` : ""}
+                                </span>
+                                {pid ? (
+                                  <button
+                                    type="button"
+                                    className={`${styles.btn} ${styles.btnPrimary}`}
+                                    onClick={() => submitHotelAmend(leg, i, { dates: true, prebookId: pid })}
+                                  >
+                                    Confirm this rate
+                                  </button>
+                                ) : null}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                      <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setAmendIdx(null)}>
+                        Close
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </section>
@@ -830,6 +1019,11 @@ export default function TripDetailPage() {
                       Ref {leg.bookingId || "-"}
                       {leg.pnr ? ` · PNR ${leg.pnr}` : " · Awaiting IRCTC PNR"}
                     </p>
+                    {!leg.pnr ? (
+                      <p className={styles.contact} style={{ marginTop: 6 }}>
+                        Cancel or change this ticket on IRCTC / the rail partner — Itinero cannot cancel it here.
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <span className={badgeClass(leg.status)}>{leg.status}</span>
@@ -874,6 +1068,9 @@ export default function TripDetailPage() {
                     </p>
                     <p className={styles.contact} style={{ marginTop: 8 }}>
                       Ref {leg.bookingId || "-"} · Partner ticket required
+                    </p>
+                    <p className={styles.contact} style={{ marginTop: 6 }}>
+                      Boarding and cancellations are with the transit operator — Itinero cannot cancel this here.
                     </p>
                   </div>
                   <div>

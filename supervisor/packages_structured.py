@@ -1534,7 +1534,7 @@ async def book_package(
         },
         "honesty": (
             "Paid in one checkout to Itinero"
-            + (" · hotel + flights fulfilled via LiteAPI" if inventory_est > 0 else "")
+            + (" · hotel and flights included" if inventory_est > 0 else "")
             + " · itinerary curated by Itinero"
         ),
     }
@@ -1562,7 +1562,7 @@ async def book_package(
         "flightBooking": flight_booking,
         "emailSent": email_sent,
         "message": "Package confirmed — hotel"
-        + (" + flights paid via LiteAPI" if flight_total else " paid via LiteAPI")
+        + (" + flights included" if flight_total else " paid")
         + (f" · package fee to Itinero" if itinero_due > 0 else "")
         + (" · confirmation email sent." if email_sent else "."),
     }

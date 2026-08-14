@@ -60,6 +60,11 @@ export default function ProfileInterests() {
 
   return (
     <div>
+      {!auth?.isAuthenticated ? (
+        <p style={{ marginBottom: 12, fontSize: 13, color: "#64748b" }}>
+          Sign in to save vibes and email frequency. Guests can still unsubscribe from any marketing mail.
+        </p>
+      ) : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         {HOME_VIBES.map((v) => (
           <button

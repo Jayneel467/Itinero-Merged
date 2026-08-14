@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  ArrowRight,
+  Building2,
   Bus,
-  MapPinned,
-  Route,
+  CircleHelp,
   ShieldCheck,
   SlidersHorizontal,
-  Ticket,
   X,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout";
@@ -28,26 +28,51 @@ const WINDOWS = [
   { id: "night", label: "Night (12 midnight - 06 AM)" },
 ];
 
-const FEATURES = [
+const MODES = [
   {
-    Icon: MapPinned,
-    title: "City transit",
-    copy: "Bus, metro, tram, and more on one corridor - boarding stop on each card.",
+    Icon: Building2,
+    kicker: "Same city",
+    title: "City buses, metro & tram",
+    copy: "Search two places in the same city. We show the route, boarding stop, and walk/ride steps — like Google Maps. You pay on the bus or at the metro gate.",
   },
   {
     Icon: Bus,
+    kicker: "City to city",
     title: "Intercity coaches",
-    copy: "RTC and private operators with seat type and live ₹ fares when covered.",
+    copy: "Search two cities. We list private and state coaches with type (AC, sleeper, Volvo) and a live fare when we have one. You finish the ticket with our booking partner.",
+  },
+];
+
+const STEPS = [
+  {
+    n: "01",
+    title: "Search from and to",
+    copy: "Type a city or a stop. Same city = local transit. Two cities = coaches.",
   },
   {
-    Icon: Route,
-    title: "Filter what you’ll ride",
-    copy: "Time windows, AC, sleeper, Volvo, live tracking - cut the noise.",
+    n: "02",
+    title: "Pick a date",
+    copy: "Or tap a popular route below — we search tomorrow’s rides.",
   },
   {
-    Icon: Ticket,
-    title: "Honest checkout",
-    copy: "City rides: directions. Coaches: partner ticket. We never invent a fare.",
+    n: "03",
+    title: "Open a ride",
+    copy: "City cards give directions. Coach cards send you to partner checkout. We never invent a price.",
+  },
+];
+
+const FAQ = [
+  {
+    q: "Is this trains or flights?",
+    a: "No. Transits is only buses, metro, tram, ferry, and coaches between cities. Indian Railways is on Trains. Air tickets are on Flights.",
+  },
+  {
+    q: "Do I buy the ticket on Itinero?",
+    a: "City rides: no — pay on the vehicle. Coaches: pick the operator here, then complete payment on our partner site. We never make up a fare.",
+  },
+  {
+    q: "Why is it marked beta?",
+    a: "We only show live feeds. If a route isn’t listed, try a nearby city name or a popular route below.",
   },
 ];
 
@@ -189,7 +214,7 @@ export default function BusesPage() {
     const from = (patch.from ?? filters.from ?? draftFrom).trim();
     const to = (patch.to ?? filters.to ?? draftTo).trim();
     if (!from || !to) {
-      setSearchHint("Enter both From and To, or tap a popular corridor.");
+      setSearchHint("Enter both a start and a destination, or tap a popular route.");
       return;
     }
     setSearchHint("");
@@ -378,7 +403,7 @@ export default function BusesPage() {
       ? data.message
       : data.local
         ? `No live transit found for ${filters.from} → ${filters.to} right now.`
-        : `No live coaches found for ${filters.from} → ${filters.to} on this date. Open partner checkout for this corridor.`);
+        : `No live coaches found from ${filters.from} to ${filters.to} on this date. Open partner checkout for more operators.`);
 
   const toggleWin = (id) => {
     setDepWindows((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
@@ -412,7 +437,7 @@ export default function BusesPage() {
             <Check checked={quick.sleeper} onChange={() => setQuick((q) => ({ ...q, sleeper: !q.sleeper }))} label="Sleeper" count={counts.sleeper} />
             <Check checked={quick.seater} onChange={() => setQuick((q) => ({ ...q, seater: !q.seater }))} label="Seater" count={counts.seater} />
             <Check checked={quick.volvo} onChange={() => setQuick((q) => ({ ...q, volvo: !q.volvo }))} label="Volvo" count={counts.volvo} />
-            <Check checked={quick.rtc} onChange={() => setQuick((q) => ({ ...q, rtc: !q.rtc }))} label="RTC / government" count={counts.rtc} />
+            <Check checked={quick.rtc} onChange={() => setQuick((q) => ({ ...q, rtc: !q.rtc }))} label="State buses (RTC)" count={counts.rtc} />
             <Check checked={quick.live} onChange={() => setQuick((q) => ({ ...q, live: !q.live }))} label="Live tracking" count={counts.live} />
           </>
         ) : null}
@@ -440,16 +465,15 @@ export default function BusesPage() {
     return (
       <PageLayout>
         <div className={`${styles.page}${veroOpen ? ` ${styles.veroCompact}` : ""}`}>
-          <div className={styles.landing}>
-            <header className={styles.hero}>
-              <div className={styles.heroCopy}>
-                <p className={styles.brand}>itinero transits · beta</p>
-                <h1>City transit &amp; coaches, one search</h1>
-                <p className={styles.lede}>
-                  Pick a corridor. We pull live local transit and intercity coaches with real stops and fares.
-                </p>
-              </div>
-
+          <header className={styles.hero}>
+            <div className={styles.heroInner}>
+              <p className={styles.brand}>Transits · beta</p>
+              <h1 className={styles.headline}>
+                Buses, metro, and coaches — <span className={styles.headlineAccent}>one search</span>
+              </h1>
+              <p className={styles.lede}>
+                Need a city bus or a coach between cities? Search from and to. Trains stay on Trains. Flights stay on Flights.
+              </p>
               <div className={styles.searchInHero}>
                 <TrainModifySearchBar
                   className={styles.heroSearchBar}
@@ -457,32 +481,51 @@ export default function BusesPage() {
                   to={draftTo}
                   when={draftWhen}
                   onSearch={applySearch}
-                  fromPlaceholder="From city or stop"
-                  toPlaceholder="To city or stop"
+                  fromLabel="From"
+                  toLabel="To"
+                  fromPlaceholder="City or stop"
+                  toPlaceholder="City or stop"
                   stationSuggest={false}
                   cityOptions={BUS_CITIES}
                   placeSuggest
-                  submitLabel="Search"
+                  submitLabel="Search rides"
                 />
                 {searchHint ? <p className={styles.searchHint}>{searchHint}</p> : null}
               </div>
-            </header>
+            </div>
+          </header>
 
-            <section className={styles.promise} aria-labelledby="transit-features">
-              <div className={styles.promiseIntro}>
-                <p className={styles.promiseEyebrow}>What you get</p>
-                <h2 id="transit-features" className={styles.promiseTitle}>
-                  Built for the ride
-                </h2>
+          <div className={styles.landing}>
+            <section className={styles.modes} aria-labelledby="transit-modes">
+              <div className={styles.sectionIntro}>
+                <p className={styles.sectionEyebrow}>What Transits is</p>
+                <h2 id="transit-modes">Two kinds of rides</h2>
+                <p>Same search bar. What you get depends on whether you stay in one city or travel between two.</p>
               </div>
-              <ol className={styles.promiseSteps}>
-                {FEATURES.map(({ Icon, title, copy }, i) => (
-                  <li key={title} className={styles.promiseStep}>
-                    <span className={styles.promiseNum} aria-hidden>
-                      {String(i + 1).padStart(2, "0")}
+              <div className={styles.modeGrid}>
+                {MODES.map(({ Icon, kicker, title, copy }) => (
+                  <article key={title} className={styles.modeCard}>
+                    <span className={styles.modeIcon} aria-hidden>
+                      <Icon size={22} strokeWidth={2.1} />
                     </span>
-                    <span className={styles.promiseIcon} aria-hidden>
-                      <Icon size={20} strokeWidth={2.15} />
+                    <p className={styles.modeKicker}>{kicker}</p>
+                    <h3>{title}</h3>
+                    <p>{copy}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className={styles.how} aria-labelledby="transit-how">
+              <div className={styles.sectionIntro}>
+                <p className={styles.sectionEyebrow}>How it works</p>
+                <h2 id="transit-how">Three steps</h2>
+              </div>
+              <ol className={styles.stepGrid}>
+                {STEPS.map(({ n, title, copy }) => (
+                  <li key={n} className={styles.stepCard}>
+                    <span className={styles.stepNum} aria-hidden>
+                      {n}
                     </span>
                     <strong>{title}</strong>
                     <p>{copy}</p>
@@ -491,12 +534,10 @@ export default function BusesPage() {
               </ol>
             </section>
 
-            <section className={styles.corridors} aria-labelledby="popular-corridors">
-              <div className={styles.corridorIntro}>
-                <div>
-                  <h2 id="popular-corridors">Popular corridors</h2>
-                  <p>Tap a route - we search tomorrow’s live rides.</p>
-                </div>
+            <section className={styles.corridors} aria-labelledby="popular-routes">
+              <div className={styles.sectionIntro}>
+                <h2 id="popular-routes">Popular routes</h2>
+                <p>Tap a pair — we search tomorrow’s live rides.</p>
               </div>
               <div className={styles.corridorGrid}>
                 {popularPairs.map(([a, b]) => (
@@ -509,7 +550,7 @@ export default function BusesPage() {
                     <span className={styles.corridorCities}>
                       <span className={styles.corridorFrom}>{a}</span>
                       <span className={styles.corridorArrow} aria-hidden>
-                        →
+                        <ArrowRight size={14} />
                       </span>
                       <span className={styles.corridorTo}>{b}</span>
                     </span>
@@ -519,9 +560,26 @@ export default function BusesPage() {
               </div>
             </section>
 
+            <section className={styles.faq} aria-labelledby="transit-faq">
+              <div className={styles.sectionIntro}>
+                <p className={styles.sectionEyebrow}>
+                  <CircleHelp size={14} aria-hidden /> Good to know
+                </p>
+                <h2 id="transit-faq">Before you search</h2>
+              </div>
+              <div className={styles.faqList}>
+                {FAQ.map(({ q, a }) => (
+                  <article key={q} className={styles.faqItem}>
+                    <h3>{q}</h3>
+                    <p>{a}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
             <p className={styles.note}>
-              <ShieldCheck size={14} aria-hidden />
-              Beta - live feeds only. We don’t invent operators, stops, or ticket prices.
+              <ShieldCheck size={16} aria-hidden />
+              Beta — we only show live operators, stops, and prices. Nothing is invented.
             </p>
           </div>
         </div>
@@ -535,10 +593,11 @@ export default function BusesPage() {
         <header className={styles.top}>
           <div className={styles.topInner}>
             <div>
-              <p className={styles.brand}>itinero transits · beta</p>
+              <p className={styles.brand}>Transits · beta</p>
               <h1>
-                {filters.from} → {filters.to}
+                Rides from {filters.from} to {filters.to}
               </h1>
+              <p className={styles.topSub}>City buses, metro, and coaches — not trains or flights.</p>
             </div>
             <button type="button" className={styles.changeSearch} onClick={clearToLanding}>
               New search
@@ -552,8 +611,10 @@ export default function BusesPage() {
             to={filters.to}
             when={filters.when}
             onSearch={applySearch}
-            fromPlaceholder="Any place, stop, or city"
-            toPlaceholder="Any place, stop, or city"
+            fromLabel="From"
+            toLabel="To"
+            fromPlaceholder="City or stop"
+            toPlaceholder="City or stop"
             stationSuggest={false}
             cityOptions={BUS_CITIES}
             placeSuggest
@@ -620,12 +681,12 @@ export default function BusesPage() {
             </div>
             <p className={styles.honesty}>
               {data.local || listed.some((b) => b.local)
-                ? "All public transits like Google Maps - bus, metro, tram, rail, ferry. Boarding stop is on each card. Directions only; pay on the system."
+                ? "These are public transits (bus, metro, tram, ferry). Each card shows where to board. Pay on the vehicle — we don’t sell this ticket."
                 : region === "IN"
                   ? listed.some((b) => b.kind === "coach")
-                    ? "Live coach operators, bus type, seats, ratings, and ₹ fares. Ticket issues at partner checkout - we never invent a price."
-                    : "Live coaches on this corridor when the feed is up, otherwise public transits. Partner checkout has more operators."
-                  : "Live public transits + coaches when the corridor is covered. Full ticket at partner checkout."}
+                    ? "These are coaches between cities. Prices are live when listed. You’ll finish booking with our partner — we never make up a fare."
+                    : "Live coaches when the feed is up, otherwise city transits. Partner checkout has more operators."
+                  : "Public transits and coaches when this route is covered. Full ticket at partner checkout."}
             </p>
             <div className={styles.featured}>
               <button
@@ -653,7 +714,7 @@ export default function BusesPage() {
                     Volvo{counts.volvo ? ` · ${counts.volvo}` : ""}
                   </button>
                   <button type="button" className={`${styles.featChip} ${quick.rtc ? styles.featOn : ""}`} onClick={() => setFeat("rtc")}>
-                    RTC{counts.rtc ? ` · ${counts.rtc}` : ""}
+                    State{counts.rtc ? ` · ${counts.rtc}` : ""}
                   </button>
                 </>
               ) : null}
@@ -671,8 +732,8 @@ export default function BusesPage() {
                 title={region === "IN" && !data.local ? "Finding coaches" : "Finding transits"}
                 message={
                   region === "IN" && !data.local
-                    ? "Live operators, types, seats, and fares on this corridor."
-                    : "Bus, metro, tram, rail, and ferry - same coverage as Google Maps."
+                    ? "Live operators, types, seats, and fares on this route."
+                    : "Bus, metro, tram, rail, and ferry — same coverage as Google Maps."
                 }
                 count={4}
               />
@@ -697,7 +758,7 @@ export default function BusesPage() {
               <div className={styles.list}>
                 {listed.map((bus) => {
                   const badges = [];
-                  if (bus.rtc) badges.push("RTC");
+                  if (bus.rtc) badges.push("State");
                   if (bus.primo) badges.push("Primo");
                   if (bus.live_tracking) badges.push("Live tracking");
                   if (bus.id && bus.id === fastestId) badges.push("Fastest");

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Radar } from "lucide-react";
+import { Radar, Search } from "lucide-react";
 import { flightService } from "../services/flightService";
 import FlightTrackCard from "./FlightTrackCard";
 import FlightTrackMap from "./FlightTrackMap";
@@ -213,20 +213,19 @@ export default function FlightTrackPanel({
                 autoCapitalize="characters"
               />
             </label>
-            <div className={styles.formRow}>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Date</span>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  aria-label="Flight date"
-                />
-              </label>
-              <button type="submit" disabled={loading || !String(flight || "").trim()}>
-                {loading ? "…" : "Track"}
-              </button>
-            </div>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Date</span>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                aria-label="Flight date"
+              />
+            </label>
+            <button type="submit" disabled={loading || !String(flight || "").trim()}>
+              <Search size={16} strokeWidth={2.4} aria-hidden />
+              {loading ? "Checking…" : "Track flight"}
+            </button>
           </form>
         ) : (
           <form
@@ -252,18 +251,28 @@ export default function FlightTrackPanel({
               />
             </label>
             <button type="submit" disabled={loading || String(airportQ || "").trim().length < 3}>
-              {loading ? "…" : "Open board"}
+              <Radar size={16} strokeWidth={2.4} aria-hidden />
+              {loading ? "Loading…" : "Open board"}
             </button>
           </form>
         )}
 
         <p className={styles.chipsHead}>Quick airports</p>
         <div className={styles.chips}>
-          {QUICK_AIRPORTS.map((code) => (
-            <button key={code} type="button" onClick={() => submitAirport(code)}>
-              {code}
-            </button>
-          ))}
+          {QUICK_AIRPORTS.map((code) => {
+            const on = String(airportQ || "").replace(/\s+/g, "").toUpperCase() === code;
+            return (
+              <button
+                key={code}
+                type="button"
+                className={on ? styles.chipOn : undefined}
+                onClick={() => submitAirport(code)}
+                aria-pressed={on}
+              >
+                {code}
+              </button>
+            );
+          })}
         </div>
 
         {mode === "airport" && airportTyping && suggest.length ? (
@@ -321,7 +330,7 @@ export default function FlightTrackPanel({
             <p className={styles.state}>{result.message}</p>
           ) : (
             <p className={styles.state}>
-              Enter a flight number and date, or open an airport board from the chips below.
+              Enter a flight number and date, or tap an airport chip to open the live board.
             </p>
           )}
         </div>

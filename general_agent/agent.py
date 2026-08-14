@@ -41,6 +41,113 @@ def _address_fields(trip_context: dict) -> dict:
     }
 
 
+_UI_DENY = frozenset(
+    {
+        "offer_id",
+        "offerId",
+        "prebook_id",
+        "prebookId",
+        "transaction_id",
+        "transactionId",
+        "secret_key",
+        "client_secret",
+        "payment_id",
+        "paymentId",
+    }
+)
+
+
+def _scrub_ui_dict(src: dict, *, max_keys: int = 24) -> dict:
+    out = {}
+    for i, (k, v) in enumerate(src.items()):
+        if i >= max_keys:
+            break
+        key = str(k)
+        if key in _UI_DENY or key.lower().endswith(("_secret", "secret_key")):
+            continue
+        if isinstance(v, (str, int, float, bool)) or v is None:
+            out[key] = v if not isinstance(v, str) else v[:240]
+        elif isinstance(v, dict):
+            out[key] = _scrub_ui_dict(v, max_keys=12)
+    return out
+
+
+def _safe_ui_page(page_context: dict) -> dict:
+    """Compact left-page context for the system prompt — no money IDs, no full lists."""
+    safe: dict = {}
+    for k in ("screen", "path", "title"):
+        if page_context.get(k) is not None:
+            safe[k] = page_context[k]
+    hint = page_context.get("help_hint")
+    if hint:
+        safe["help_hint"] = str(hint)[:500]
+    search_in = page_context.get("search") if isinstance(page_context.get("search"), dict) else {}
+    search = {
+        k: search_in[k]
+        for k in (
+            "origin",
+            "destination",
+            "depart_date",
+            "return_date",
+            "city",
+            "check_in",
+            "check_out",
+            "guests",
+            "rooms",
+            "adults",
+            "children",
+        )
+        if search_in.get(k) is not None
+    }
+    if search:
+        safe["search"] = search
+    booking_in = page_context.get("booking") if isinstance(page_context.get("booking"), dict) else {}
+    if booking_in:
+        safe["booking"] = _scrub_ui_dict(booking_in)
+    detail_in = page_context.get("detail") if isinstance(page_context.get("detail"), dict) else {}
+    if detail_in:
+        detail = {
+            k: detail_in.get(k)
+            for k in ("id", "title", "status", "origin", "destination", "departDate", "depart_date")
+            if detail_in.get(k) is not None
+        }
+        legs = []
+        for leg in (detail_in.get("legs") or [])[:6]:
+            if isinstance(leg, dict):
+                legs.append(_scrub_ui_dict(leg, max_keys=16))
+        if legs:
+            detail["legs"] = legs
+        if detail:
+            safe["detail"] = detail
+    summary_in = (
+        page_context.get("results_summary")
+        if isinstance(page_context.get("results_summary"), dict)
+        else {}
+    )
+    if summary_in:
+        summary = {
+            k: summary_in.get(k)
+            for k in ("count", "total", "total_offers", "currency", "sort_by", "min_price", "loading")
+            if summary_in.get(k) is not None
+        }
+        picks = summary_in.get("picks")
+        if isinstance(picks, dict):
+            summary["picks"] = {
+                name: _scrub_ui_dict(row, max_keys=10)
+                for name, row in list(picks.items())[:4]
+                if isinstance(row, dict)
+            }
+        samples = summary_in.get("sample_offers") or summary_in.get("sample_hotels") or []
+        if isinstance(samples, list) and samples:
+            key = "sample_offers" if summary_in.get("sample_offers") else "sample_hotels"
+            summary[key] = [
+                _scrub_ui_dict(s, max_keys=10) for s in samples[:5] if isinstance(s, dict)
+            ]
+        if summary:
+            safe["results_summary"] = summary
+    return safe
+
+
 def _pack(turn, path: str, payload: dict, *, tools: list | None = None) -> dict:
     """Attach production turn telemetry to every agent response."""
     meta = turn.finish(path=path, tools=tools or [])
@@ -72,6 +179,7 @@ class ItineroAgent:
         voice_mode: bool = False,
         spoken_language: str | None = None,
         traveler: dict | None = None,
+        cost_subject: str | None = None,
     ) -> dict:
         """Send one user message and get back both reply text and cards metadata (if any).
 
@@ -97,6 +205,21 @@ class ItineroAgent:
         trip_context = dict((snapshot.values or {}).get("trip_context", {}) or {})
 
         invoke_ctx: dict = {}
+        subject = str(cost_subject or "").strip()
+        remaining = None
+        try:
+            from supervisor.credits import (
+                cost_subject_from_turn,
+                credits_remaining_from_turn,
+            )
+
+            subject = subject or cost_subject_from_turn(thread_id)
+            remaining = credits_remaining_from_turn()
+        except Exception:
+            subject = subject or thread_id
+        invoke_ctx["cost_subject"] = subject or thread_id
+        if remaining is not None:
+            invoke_ctx["credits_remaining"] = remaining
         invoke_ctx["voice_mode"] = bool(voice_mode)
         trip_context["voice_mode"] = bool(voice_mode)
         lang, reply_script = resolve_thread_language(
@@ -138,31 +261,8 @@ class ItineroAgent:
         if page_context and isinstance(page_context, dict):
             # UI hints only — never trust client offer/prebook/transaction IDs
             # as authority to create LiteAPI holds.
-            safe_page = {
-                k: page_context.get(k)
-                for k in ("screen", "path", "title")
-                if page_context.get(k) is not None
-            }
-            search_in = page_context.get("search") if isinstance(page_context.get("search"), dict) else {}
-            search = {
-                k: search_in[k]
-                for k in (
-                    "origin",
-                    "destination",
-                    "depart_date",
-                    "return_date",
-                    "city",
-                    "check_in",
-                    "check_out",
-                    "guests",
-                    "rooms",
-                    "adults",
-                    "children",
-                )
-                if search_in.get(k) is not None
-            }
-            if search:
-                safe_page["search"] = search
+            safe_page = _safe_ui_page(page_context)
+            search = safe_page.get("search") or {}
             invoke_ctx["ui_page"] = safe_page
             trip_context["ui_page"] = safe_page
             screen = safe_page.get("screen")
@@ -499,6 +599,7 @@ class ItineroAgent:
                 "reply": reply_text,
                 "cards": cards_data,
                 "places": places,
+                "vero_last_lane": new_trip_context.get("vero_last_lane"),
                 **_address_fields({**trip_context, **new_trip_context}),
             },
             tools=tools_used,

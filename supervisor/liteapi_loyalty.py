@@ -39,7 +39,7 @@ async def fetch_loyalty_settings(*, force: bool = False) -> dict[str, Any]:
             "ok": False,
             "enabled": False,
             "error": "liteapi_not_configured",
-            "message": "LiteAPI key missing.",
+            "message": "Inventory is not configured.",
             "programName": _PROGRAM_NAME,
         }
         _cache.update(at=now, settings=out)

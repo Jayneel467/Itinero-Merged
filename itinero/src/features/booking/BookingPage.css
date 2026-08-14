@@ -8,7 +8,7 @@
 .booking-page h1 {
   margin: 0 0 8px;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
-  color: #001438;
+  color: var(--text-primary, #001438);
 }
 
 .booking-page__lead {
@@ -28,7 +28,7 @@
   padding: 22px;
   border-radius: 18px;
   border: 1px solid #e8edf2;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   text-decoration: none;
   color: inherit;
 }
@@ -38,7 +38,7 @@
 }
 
 .booking-page__option strong {
-  color: #001438;
+  color: var(--text-primary, #001438);
   font-size: 1.1rem;
 }
 

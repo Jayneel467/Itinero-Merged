@@ -154,7 +154,7 @@
   height: 36px;
   border: 1px solid #e5e7eb;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: #667085;
   display: grid;
   place-items: center;
@@ -267,7 +267,7 @@
   border-radius: 8px;
   font-size: 0.9rem;
   color: #001439;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .field input:focus,
@@ -338,7 +338,7 @@
 }
 
 .btnSecondary {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: #344054;
   border: 1px solid #d0d5dd;
 }
@@ -372,7 +372,7 @@
   padding: 12px;
   border: 1px solid #d0d5dd;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .stripeMount[data-ready="0"] {
@@ -418,7 +418,7 @@
 .retryCard {
   align-self: flex-start;
   border: 1px solid #d0d5dd;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: #344054;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -566,7 +566,7 @@
   border-radius: 10px;
   object-fit: contain;
   border: 1px solid #f0f0f0;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .reviewAirline > span:first-child {
@@ -645,7 +645,7 @@
   border: 1px solid #eef0f3;
   border-radius: 14px;
   padding: 14px 14px 12px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .reviewBlockHead {
@@ -810,7 +810,7 @@
   padding: 12px 14px;
   border: 1.5px solid #e5e7eb;
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   cursor: pointer;
   color: #001439;
 }

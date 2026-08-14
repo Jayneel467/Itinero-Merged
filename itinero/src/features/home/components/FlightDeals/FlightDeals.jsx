@@ -216,11 +216,17 @@ export default function FlightDeals() {
   };
 
   return (
-    <div className="flex flex-col self-stretch max-w-[1604px] mb-16 md:mb-[120px] mx-auto gap-6 md:gap-7">
+    <section
+      aria-labelledby="flight-deals-heading"
+      className="relative z-0 flex flex-col self-stretch max-w-[1604px] mb-16 md:mb-[120px] mx-auto gap-6 md:gap-7 scroll-mt-[88px]"
+    >
       <ScrollReveal delay={0.1}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center self-stretch px-4 md:px-[53px]">
           <div className="flex flex-col shrink-0 items-start gap-1 md:gap-[7px] mb-4 md:mb-0">
-            <span className="text-[#001438] text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight">
+            <span
+              id="flight-deals-heading"
+              className="text-[#001438] text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight"
+            >
               Flight Deals Today
             </span>
             <span className="text-[#F97211] text-[16px] md:text-xl lg:text-[18px] 2xl:text-2xl font-medium">
@@ -357,6 +363,6 @@ export default function FlightDeals() {
           </div>
         </div>
       </ScrollReveal>
-    </div>
+    </section>
   );
 }

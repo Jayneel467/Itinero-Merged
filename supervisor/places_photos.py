@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 _CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 _BYTES_CACHE: dict[str, tuple[float, bytes, str]] = {}
 _TTL = 7 * 24 * 3600  # Places landmark photos are stable
-_CACHE_VER = "v4"  # bump: landmark hints + don't hard-skip city mismatch
+_CACHE_VER = "v5"  # bump: word-boundary city match; never ignore city last-resort
 
 # Prefer scenic / cultural hits — not car rentals or tour-operator ads.
 _GOOD_TYPES = {
@@ -82,6 +82,17 @@ _BAD_NAME_RE = re.compile(
 _CITY_LANDMARK_HINTS: dict[str, str] = {
     "udaipur": "City Palace Lake Pichola",
     "jaipur": "Hawa Mahal Amber Fort",
+    "manali": "Rohtang Pass Himachal mountains",
+    "kochi": "Chinese fishing nets Fort Kochi",
+    "darjeeling": "Tiger Hill tea estate Himalaya",
+    "rishikesh": "Laxman Jhula Ganga",
+    "andaman": "Havelock Radhanagar Beach",
+    "port blair": "Cellular Jail Andaman",
+    "santorini": "Oia white houses caldera",
+    "maldives": "overwater villa turquoise lagoon",
+    "zanzibar": "Stone Town Nungwi beach",
+    "cape town": "Table Mountain waterfront",
+    "queenstown": "Remarkables Lake Wakatipu",
     "varanasi": "Dashashwamedh Ghat Ganga",
     "srinagar": "Dal Lake houseboat",
     "leh": "Leh Palace Thiksey Monastery",
@@ -186,6 +197,16 @@ def _city_tokens(city: str) -> list[str]:
     return out
 
 
+def _token_in_blob(token: str, blob: str) -> bool:
+    """Word-boundary match so 'leh' ≠ leisure and 'rome' ≠ romantic."""
+    t = (token or "").strip().lower()
+    if not t:
+        return False
+    if len(t) <= 4 or " " in t:
+        return bool(re.search(rf"(?<![a-z]){re.escape(t)}(?![a-z])", blob))
+    return t in blob
+
+
 def _city_match_score(place: dict[str, Any], city: str) -> float:
     """Boost places that mention the requested city; penalize clear mismatches."""
     tokens = _city_tokens(city)
@@ -194,7 +215,7 @@ def _city_match_score(place: dict[str, Any], city: str) -> float:
     blob = f"{_place_name(place)} {_place_address(place)}".lower()
     if not blob.strip():
         return 0.0
-    if any(t in blob for t in tokens):
+    if any(_token_in_blob(t, blob) for t in tokens):
         return 45.0
     # Soft penalty — still allow Ubud for Bali-style queries, but rank lower.
     return -25.0
@@ -324,8 +345,9 @@ def resolve_place_photo(
             if len(candidates) >= 4:
                 break
 
-    # Last resort: ignore city match if still empty
-    if not candidates:
+    # Last resort: only when the caller did not name a city. Wrong-city photos
+    # are worse than an empty slot (frontend falls back to destination cover).
+    if not candidates and not city:
         for place in ranked:
             if _BAD_NAME_RE.search(_place_name(place)):
                 continue

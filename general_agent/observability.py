@@ -139,6 +139,12 @@ def health_payload(*, extra: dict[str, Any] | None = None) -> dict[str, Any]:
             },
         },
     }
+    try:
+        from llm.cost_planner import snapshot as cost_snapshot
+
+        body["veroCost"] = cost_snapshot()
+    except Exception:
+        pass
     if extra:
         body.update(extra)
     return body

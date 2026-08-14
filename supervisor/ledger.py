@@ -62,7 +62,71 @@ def ensure_device(device_id: str | None) -> str | None:
     return did
 
 
-def upsert_trip(device_id: str | None, trip: dict[str, Any]) -> dict[str, Any]:
+def _user_id_for_device(conn, device_id: str | None) -> str | None:
+    did = (device_id or "").strip()
+    if not did:
+        return None
+    try:
+        row = conn.execute("SELECT user_id FROM devices WHERE id = %s", (did,)).fetchone()
+    except Exception:
+        return None
+    if not row or not row[0]:
+        return None
+    uid = str(row[0]).strip()
+    return uid or None
+
+
+def claim_device_for_user(device_id: str | None, user_id: str | None) -> dict[str, Any]:
+    """Move guest trips/bookings/watches onto the signed-in account."""
+    did = ensure_device(device_id)
+    uid = (user_id or "").strip()
+    if not did or not uid or not configured():
+        return {"ok": False, "claimed": 0}
+    trips_n = bookings_n = watches_n = 0
+    with connection() as conn:
+        t = conn.execute(
+            """
+            UPDATE trips SET user_id = %s, updated_at = now()
+            WHERE device_id = %s AND (user_id IS NULL OR user_id = '' OR user_id = %s)
+            """,
+            (uid, did, uid),
+        )
+        trips_n = t.rowcount or 0
+        b = conn.execute(
+            """
+            UPDATE bookings SET user_id = %s, updated_at = now()
+            WHERE device_id = %s AND (user_id IS NULL OR user_id = '' OR user_id = %s)
+            """,
+            (uid, did, uid),
+        )
+        bookings_n = b.rowcount or 0
+        try:
+            w = conn.execute(
+                """
+                UPDATE price_watches SET user_id = %s, updated_at = now()
+                WHERE device_id = %s AND (user_id IS NULL OR user_id = '' OR user_id = %s)
+                """,
+                (uid, did, uid),
+            )
+            watches_n = w.rowcount or 0
+        except Exception:
+            watches_n = 0
+        conn.commit()
+    return {
+        "ok": True,
+        "trips": trips_n,
+        "bookings": bookings_n,
+        "watches": watches_n,
+        "claimed": trips_n + bookings_n + watches_n,
+    }
+
+
+def upsert_trip(
+    device_id: str | None,
+    trip: dict[str, Any],
+    *,
+    user_id: str | None = None,
+) -> dict[str, Any]:
     did = ensure_device(device_id)
     if not did:
         return {"ok": False, "error": "missing_device"}
@@ -75,16 +139,20 @@ def upsert_trip(device_id: str | None, trip: dict[str, Any]) -> dict[str, Any]:
     destination = (trip.get("destination") or None)
     created = _ts(trip.get("createdAt"))
     updated = _ts(trip.get("updatedAt"))
+    uid = (user_id or "").strip() or None
     with connection() as conn:
+        if not uid:
+            uid = _user_id_for_device(conn, did)
         conn.execute(
             """
             INSERT INTO trips (
-              id, device_id, status, title, origin, destination,
+              id, device_id, user_id, status, title, origin, destination,
               depart_date, return_date, source, payload, created_at, updated_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, COALESCE(%s, now()), COALESCE(%s, now()))
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, COALESCE(%s, now()), COALESCE(%s, now()))
             ON CONFLICT (id) DO UPDATE SET
               device_id = EXCLUDED.device_id,
+              user_id = COALESCE(EXCLUDED.user_id, trips.user_id),
               status = EXCLUDED.status,
               title = EXCLUDED.title,
               origin = EXCLUDED.origin,
@@ -98,6 +166,7 @@ def upsert_trip(device_id: str | None, trip: dict[str, Any]) -> dict[str, Any]:
             (
                 trip_id,
                 did,
+                uid,
                 status,
                 title,
                 origin,
@@ -114,25 +183,44 @@ def upsert_trip(device_id: str | None, trip: dict[str, Any]) -> dict[str, Any]:
     return {"ok": True, "id": trip_id}
 
 
-def list_trips(device_id: str | None) -> list[dict[str, Any]]:
-    did = ensure_device(device_id)
-    if not did:
+def list_trips(device_id: str | None, user_id: str | None = None) -> list[dict[str, Any]]:
+    did = normalize_device_id(device_id)
+    if did:
+        ensure_device(did)
+    uid = (user_id or "").strip() or None
+    if not did and not uid:
         return []
+    clauses: list[str] = []
+    params: list[str] = []
+    if uid:
+        clauses.append("user_id = %s")
+        params.append(uid)
+    if did:
+        clauses.append("device_id = %s")
+        params.append(did)
     with connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT payload
             FROM trips
-            WHERE device_id = %s
+            WHERE {' OR '.join(clauses)}
             ORDER BY updated_at DESC
+            LIMIT 80
             """,
-            (did,),
+            tuple(params),
         ).fetchall()
     out: list[dict[str, Any]] = []
+    seen: set[str] = set()
     for row in rows:
         payload = row[0]
-        if isinstance(payload, dict):
-            out.append(payload)
+        if not isinstance(payload, dict):
+            continue
+        tid = str(payload.get("id") or "").strip()
+        if tid and tid in seen:
+            continue
+        if tid:
+            seen.add(tid)
+        out.append(payload)
     return out
 
 
@@ -177,15 +265,31 @@ def find_trip_by_booking_refs(
         return None
 
 
-def delete_trip(device_id: str | None, trip_id: str) -> bool:
-    did = ensure_device(device_id)
+def delete_trip(
+    device_id: str | None,
+    trip_id: str,
+    *,
+    user_id: str | None = None,
+) -> bool:
+    did = ensure_device(device_id) if device_id else None
     tid = (trip_id or "").strip()
-    if not did or not tid:
+    uid = (user_id or "").strip() or None
+    if not tid or (not did and not uid):
         return False
+    clauses = ["id = %s"]
+    params: list[str] = [tid]
+    owners: list[str] = []
+    if did:
+        owners.append("device_id = %s")
+        params.append(did)
+    if uid:
+        owners.append("user_id = %s")
+        params.append(uid)
+    clauses.append(f"({' OR '.join(owners)})")
     with connection() as conn:
         cur = conn.execute(
-            "DELETE FROM trips WHERE id = %s AND device_id = %s",
-            (tid, did),
+            f"DELETE FROM trips WHERE {' AND '.join(clauses)}",
+            tuple(params),
         )
         conn.commit()
         return (cur.rowcount or 0) > 0
@@ -222,7 +326,7 @@ def booking_owned_by_device(supplier_booking_id: str | None, device_id: str | No
     with connection() as conn:
         row = conn.execute(
             """
-            SELECT device_id FROM bookings
+            SELECT device_id, user_id FROM bookings
             WHERE supplier_booking_id = %s
             ORDER BY updated_at DESC NULLS LAST
             LIMIT 1
@@ -237,6 +341,32 @@ def booking_owned_by_device(supplier_booking_id: str | None, device_id: str | No
         if not did:
             return False
         return owner == did
+
+
+def booking_owned_by_user(supplier_booking_id: str | None, user_id: str | None) -> bool | None:
+    """True when the booking is linked to this signed-in account."""
+    if not configured():
+        return None
+    bid = (supplier_booking_id or "").strip()
+    uid = (user_id or "").strip()
+    if not bid or not uid:
+        return None
+    with connection() as conn:
+        row = conn.execute(
+            """
+            SELECT user_id FROM bookings
+            WHERE supplier_booking_id = %s
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+            """,
+            (bid,),
+        ).fetchone()
+        if not row:
+            return None
+        owner = (row[0] or "").strip()
+        if not owner:
+            return None
+        return owner == uid
 
 
 def _find_booking_id(
@@ -283,16 +413,18 @@ def record_booking(
     with connection() as conn:
         existing = _find_booking_id(conn, supplier_booking_id=supplier, payment_id=pay)
         booking_pk = existing or str(uuid.uuid4())
+        uid = _user_id_for_device(conn, did)
         conn.execute(
             """
             INSERT INTO bookings (
-              id, trip_id, device_id, kind, supplier_booking_id, pnr, payment_id,
+              id, trip_id, device_id, user_id, kind, supplier_booking_id, pnr, payment_id,
               status, amount, currency, payload, updated_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
             ON CONFLICT (id) DO UPDATE SET
               trip_id = COALESCE(EXCLUDED.trip_id, bookings.trip_id),
               device_id = COALESCE(EXCLUDED.device_id, bookings.device_id),
+              user_id = COALESCE(EXCLUDED.user_id, bookings.user_id),
               supplier_booking_id = COALESCE(EXCLUDED.supplier_booking_id, bookings.supplier_booking_id),
               pnr = COALESCE(EXCLUDED.pnr, bookings.pnr),
               payment_id = COALESCE(EXCLUDED.payment_id, bookings.payment_id),
@@ -306,6 +438,7 @@ def record_booking(
                 booking_pk,
                 (trip_id or None),
                 did,
+                uid,
                 str(kind or "unknown")[:32],
                 supplier,
                 (pnr or None),

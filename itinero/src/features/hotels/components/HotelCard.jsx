@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { useCurrency } from "@/context/CurrencyContext";
-import { isSaved, toggleSaved } from "@/features/account/savedService";
+import { isSaved, onSavedChange, toggleSaved } from "@/features/account/savedService";
 import styles from "../HotelsPage.module.css";
 
 function amenityFamily(label) {
@@ -59,6 +59,12 @@ export const HotelCard = ({ hotel, searchQuery }) => {
   const [saved, setSaved] = useState(() => isSaved(`hotel:${hotel.id}`));
   const navigate = useNavigate();
   const { formatMoney } = useCurrency();
+
+  useEffect(() => {
+    const sync = () => setSaved(isSaved(`hotel:${hotel.id}`));
+    sync();
+    return onSavedChange(sync);
+  }, [hotel.id]);
 
   const nightPrice = Number(hotel.pricePerNight);
   const totalPrice = Number(hotel.totalPrice);

@@ -120,6 +120,22 @@
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.saved {
+  display: inline-flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid #fdba74;
+  color: #c2410c;
+  font-weight: 700;
+  background: #fff7ed;
+  cursor: pointer;
+  font: inherit;
 }
 
 .empty {

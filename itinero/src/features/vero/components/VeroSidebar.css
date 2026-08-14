@@ -34,6 +34,11 @@
   margin-bottom: 12px;
 }
 
+.vero-sidebar__brand [data-vero-credits] {
+  width: 100%;
+  max-width: none;
+}
+
 .vero-sidebar__brand-mark {
   display: flex;
   align-items: center;
@@ -411,10 +416,19 @@
     transform: translateX(-105%);
     transition: transform 0.28s ease;
     box-shadow: 8px 0 32px rgba(15, 23, 42, 0.12);
-    background: #fff;
+    background: var(--sb-surface, #fff);
   }
 
   .vero-shell--nav-open .vero-sidebar {
     transform: translateX(0);
   }
+}
+
+html.dark .vero-sidebar {
+  --sb-ink: var(--text-primary, #e8edf4);
+  --sb-muted: var(--text-secondary, #9aa8b8);
+  --sb-line: var(--border-subtle, #243044);
+  --sb-cream: color-mix(in srgb, #f97211 16%, var(--surface-elevated, #121a2b));
+  --sb-surface: var(--surface-elevated, #121a2b);
+  background: var(--surface-muted, #0e1524);
 }

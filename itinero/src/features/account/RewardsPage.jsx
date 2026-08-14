@@ -45,7 +45,9 @@ export default function RewardsPage() {
         <p className={styles.kicker}>Itinero Rewards</p>
         <h1>Your points</h1>
         <p className={styles.lead}>
-          Earn on hotel stays and packages. Redeem on package checkout (10 points ≈ $1).
+          Earn on hotel stays and packages. Redeem on package checkout (10 points ≈ $1).{" "}
+          Points earn on confirmed bookings. Need more Vero runway?{" "}
+          <Link to="/plus">Buy credits</Link>.
         </p>
 
         {!signedIn ? (
@@ -83,7 +85,7 @@ export default function RewardsPage() {
                 <Sparkles size={18} /> How to use points
               </h2>
               <ul>
-                <li>Earn ~1% back in points on eligible bookings (powered by LiteAPI loyalty).</li>
+                <li>Earn ~1% back in points on eligible bookings.</li>
                 <li>Hotel points move from pending → available after check-out.</li>
                 <li>Apply points on package checkout for an instant discount.</li>
                 <li>Minimum redemption: {balance?.minRedeemPoints || 50} points.</li>

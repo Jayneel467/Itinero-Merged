@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Ban, Download, Home, Mail, Map } from "lucide-react";
 import { PageLayout } from "@/components/layout";
-import { ActionButton, ActionRow } from "@/components/shared";
+import { ActionButton, ActionRow, LoadingState, VeroPostBookingHelp } from "@/components/shared";
 import { useCurrency } from "@/context/CurrencyContext";
+import { useVeroUi } from "@/context/VeroUiContext";
+import { buildPackageConfirmationPageContext } from "@/features/vero/utils/pageContext";
 import PackageItineraryList from "./components/PackageItineraryList";
 import { packageService } from "./services/packageService";
 import { formatDisplayDate, formatEstimateRange } from "./utils/itineraryFormat";
 import { downloadPackageConfirmationPdf } from "./utils/packageConfirmationPdf";
-import { LoadingState } from "@/components/shared";
 import {
   cancelPackageWithRefund,
   formatCancelResultMessage,
@@ -25,6 +26,7 @@ export default function PackageConfirmationPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { formatMoney } = useCurrency();
+  const { setPageContext, clearPageContext } = useVeroUi();
   const [booking, setBooking] = useState(location.state?.booking || null);
   const [lookupDone, setLookupDone] = useState(Boolean(location.state?.booking));
   const [resendBusy, setResendBusy] = useState(false);
@@ -34,6 +36,50 @@ export default function PackageConfirmationPage() {
   const [cancelMsg, setCancelMsg] = useState("");
   const [cancelErr, setCancelErr] = useState("");
   const guest = location.state?.guest || booking?.guest || {};
+
+  const tripId = useMemo(() => {
+    const id = booking?.bookingId || bookingId;
+    if (!id) return null;
+    try {
+      const trips = tripService.list?.() || [];
+      const match = (trips || []).find((t) =>
+        (t.legs || []).some((l) => l.type === "package" && l.packageBookingId === id)
+      );
+      return match?.id || null;
+    } catch {
+      return null;
+    }
+  }, [booking?.bookingId, bookingId]);
+
+  useEffect(() => {
+    if (!booking) {
+      clearPageContext();
+      return undefined;
+    }
+    const stay = booking.stay || {};
+    const lite = stay.liteapi || {};
+    const flight = booking.flight || null;
+    const pkg = booking.package || {};
+    setPageContext(
+      buildPackageConfirmationPageContext({
+        title: pkg.title,
+        bookingId: booking.bookingId || bookingId,
+        tripId,
+        checkIn: stay.checkIn,
+        checkOut: stay.checkOut,
+        hotelName: stay.hotel?.name,
+        hotelBookingId: lite.bookingId,
+        hotelConfirmation: lite.hotelConfirmationCode,
+        airline: flight?.airline,
+        flightNumber: flight?.flightNumber || flight?.flight_number,
+        origin: flight?.origin,
+        destination: flight?.destination,
+        pnr: flight?.pnr || lite.flightPnr,
+        guestName: guestName(booking.guest || guest),
+      })
+    );
+    return () => clearPageContext();
+  }, [booking, bookingId, tripId, guest, setPageContext, clearPageContext]);
 
   useEffect(() => {
     if (booking || !bookingId) {
@@ -197,6 +243,13 @@ export default function PackageConfirmationPage() {
           </p>
         )}
 
+        <div className={styles.veroHelp}>
+          <VeroPostBookingHelp
+            prompt={`I booked the package ${pkg.title || "Itinero package"} (booking ${booking.bookingId || bookingId}). What’s included, and can I cancel?`}
+            copy="Ask cancel, stay, or flights on this itinerary — not a new package search."
+          />
+        </div>
+
         <section className={styles.docActions}>
           <ActionButton onClick={handleDownloadPdf}>
             <Download size={16} aria-hidden />
@@ -235,7 +288,7 @@ export default function PackageConfirmationPage() {
                   ? formatMoney(stay.total)
                   : "-"}
             </strong>
-            <p>One payment to Itinero · hotel and flights via LiteAPI</p>
+            <p>One payment to Itinero · hotel and flights included</p>
           </div>
         </section>
 

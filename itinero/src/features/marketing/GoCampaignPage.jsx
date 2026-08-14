@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
-import { interestService } from "@/services/interestTracker";
+import { interestService, trackInterestEvent } from "@/services/interestTracker";
 import { captureAttributionFromUrl } from "@/services/attribution";
-import { trackInterestEvent } from "@/services/interestTracker";
 import styles from "./GoCampaignPage.module.css";
 
 const FALLBACK = {
@@ -15,20 +14,31 @@ const FALLBACK = {
   cta_path: "/explore",
   secondary_label: "Sign up free",
   secondary_path: "/login",
+  lead_label: "Get weekend trip ideas by email",
   offer_code: "WELCOME10",
 };
 
 /**
- * Acquisition landing page — /go/:slug
+ * Acquisition landing — /go index or /go/:slug
  */
 export default function GoCampaignPage() {
   const { slug } = useParams();
   const [campaign, setCampaign] = useState(FALLBACK);
+  const [landings, setLandings] = useState([]);
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
     captureAttributionFromUrl();
+    if (!slug) {
+      document.title = "Trip ideas | Itinero";
+      interestService
+        .goList()
+        .then((res) => setLandings(Array.isArray(res?.campaigns) ? res.campaigns : []))
+        .catch(() => setLandings([]));
+      trackInterestEvent("page_view", { page: "go_index" });
+      return;
+    }
     document.title = `${campaign.headline || "Itinero"} | Itinero`;
     interestService
       .goCampaign(slug)
@@ -54,8 +64,8 @@ export default function GoCampaignPage() {
         vibes: campaign.vibes || [],
         acq_source: attr.acq_source || "go",
         acq_medium: attr.acq_medium || "landing",
-        acq_campaign: campaign.utm_campaign || slug,
-        landing_path: `/go/${slug}`,
+        acq_campaign: campaign.utm_campaign || slug || "go_index",
+        landing_path: slug ? `/go/${slug}` : "/go",
       });
       setMsg("You’re in — check your inbox for trip ideas.");
       setEmail("");
@@ -64,11 +74,39 @@ export default function GoCampaignPage() {
     }
   }
 
+  if (!slug) {
+    return (
+      <PageLayout>
+        <section className={styles.index}>
+          <p className={styles.kicker}>Itinero campaigns</p>
+          <h1>Pick a trip idea</h1>
+          <p className={styles.indexLead}>
+            Weekend hills, beaches, and classic loops. Open a landing, or leave your email for ideas.
+          </p>
+          <div className={styles.indexGrid}>
+            {landings.map((c) => (
+              <Link key={c.slug} className={styles.indexCard} to={`/go/${c.slug}`}>
+                <span
+                  className={styles.indexThumb}
+                  style={{ backgroundImage: `url(${c.image})` }}
+                />
+                <strong>{c.headline}</strong>
+                <span>{c.sub}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout>
       <section
         className={styles.hero}
-        style={{ backgroundImage: `linear-gradient(180deg,rgba(0,20,57,.55),rgba(0,20,57,.75)), url(${campaign.image})` }}
+        style={{
+          backgroundImage: `linear-gradient(180deg,rgba(0,20,57,.55),rgba(0,20,57,.75)), url(${campaign.image})`,
+        }}
       >
         <div className={styles.inner}>
           <p className={styles.eyebrow}>Itinero</p>
@@ -89,7 +127,7 @@ export default function GoCampaignPage() {
           ) : null}
           <form className={styles.lead} onSubmit={onLead}>
             <label htmlFor="go-email" className={styles.leadLabel}>
-              Get hiking & trip ideas by email
+              {campaign.lead_label || "Get weekend trip ideas by email"}
             </label>
             <div className={styles.leadRow}>
               <input

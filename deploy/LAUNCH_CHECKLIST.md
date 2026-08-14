@@ -66,6 +66,8 @@ Hard requirements before public traffic — treat as a release gate.
 - [ ] `GET /api/health` → `money_path.warnings` empty (no sandbox key / mock / missing webhook secret).
 - [ ] `GET /api/health/ready` returns **200** in prod (blocks on smtp, sentry, postgres, live LiteAPI, webhook secret, mock off).
 - [ ] Sandbox then live: hotel pay → confirm; flight pay → ticket; package **one** Stripe charge → LiteAPI credit fulfill.
+- [ ] `python scripts/money_smoke.py --live-book` (sandbox) then one Plus Checkout with **4242** while signed in.
+- [ ] Prod Stripe: `STRIPE_WEBHOOK_SECRET` set; `/ready` fails without it. Plus must activate from webhook, not only redirect.
 - [ ] Confirm mock book APIs return 400 in production.
 
 ### 2) Email + webhook hygiene
@@ -79,7 +81,8 @@ Hard requirements before public traffic — treat as a release gate.
 ### 3) Loyalty correctness on cancel
 
 - [ ] Cancel hotel/flight via Trips → pending/available earn for that `booking_id` marked `reversed`.
-- [ ] LiteAPI `booking.cancel` webhook also reverses (idempotent with API cancel).
+- [ ] LiteAPI `booking.cancel` webhook also reverses (idempotent with API cancel) and sends Itinero cancel email.
+- [ ] Signed-in trips: login claims device trips/loyalty/watches onto `user_id` (new phone still sees tickets).
 - [ ] Earn is idempotent (book API + webhook do not double-credit).
 - [ ] Cron: `POST /api/loyalty/confirm-due` with `x-itinero-admin-secret` after check-out dates (daily).
 
@@ -111,9 +114,9 @@ Live status JSON: `GET /api/integrations/liteapi` (wired / partial / pbo_only / 
 
 | Capability | Notes |
 |------------|--------|
-| Flight webhooks + cancel→points reverse | Webhook handler hotel-only today |
-| Flight seats/bags in main checkout | `attach-services` exists; BookingPopup only |
-| Hotel booking amendments | Name amend + hard date change APIs unused |
+| Flight webhooks + cancel→points reverse | LiteAPI webhook + SMTP confirm/cancel + Rewards reverse |
+| Flight seats/bags in main checkout | BookingPopup + main FlightPaymentPage |
+| Hotel booking amendments | POST `/api/hotels/bookings/amend` + Trips UI |
 | Semantic / visual room search (Beta) | Natural-language / style hotel search |
 | `roomMapping: true` on main rates | Better rooms + GHC deep links |
 | LiteAPI Vouchers API | Create promos in dashboard/API |
@@ -125,10 +128,22 @@ Live status JSON: `GET /api/integrations/liteapi` (wired / partial / pbo_only / 
 ## Marketing OS
 
 - [ ] GH secrets: `DATABASE_URL`, `SMTP_*`, `PUBLIC_SITE_URL`, `GEMINI_API_KEY` (author steps).
-- [ ] Cron: `.github/workflows/daily-marketing-digest.yml` uses `--drain` (author→mail same tick).
+- [ ] Cron: `.github/workflows/daily-marketing-digest.yml` uses `--drain --watches` (journeys + fare-drop mail same tick).
 - [ ] Offline proof: `.venv/bin/python -m supervisor.marketing_smoke` exits 0.
 - [ ] Staging (no real mail): `MARKETING_SEARCH_MAIL_DELAY_HOURS=0 .venv/bin/python -m supervisor.marketing_smoke --live`.
 - [ ] Live SMTP: same + `--send` to `MARKETING_SMOKE_EMAIL` (opt-in test user). Expect 1 search mail, Agra capped, digest skip, unsub → `no_consent`.
+
+## UI trust (ship-killers — walk before public traffic)
+
+Wrong destination photos, torn chrome, or a broken credit meter will bounce bookers. Treat these as hard no-go.
+
+- [ ] `.venv/bin/pytest supervisor/tests/test_destination_covers.py supervisor/tests/test_places_photos.py -q` exits 0 (no Rome-from-Romantic / Leh-from-Leisure / wrong-city stock).
+- [ ] Explore city page → **Matching packages** only shows that city (or the section is empty — never random Goa on Udaipur).
+- [ ] Package card photo matches the destination on the card (not origin/gateway, not theme-word drift).
+- [ ] Navbar: flag / theme / profile fully visible on desktop + with Vero drawer open (no clip / tear).
+- [ ] Vero drawer header: credit pill is one line (`Free 40/40` + bar), not wrapped onto the bar.
+- [ ] Suggestion chips: text centered, no ghosting under the label.
+- [ ] Hard-refresh `/packages`, `/explore/udaipur`, `/explore/goa`, `/vero` on a 390px phone and 1280 desktop before go-live.
 
 ## Final smoke
 

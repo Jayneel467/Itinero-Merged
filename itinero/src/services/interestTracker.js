@@ -93,4 +93,5 @@ export const interestService = {
     api.post(ENDPOINTS.MARKETING.VALIDATE_OFFER, { code, vibes }),
   score: () => api.get(ENDPOINTS.MARKETING.SCORE),
   goCampaign: (slug) => api.get(ENDPOINTS.MARKETING.GO(slug)),
+  goList: () => api.get(ENDPOINTS.MARKETING.GO_LIST),
 };

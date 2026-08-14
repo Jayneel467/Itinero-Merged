@@ -15,11 +15,13 @@ export const NAVBAR_IMAGES = {
 };
 
 // ─── Hero / Category Tabs ────────────────────────────────
+// Figma TagJS CDN URLs expired (403). Prefer Lucide in HeroSection; keep
+// these as local fallbacks for any legacy CategoryTabs usage.
 export const HERO_IMAGES = {
-  flightsIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/oe4ghj2b_expires_30_days.png",
-  hotelsIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/bgrdgk18_expires_30_days.png",
-  packagesIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/j9i2e7s9_expires_30_days.png",
-  returnArrow: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/ypxb6lhe_expires_30_days.png",
+  flightsIcon: `${import.meta.env.BASE_URL}icon/logo.png`,
+  hotelsIcon: `${import.meta.env.BASE_URL}icon/logo.png`,
+  packagesIcon: `${import.meta.env.BASE_URL}icon/logo.png`,
+  returnArrow: `${import.meta.env.BASE_URL}icon/logo.png`,
 };
 
 // ─── Flight Search Form ──────────────────────────────────
@@ -35,12 +37,12 @@ export const SEARCH_FORM_IMAGES = {
 
 // ─── AI Travel Buddy ─────────────────────────────────────
 export const AI_BUDDY_IMAGES = {
-  askVeroIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/794biwop_expires_30_days.png",
-  searchHotelIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/3nj4wd5o_expires_30_days.png",
-  switchFlightIcon: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/tj0cesrl_expires_30_days.png",
-  heroImage: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/s03yo8uo_expires_30_days.png",
-  chatBubbleBg: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fkoglko6_expires_30_days.png",
-  chatAvatar: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fci9o2vh_expires_30_days.png",
+  askVeroIcon: `${import.meta.env.BASE_URL}vero-chatbot.png`,
+  searchHotelIcon: `${import.meta.env.BASE_URL}vero-chatbot.png`,
+  switchFlightIcon: `${import.meta.env.BASE_URL}vero-chatbot.png`,
+  heroImage: `${import.meta.env.BASE_URL}hero.jpg`,
+  chatBubbleBg: `${import.meta.env.BASE_URL}hero.jpg`,
+  chatAvatar: `${import.meta.env.BASE_URL}vero-chatbot.png`,
 };
 
 // ─── Trending Destinations ───────────────────────────────
@@ -135,12 +137,12 @@ export const NEWSLETTER_IMAGES = {
 
 // ─── Footer ──────────────────────────────────────────────
 export const FOOTER_IMAGES = {
-  logo: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/n26u4vy4_expires_30_days.png",
-  logoText: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/mh84kt3c_expires_30_days.png",
-  socialFacebook: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/xw04hqnm_expires_30_days.png",
-  socialTwitter: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/4d3ej2e2_expires_30_days.png",
-  socialInstagram: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/06p9y5wa_expires_30_days.png",
-  socialLinkedin: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/w5o4pxvx_expires_30_days.png",
-  appStore: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/6gp5xfbw_expires_30_days.png",
-  googlePlay: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/b8gj3bgo_expires_30_days.png",
+  logo: `${import.meta.env.BASE_URL}itinero-logo.png`,
+  logoText: `${import.meta.env.BASE_URL}itinero-logo.png`,
+  socialFacebook: `${import.meta.env.BASE_URL}brand/itinero-mark.png`,
+  socialTwitter: `${import.meta.env.BASE_URL}brand/itinero-mark.png`,
+  socialInstagram: `${import.meta.env.BASE_URL}brand/itinero-mark.png`,
+  socialLinkedin: `${import.meta.env.BASE_URL}brand/itinero-mark.png`,
+  appStore: `${import.meta.env.BASE_URL}brand/itinero-mark.png`,
+  googlePlay: `${import.meta.env.BASE_URL}brand/itinero-mark.png`,
 };

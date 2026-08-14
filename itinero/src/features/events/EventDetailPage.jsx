@@ -4,6 +4,7 @@ import { PageLayout } from "@/components/layout";
 import { LoadingState } from "@/components/shared";
 import { tripService } from "@/features/trips/tripService";
 import { useCurrency } from "@/context/CurrencyContext";
+import { isSaved, onSavedChange, toggleSaved } from "@/features/account/savedService";
 import { eventService } from "./services/eventService";
 import styles from "./EventDetailPage.module.css";
 
@@ -16,6 +17,14 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [bookmarked, setBookmarked] = useState(() => (id ? isSaved(`event:${id}`) : false));
+
+  useEffect(() => {
+    const key = id ? `event:${id}` : "";
+    const sync = () => setBookmarked(key ? isSaved(key) : false);
+    sync();
+    return onSavedChange(sync);
+  }, [id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +95,23 @@ export default function EventDetailPage() {
               <div className={styles.actions}>
                 <button type="button" className={styles.cta} onClick={getTickets} disabled={!event.url}>
                   Get tickets
+                </button>
+                <button
+                  type="button"
+                  className={bookmarked ? styles.saved : styles.secondary}
+                  onClick={() => {
+                    const now = toggleSaved({
+                      id: `event:${event.id}`,
+                      type: "event",
+                      title: event.name || "Event",
+                      subtitle: event.city || event.venue || "Event",
+                      url: `/events/${encodeURIComponent(event.id)}`,
+                      image: event.image || "",
+                    });
+                    setBookmarked(Boolean(now));
+                  }}
+                >
+                  {bookmarked ? "Saved" : "Save"}
                 </button>
                 <Link to="/events" className={styles.secondary}>
                   Back to search

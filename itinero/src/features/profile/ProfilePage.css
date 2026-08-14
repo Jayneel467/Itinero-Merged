@@ -1,12 +1,12 @@
 /* Profile - Itinero navy / orange */
 
 .profile-page {
-  --ink: #001438;
+  --ink: var(--text-primary, #001438);
   --accent: #f97211;
   --accent-deep: #e5670f;
-  --muted: #5b6b7f;
-  --line: #e8edf2;
-  --soft: #f4f7fb;
+  --muted: var(--text-secondary, #5b6b7f);
+  --line: var(--border-subtle, #e8edf2);
+  --soft: var(--surface-muted, #f4f7fb);
 
   max-width: 920px;
   margin: 0 auto;
@@ -101,7 +101,7 @@
   cursor: pointer;
   text-decoration: none;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -162,7 +162,7 @@
   padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   font-size: 0.8rem;
   font-weight: 700;
@@ -215,7 +215,7 @@
   border: 1px solid rgba(249, 114, 17, 0.28);
   background:
     radial-gradient(ellipse 80% 120% at 100% 0%, rgba(249, 114, 17, 0.12), transparent 55%),
-    #fff;
+    var(--surface-elevated, #fff);
   text-decoration: none;
   color: inherit;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -227,7 +227,7 @@
 }
 
 .spotlight.emptySpot {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   border-color: var(--line);
 }
 
@@ -274,7 +274,7 @@
 .panel {
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   padding: 14px 16px 12px;
 }
 
@@ -357,7 +357,7 @@
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   text-decoration: none;
   color: inherit;
   width: 100%;
@@ -391,7 +391,7 @@
 .detailCard {
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   padding: 6px 16px 14px;
 }
 
@@ -560,7 +560,7 @@
   height: 34px;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   display: grid;
   place-items: center;
@@ -636,7 +636,7 @@
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   outline: none;
 }
 
@@ -654,7 +654,7 @@
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   cursor: pointer;
 }
 
@@ -694,7 +694,7 @@
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .infoRow.isMuted {
@@ -710,7 +710,7 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 5px 10px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
 }
 
 .iconTile {
@@ -780,7 +780,7 @@
   padding: 16px 14px;
   border-radius: 18px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   text-decoration: none;
   color: inherit;
   min-height: 118px;
@@ -849,7 +849,7 @@
 }
 
 .btnGhost {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border: 1px solid var(--line);
 }

@@ -35,6 +35,31 @@
   gap: 8px 16px;
 }
 
+.topBarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.saveBtn,
+.saveBtnOn {
+  border: 1px solid #e8edf2;
+  background: #fff;
+  color: #001438;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.saveBtnOn {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .veroBtn {
   border: 1px solid #fed7aa;
   background: #fff7ed;

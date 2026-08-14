@@ -71,6 +71,11 @@ def test_choose_lane_thinking_first():
     st = vero_llm_status()
     assert choose_lane([HumanMessage(content="Find flights BOM to DEL")]) == "tools"
     assert choose_lane([HumanMessage(content="suggest restaurants in Goa")]) == "tools"
+    chat = choose_lane([HumanMessage(content="What's Amsterdam like in November?")])
+    if st.get("deepseekConfigured") and st.get("comboEnabled"):
+        assert chat == "planner"
+    else:
+        assert chat == "tools"
     plan = choose_lane([HumanMessage(content="Plan a 5-day itinerary for Kyoto")])
     if st.get("deepseekConfigured") and st.get("comboEnabled"):
         assert plan == "planner"
@@ -134,6 +139,21 @@ def test_page_aware_boundaries():
     assert cheap and "Cheapest" in cheap
 
 
+def test_planner_prompt_is_slimmer_than_tools():
+    from llm.prompts import build_system_prompt
+
+    tools = build_system_prompt({}, lane="tools")
+    plan = build_system_prompt({}, lane="planner")
+    synth = build_system_prompt({}, lane="synth")
+    assert "Vero" in plan
+    assert len(plan) < len(tools)
+    assert len(plan) < 0.55 * len(tools)
+    assert len(synth) < len(tools)
+    assert "CHEAP LANE" in plan
+    assert "search_flights" in tools
+    assert "search_flights" not in plan
+
+
 def test_companion_safety_tags():
     from services.companion_safety import classify_companion
 
@@ -192,6 +212,7 @@ def main() -> int:
         ("choose_lane", test_choose_lane_thinking_first),
         ("page_aware", test_page_aware_boundaries),
         ("companion_safety", test_companion_safety_tags),
+        ("slim_planner_prompt", test_planner_prompt_is_slimmer_than_tools),
         ("react_workflow", test_workflow_has_react_loop_and_error_handler),
         ("capabilities_truth", test_capabilities_not_stub_hotels),
         ("output_claims", test_output_claim_guard),

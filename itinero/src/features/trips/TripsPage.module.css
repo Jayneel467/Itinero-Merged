@@ -1,9 +1,9 @@
 .page {
-  --ink: #001438;
+  --ink: var(--text-primary, #001438);
   --accent: #f97211;
   --accent-deep: #e5670f;
-  --muted: #5b6b7f;
-  --line: #e8edf2;
+  --muted: var(--text-secondary, #5b6b7f);
+  --line: var(--border-subtle, #e8edf2);
 
   max-width: 640px;
   margin: 0 auto;
@@ -79,7 +79,7 @@
 }
 
 .tabOn {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   box-shadow: 0 1px 4px rgba(0, 20, 56, 0.08);
 }
@@ -108,7 +108,7 @@
 .card {
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   padding: 16px 16px 14px;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -246,7 +246,7 @@
 }
 
 .btnSoft {
-  background: #fff;
+  background: var(--surface-elevated, #fff);
   color: var(--ink);
   border: 1px solid var(--line);
 }

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuthOptional } from "@/features/auth/context/AuthContext";
 import { readLocalUser } from "@/features/auth/session";
 import {
+  Award,
   Bell,
   Bookmark,
   Briefcase,
@@ -13,12 +14,15 @@ import {
   LifeBuoy,
   MessageSquareHeart,
   Plane,
+  X,
   Radar,
   Sparkles,
   BedDouble,
+  Ticket,
   TrainFront,
 } from "lucide-react";
 import { useHomeLocationOptional } from "@/context/HomeLocationContext";
+import { useBillingOptional } from "@/features/billing/BillingContext";
 import { isTrainsMarket } from "@/constants/regionalFeatures";
 import styles from "./Sidebar.module.css";
 
@@ -64,6 +68,7 @@ const Sidebar = ({
   const languageLabel = getLanguageMeta(selectedLanguage).name;
 
   const auth = useAuthOptional();
+  const billing = useBillingOptional();
   const home = useHomeLocationOptional();
   const showTrains = isTrainsMarket({
     countryCode: home?.countryCode,
@@ -104,6 +109,12 @@ const Sidebar = ({
         aria-label="Main menu"
         aria-hidden={!isOpen}
       >
+        <div className={styles.head}>
+          <p className={styles.headTitle}>Menu</p>
+          <button type="button" className={styles.close} onClick={onClose} aria-label="Close menu">
+            <X size={18} strokeWidth={2.2} aria-hidden />
+          </button>
+        </div>
         <div className={styles.scroll}>
           <p className={styles.sectionLabel}>Travel</p>
           <ul className={styles.list}>
@@ -162,6 +173,7 @@ const Sidebar = ({
                 <Bus size={18} strokeWidth={2.1} aria-hidden />
               </IconTile>
               <span className={styles.linkText}>Transits</span>
+              <span className={styles.linkHint}>Beta</span>
             </NavLinkItem>
 
             <NavLinkItem to="/packages" onClose={onClose}>
@@ -176,6 +188,7 @@ const Sidebar = ({
                 <Sparkles size={18} strokeWidth={2.1} aria-hidden />
               </IconTile>
               <span className={styles.linkText}>Ask Vero</span>
+              <span className={styles.linkHint}>Free</span>
             </NavLinkItem>
           </ul>
 
@@ -216,6 +229,13 @@ const Sidebar = ({
               </IconTile>
               <span className={styles.linkText}>Explore</span>
             </NavLinkItem>
+
+            <NavLinkItem to="/events" onClose={onClose} match={(p) => p === "/events" || p.startsWith("/events/")}>
+              <IconTile tone="amber">
+                <Ticket size={18} strokeWidth={2.1} aria-hidden />
+              </IconTile>
+              <span className={styles.linkText}>Events</span>
+            </NavLinkItem>
           </ul>
 
           <div className={styles.rule} />
@@ -242,6 +262,19 @@ const Sidebar = ({
                 <ChevronRight size={16} className={styles.chevron} aria-hidden />
               </button>
             </li>
+            <NavLinkItem to="/plus" onClose={onClose}>
+              <IconTile tone="orange">
+                <Sparkles size={18} strokeWidth={2.1} aria-hidden />
+              </IconTile>
+              <span className={styles.linkText}>Vero credits</span>
+              <span className={styles.linkHint}>Buy packs</span>
+            </NavLinkItem>
+            <NavLinkItem to="/rewards" onClose={onClose}>
+              <IconTile tone="amber">
+                <Award size={18} strokeWidth={2.1} aria-hidden />
+              </IconTile>
+              <span className={styles.linkText}>Rewards</span>
+            </NavLinkItem>
             <NavLinkItem to="/notifications" onClose={onClose}>
               <IconTile tone="slate">
                 <Bell size={18} strokeWidth={2.1} aria-hidden />

@@ -14,6 +14,7 @@ import {
 } from "@/features/booking/services/liteApiPaymentSdk";
 import { loadStripeJs } from "@/features/booking/services/loadStripeJs";
 import AirlineMark from "./components/AirlineMark";
+import FlightExtrasStep from "@/features/booking/components/FlightExtrasStep";
 import {
   inferAirlineCode,
   canonicalizeAirlineName,
@@ -78,6 +79,8 @@ export default function FlightPaymentPage() {
   const [hold, setHold] = useState(null);
   const [cardReady, setCardReady] = useState(false);
   const [holding, setHolding] = useState(false);
+  const [extrasDone, setExtrasDone] = useState(false);
+  const [extrasBusy, setExtrasBusy] = useState(false);
 
   const cardMountRef = useRef(null);
   const stripeRef = useRef(null);
@@ -96,7 +99,14 @@ export default function FlightPaymentPage() {
     /^sand_/i.test(String(import.meta.env.VITE_LITEAPI_KEY || ""));
 
   const allowMock = Boolean(hold?.allow_mock_payment);
-  const sdkReady = Boolean(hold?.client_secret && stripePk);
+  const servicesAvailable = Boolean(
+    hold?.services &&
+      hold.services.available !== false &&
+      Array.isArray(hold.services.groups) &&
+      hold.services.groups.some((g) => Array.isArray(g.options) && g.options.length > 0)
+  );
+  const showExtras = Boolean(hold?.prebook_id && servicesAvailable && !extrasDone);
+  const sdkReady = Boolean(hold?.client_secret && stripePk && extrasDone);
 
   const recap = useMemo(() => {
     if (!flight) return null;
@@ -129,9 +139,15 @@ export default function FlightPaymentPage() {
 
   const amountLabel = formatMoney(Number(hold?.price ?? amount) || amount, hold?.currency || currency);
 
-  const goToConfirmation = useCallback(() => {
+  const goToConfirmation = useCallback((confirmation) => {
     const base = String(import.meta.env.BASE_URL || "/itinero/").replace(/\/?$/, "/");
-    window.location.assign(`${base}flights/booking-success`);
+    const bid =
+      confirmation?.supplierBookingId ||
+      confirmation?.liteapi?.booking_id ||
+      confirmation?.bookingRef ||
+      "";
+    const qs = bid ? `?booking=${encodeURIComponent(bid)}` : "";
+    window.location.assign(`${base}flights/booking-success${qs}`);
   }, []);
 
   const persistPaid = useCallback((confirmation) => {
@@ -257,7 +273,7 @@ export default function FlightPaymentPage() {
         } catch (err) {
           throw new Error(
             err?.message ||
-              "LiteAPI Payment SDK could not load the Stripe key for this hold."
+              "Could not load the card key for this hold."
           );
         }
       }
@@ -292,6 +308,12 @@ export default function FlightPaymentPage() {
       });
 
       setStatus("");
+      const hasExtras =
+        pb?.services &&
+        pb.services.available !== false &&
+        Array.isArray(pb.services.groups) &&
+        pb.services.groups.some((g) => Array.isArray(g.options) && g.options.length > 0);
+      setExtrasDone(!hasExtras);
       return pb;
     } finally {
       setHolding(false);
@@ -305,8 +327,54 @@ export default function FlightPaymentPage() {
     });
   }, [ensureHold]);
 
+  async function finishExtras(selections) {
+    const list = Array.isArray(selections) ? selections : [];
+    const sessionId = checkout?.sessionId || readFlightSessionId();
+    if (!hold?.prebook_id || !sessionId) {
+      setError("Booking hold expired. Go back and create the hold again.");
+      return;
+    }
+    if (!list.length) {
+      setExtrasDone(true);
+      return;
+    }
+    setExtrasBusy(true);
+    setError("");
+    setStatus("Adding seats / bags to your hold…");
+    try {
+      const res = await flightService.attachServices({
+        session_id: sessionId,
+        prebook_id: hold.prebook_id,
+        selected_services: list,
+      });
+      if (!res?.ok && !res?.skipped) {
+        throw new Error(res?.error || res?.message || "Could not add those extras.");
+      }
+      const next = {
+        ...hold,
+        ...(res.prebook || {}),
+        allow_mock_payment:
+          res?.prebook?.allow_mock_payment === true ||
+          res?.payment_ready === true ||
+          hold.allow_mock_payment,
+        payment_mode:
+          res?.prebook?.payment_mode ||
+          (res?.prebook?.client_secret ? "stripe" : hold.payment_mode),
+      };
+      holdRef.current = next;
+      setHold(next);
+      setExtrasDone(true);
+      setStatus("");
+    } catch (err) {
+      setError(err?.message || "Could not add extras. Skip or try again.");
+      setStatus("");
+    } finally {
+      setExtrasBusy(false);
+    }
+  }
+
   useEffect(() => {
-    if (!sdkReady || !cardMountRef.current || cardRef.current) return undefined;
+    if (!extrasDone || !sdkReady || !cardMountRef.current || cardRef.current) return undefined;
 
     let cancelled = false;
     (async () => {
@@ -324,7 +392,7 @@ export default function FlightPaymentPage() {
       if (cancelled) return;
       const pk = resolveStripePublishableKey(hold?.publishable_key);
       if (!pk || !window.Stripe) {
-        setError("LiteAPI Payment SDK could not start the card form. Refresh and try again.");
+        setError("Card checkout could not start. Refresh and try again.");
         return;
       }
       const stripe = window.Stripe(pk);
@@ -381,9 +449,9 @@ export default function FlightPaymentPage() {
       }
 
       setStatus("Payment confirmed - issuing ticket…");
-      await issueTicket({ transactionId: hold.transaction_id });
+      const confirmation = await issueTicket({ transactionId: hold.transaction_id });
       setStatus("Ticket issued - check your email.");
-      goToConfirmation();
+      goToConfirmation(confirmation);
     } catch (err) {
       setError(err?.message || "Payment did not complete.");
       setStatus("");
@@ -396,9 +464,9 @@ export default function FlightPaymentPage() {
     setPaying(true);
     setStatus("Issuing sandbox test ticket…");
     try {
-      await issueTicket({ mockPayment: true, transactionId: hold?.transaction_id });
+      const confirmation = await issueTicket({ mockPayment: true, transactionId: hold?.transaction_id });
       setStatus("Test ticket issued.");
-      goToConfirmation();
+      goToConfirmation(confirmation);
     } catch (err) {
       setError(err?.message || "Sandbox ticket failed.");
       setStatus("");
@@ -433,7 +501,7 @@ export default function FlightPaymentPage() {
             </button>
             <h1 className={styles.title}>Review & pay</h1>
             <p className={styles.subtitle}>
-              Pay with LiteAPI Payment SDK (secure card checkout). Your e-ticket is emailed after the airline confirms.
+              Pay securely by card. Your e-ticket is emailed after the airline confirms.
             </p>
 
             {error ? <div className={styles.error}>{error}</div> : null}
@@ -495,6 +563,22 @@ export default function FlightPaymentPage() {
               </ul>
             </div>
 
+            {showExtras ? (
+              <div className={styles.card}>
+                <h2 className={styles.cardTitle}>Seats & bags</h2>
+                <FlightExtrasStep
+                  services={hold?.services || {}}
+                  passengerLabels={travelers.map((t) => `${t.firstName || ""} ${t.lastName || ""}`.trim() || "Traveller")}
+                  currency={hold?.currency || currency}
+                  currencySym={String(hold?.currency || currency).toUpperCase() === "INR" ? "₹" : "$"}
+                  basePrice={Number(hold?.price ?? amount) || amount}
+                  submitting={extrasBusy}
+                  onSkip={() => finishExtras([])}
+                  onContinue={(sels) => finishExtras(sels)}
+                />
+              </div>
+            ) : null}
+
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>Ticket delivery</h2>
               <div className={styles.contactRow}>
@@ -520,8 +604,8 @@ export default function FlightPaymentPage() {
               <div className={styles.rzpHead}>
                 {sandboxMode ? <span className={styles.testRibbon}>Sandbox</span> : null}
                 <div className={styles.rzpBrand}>
-                  <span className={styles.merchant}>LiteAPI Payment SDK</span>
-                  <span className={styles.rzpWord}>Stripe</span>
+                  <span className={styles.merchant}>Secure checkout</span>
+                  <span className={styles.rzpWord}>Card</span>
                 </div>
                 <div className={styles.rzpAmount}>{amountLabel}</div>
                 <div className={styles.rzpDesc}>
@@ -529,7 +613,11 @@ export default function FlightPaymentPage() {
                 </div>
               </div>
               <div className={styles.rzpBody}>
-                {sdkReady ? (
+                {showExtras ? (
+                  <p className={styles.hint}>
+                    Pick seats or extra bags on the left, or skip — then pay the updated total.
+                  </p>
+                ) : sdkReady ? (
                   <>
                     <div className={styles.methodsLabel}>Card details</div>
                     <div ref={cardMountRef} className={styles.cardElement} />
@@ -539,7 +627,7 @@ export default function FlightPaymentPage() {
                           Sandbox test card: <code>4242 4242 4242 4242</code> · any future expiry · any CVC · any ZIP.
                         </>
                       ) : (
-                        "Your card is processed by Stripe via LiteAPI. We never store card numbers."
+                        "Your card is processed securely. We never store card numbers."
                       )}
                     </p>
                   </>
@@ -550,8 +638,7 @@ export default function FlightPaymentPage() {
                   </p>
                 ) : (
                   <p className={styles.hint}>
-                    Waiting for LiteAPI Payment SDK keys… Hold the fare again, or enable Payment SDK
-                    on the LiteAPI account.
+                    Waiting for card checkout… Hold the fare again, then retry.
                   </p>
                 )}
 
@@ -570,12 +657,16 @@ export default function FlightPaymentPage() {
                   <span>{amountLabel}</span>
                 </div>
 
-                {sdkReady ? (
+                {showExtras ? (
+                  <button type="button" className={styles.payBtn} disabled>
+                    Add extras, then pay
+                  </button>
+                ) : sdkReady ? (
                   <button
                     type="button"
                     className={styles.payBtn}
                     onClick={handleStripePay}
-                    disabled={paying || holding || !cardReady}
+                    disabled={paying || holding || extrasBusy || !cardReady}
                   >
                     {paying ? status || "Working…" : `Pay ${amountLabel}`}
                   </button>
@@ -615,7 +706,7 @@ export default function FlightPaymentPage() {
                 )}
 
                 <div className={styles.secureRow}>
-                  <ShieldCheck size={14} /> Secured by Stripe · PCI DSS
+                  <ShieldCheck size={14} /> Secure checkout · PCI DSS
                   <Lock size={12} style={{ marginLeft: 6 }} />
                 </div>
               </div>

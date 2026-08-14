@@ -56,10 +56,10 @@ async function fetchLiteApiConfig(env, attempt = 0) {
   if (!res.ok) {
     if (res.status === 429) {
       throw new Error(
-        "LiteAPI Payment SDK is rate-limited right now. Wait a few seconds and try again."
+        "Card checkout is busy right now. Wait a few seconds and try again."
       );
     }
-    throw new Error("Could not load LiteAPI Payment SDK config.");
+    throw new Error("Could not load card checkout.");
   }
   return res.json();
 }
@@ -85,7 +85,7 @@ export async function resolveLiteApiPublishableKey(envOrHold = "sandbox") {
       const data = await fetchLiteApiConfig(env);
       const pk = String(data?.publicKey || "").trim();
       if (!pk.startsWith("pk_")) {
-        throw new Error("LiteAPI Payment SDK did not return a Stripe publishable key.");
+        throw new Error("Card checkout did not return a key.");
       }
       _cache[env] = pk;
       return pk;
@@ -100,7 +100,7 @@ export async function resolveLiteApiPublishableKey(envOrHold = "sandbox") {
 /** Load the official LiteAPIPayment constructor (window.LiteAPIPayment). */
 export function loadLiteApiPaymentScript() {
   if (typeof window === "undefined") {
-    return Promise.reject(new Error("LiteAPI Payment SDK requires a browser."));
+    return Promise.reject(new Error("Card checkout requires a browser."));
   }
   if (typeof window.LiteAPIPayment === "function") {
     return Promise.resolve(window.LiteAPIPayment);
@@ -112,10 +112,10 @@ export function loadLiteApiPaymentScript() {
     if (existing) {
       existing.addEventListener("load", () => {
         if (typeof window.LiteAPIPayment === "function") resolve(window.LiteAPIPayment);
-        else reject(new Error("LiteAPI Payment SDK loaded without LiteAPIPayment."));
+        else reject(new Error("Card checkout failed to start."));
       });
       existing.addEventListener("error", () =>
-        reject(new Error("LiteAPI Payment SDK script failed to load."))
+        reject(new Error("Card checkout script failed to load."))
       );
       if (typeof window.LiteAPIPayment === "function") resolve(window.LiteAPIPayment);
       return;
@@ -125,13 +125,13 @@ export function loadLiteApiPaymentScript() {
     script.async = true;
     script.onload = () => {
       if (typeof window.LiteAPIPayment === "function") resolve(window.LiteAPIPayment);
-      else reject(new Error("LiteAPI Payment SDK loaded without LiteAPIPayment."));
+      else reject(new Error("Card checkout failed to start."));
     };
     script.onerror = () => {
       _scriptPromise = null;
       reject(
         new Error(
-          "LiteAPI Payment SDK could not load (blocked?). Allow payment-wrapper.liteapi.travel."
+          "Card checkout could not load. Disable blockers and retry."
         )
       );
     };
@@ -153,7 +153,7 @@ export async function launchLiteApiPayment({
   theme = "flat",
 } = {}) {
   const secretKey = String(hold?.client_secret || hold?.secretKey || "").trim();
-  if (!secretKey) throw new Error("Missing LiteAPI Payment SDK secret.");
+  if (!secretKey) throw new Error("Missing card checkout secret.");
   if (!targetSelector) throw new Error("Missing payment mount target.");
   if (!returnUrl) throw new Error("Missing payment return URL.");
 

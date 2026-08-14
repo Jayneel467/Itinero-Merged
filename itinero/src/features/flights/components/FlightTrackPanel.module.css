@@ -1,27 +1,27 @@
 .shell {
-  --ink: #001438;
-  --muted: #667085;
-  --line: #e6eaef;
+  --ink: var(--text-primary, #001438);
+  --muted: var(--text-secondary, #5b6b7f);
+  --line: var(--border-subtle, #e6eaef);
   --accent: #f97211;
+  --card: var(--surface-elevated, #fff);
+  --page: var(--surface-page, #f3f5f8);
   display: grid;
-  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
   gap: 14px;
   height: 100%;
   min-height: 0;
-  padding: 14px 16px 16px;
+  padding: 12px 16px 16px;
   box-sizing: border-box;
-  background:
-    radial-gradient(900px 360px at 0% 0%, rgba(249, 114, 17, 0.07), transparent 55%),
-    #f3f5f8;
+  background: var(--page);
 }
 
 .rail {
   overflow: auto;
   min-height: 0;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 20px;
-  padding: 20px 18px 24px;
+  padding: 20px 18px 18px;
   box-shadow: 0 8px 28px rgba(0, 20, 56, 0.05);
   display: flex;
   flex-direction: column;
@@ -40,14 +40,14 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #fff7ed;
+  background: color-mix(in srgb, #f97211 12%, var(--card));
   border: 1px solid #ffedd5;
   color: #c2410c;
 }
 
 .top h1 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.28rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--ink);
@@ -68,14 +68,15 @@
   gap: 4px;
   margin: 16px 0 0;
   padding: 4px;
-  border-radius: 12px;
-  background: #f2f4f7;
+  border-radius: 999px;
+  background: var(--surface-muted, #f2f4f7);
+  border: 1px solid var(--line);
 }
 
 .mode,
 .modeOn {
   border: 0;
-  border-radius: 9px;
+  border-radius: 999px;
   min-height: 36px;
   font-weight: 750;
   font-size: 13px;
@@ -85,7 +86,7 @@
 }
 
 .modeOn {
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
   box-shadow: 0 1px 3px rgba(0, 20, 56, 0.08);
 }
@@ -109,14 +110,11 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #98a2b3;
+  color: var(--muted);
 }
 
 .formRow {
-  display: grid;
-  grid-template-columns: minmax(148px, 1fr) auto;
-  gap: 8px;
-  align-items: end;
+  display: block;
 }
 
 .form input {
@@ -124,39 +122,49 @@
   min-height: 44px;
   min-width: 0;
   box-sizing: border-box;
-  border: 1px solid #e4e7ec;
-  border-radius: 11px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   padding: 0 12px;
   font-weight: 700;
   font-size: 15px;
   color: var(--ink);
-  background: #f8fafc;
+  background: var(--surface-muted, #f8fafc);
 }
 
 .form input[type="date"] {
-  min-width: 148px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
+  color-scheme: light;
+}
+
+.form input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
 }
 
 .form input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(249, 114, 17, 0.15);
-  background: #fff;
+  background: var(--card);
 }
 
 .form button[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: 0;
   background: var(--accent);
   color: #fff;
   font-weight: 800;
   font-size: 14px;
-  border-radius: 11px;
+  border-radius: 999px;
   padding: 0 18px;
-  min-height: 44px;
+  min-height: 46px;
+  width: 100%;
   cursor: pointer;
-  white-space: nowrap;
+  box-shadow: 0 10px 22px rgba(249, 114, 17, 0.22);
 }
 
 .form button[type="submit"]:hover:not(:disabled) {
@@ -166,6 +174,7 @@
 .form button[type="submit"]:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .chipsHead {
@@ -174,40 +183,46 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #98a2b3;
+  color: var(--muted);
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 0 0 14px;
+  margin: 0 0 4px;
 }
 
 .chips button {
-  border: 1px solid #e4e7ec;
-  background: #fff;
+  border: 1px solid var(--line);
+  background: var(--card);
   color: var(--ink);
-  border-radius: 8px;
-  padding: 6px 10px;
+  border-radius: 999px;
+  padding: 7px 12px;
   font-weight: 750;
   font-size: 12px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s, color 0.12s;
 }
 
 .chips button:hover {
   border-color: #fdba74;
-  background: #fff7ed;
+  background: color-mix(in srgb, #f97211 10%, var(--card));
   color: #c2410c;
+}
+
+.chipOn {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, #f97211 14%, var(--card)) !important;
+  color: #c2410c !important;
 }
 
 .suggest {
   list-style: none;
-  margin: -4px 0 12px;
+  margin: 8px 0 4px;
   padding: 0;
-  border: 1px solid #eef2f6;
+  border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -218,14 +233,14 @@
   gap: 10px;
   align-items: baseline;
   border: 0;
-  background: #fff;
+  background: var(--card);
   padding: 9px 12px;
   cursor: pointer;
   text-align: left;
 }
 
 .suggest button:hover {
-  background: #fff7ed;
+  background: color-mix(in srgb, #f97211 8%, var(--card));
 }
 
 .suggest strong {
@@ -246,23 +261,24 @@
   font-weight: 750;
   font-size: 13px;
   cursor: pointer;
-  padding: 0 2px 12px;
+  padding: 8px 2px 4px;
   text-align: left;
 }
 
 .body {
-  border-top: 1px solid #eef2f6;
-  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 14px;
   flex: 1;
   min-height: 0;
 }
 
 .state {
-  margin: 4px 0 0;
-  padding: 14px;
+  margin: 0;
+  padding: 12px 14px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #eef2f6;
+  background: var(--surface-muted, #f8fafc);
+  border: 1px solid var(--line);
   color: var(--muted);
   font-weight: 600;
   line-height: 1.5;
@@ -277,28 +293,28 @@
   border-radius: 20px;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: #e8edf2;
+  background: var(--surface-muted, #e8edf2);
   box-shadow: 0 8px 28px rgba(0, 20, 56, 0.05);
 }
 
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(260px, 40vh) minmax(0, 1fr);
+    grid-template-rows: minmax(240px, 38vh) minmax(0, 1fr);
     padding: 10px 12px 12px;
     gap: 10px;
   }
 
   .mapCol {
     order: -1;
-    min-height: 260px;
+    min-height: 240px;
   }
+}
 
-  .formRow {
-    grid-template-columns: 1fr;
-  }
+html.dark .form input[type="date"] {
+  color-scheme: dark;
+}
 
-  .formRow button[type="submit"] {
-    width: 100%;
-  }
+html.dark .heroIcon {
+  border-color: rgba(249, 114, 17, 0.28);
 }

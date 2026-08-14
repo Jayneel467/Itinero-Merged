@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import React, { Suspense, lazy, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import PageTransitionLoader from "@/components/shared/PageTransitionLoader";
 import VeroChatWidget from "@/components/chat/VeroChatWidget";
 import { useVeroUiOptional } from "@/context/VeroUiContext";
@@ -11,7 +11,6 @@ import { useVeroUiOptional } from "@/context/VeroUiContext";
 const HomePage = lazy(() => import("@/features/home"));
 const FlightsPage = lazy(() => import("@/features/flights"));
 const FlightTrackPage = lazy(() => import("@/features/flights/FlightTrackPage"));
-const FlightOverviewPage = lazy(() => import("@/features/flights/FlightOverviewPage"));
 const PassengerInfoPage = lazy(() => import("@/features/flights/PassengerInfoPage"));
 const FlightPaymentPage = lazy(() => import("@/features/flights/FlightPaymentPage"));
 const FlightBookingSuccessPage = lazy(() => import("@/features/flights/FlightBookingSuccessPage"));
@@ -56,6 +55,7 @@ const CancellationPolicyPage = lazy(() =>
 );
 const NotificationsPage = lazy(() => import("@/features/account/NotificationsPage"));
 const RewardsPage = lazy(() => import("@/features/account/RewardsPage"));
+const PlusPage = lazy(() => import("@/features/billing/PlusPage"));
 const VeroPage = lazy(() => import("@/features/vero"));
 const GoCampaignPage = lazy(() => import("@/features/marketing/GoCampaignPage"));
 const MarketingAdminPage = lazy(() => import("@/features/marketing/MarketingAdminPage"));
@@ -69,6 +69,11 @@ function PageLoader() {
   );
 }
 
+function LegacyBookingRedirect() {
+  const { id } = useParams();
+  return <Navigate to={id ? `/trips/${id}` : "/trips"} replace />;
+}
+
 function LegacyBusesRedirect({ to = "/transits" }) {
   const loc = useLocation();
   return <Navigate to={`${to}${loc.search}${loc.hash}`} replace />;
@@ -77,10 +82,19 @@ function LegacyBusesRedirect({ to = "/transits" }) {
 function PersistentVero() {
   const location = useLocation();
   const veroUi = useVeroUiOptional();
-  if (!veroUi) return null;
-  if (location.pathname === "/vero" || location.pathname.startsWith("/vero/")) return null;
-  // Keep auth uncluttered - no floating Vero over the login modal.
-  if (location.pathname === "/login") return null;
+  const hideWidget =
+    !veroUi ||
+    location.pathname === "/vero" ||
+    location.pathname.startsWith("/vero/") ||
+    location.pathname === "/login";
+  const docked = Boolean(veroUi?.isOpen) && !hideWidget;
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-vero-open", docked);
+    return () => document.documentElement.removeAttribute("data-vero-open");
+  }, [docked]);
+
+  if (hideWidget) return null;
   return (
     <VeroChatWidget
       isOpen={veroUi.isOpen}
@@ -99,7 +113,7 @@ export default function AppRouter() {
         <Route path="/" element={<HomePage />} />
         <Route path="/flights" element={<FlightsPage />} />
         <Route path="/flights/track" element={<FlightTrackPage />} />
-        <Route path="/flights/overview" element={<FlightOverviewPage />} />
+        <Route path="/flights/overview" element={<Navigate to="/flights" replace />} />
         <Route path="/flights/passenger-info" element={<PassengerInfoPage />} />
         <Route path="/flights/payment" element={<FlightPaymentPage />} />
         <Route path="/flights/booking-success" element={<FlightBookingSuccessPage />} />
@@ -131,14 +145,17 @@ export default function AppRouter() {
         <Route path="/trips" element={<TripsPage />} />
         <Route path="/trips/:id" element={<TripDetailPage />} />
         <Route path="/booking" element={<Navigate to="/trips" replace />} />
-        <Route path="/booking/:type/:id" element={<Navigate to="/trips" replace />} />
+        <Route path="/booking/:type/:id" element={<LegacyBookingRedirect />} />
         <Route path="/deals" element={<DealsPage />} />
+        <Route path="/go" element={<GoCampaignPage />} />
         <Route path="/go/:slug" element={<GoCampaignPage />} />
         <Route path="/explore/theme/:theme" element={<ExplorePage />} />
         <Route path="/admin/marketing" element={<MarketingAdminPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/rewards" element={<RewardsPage />} />
+        <Route path="/plus" element={<PlusPage />} />
+        <Route path="/pricing" element={<Navigate to="/plus" replace />} />
         <Route path="/saved" element={<SavedPage />} />
         <Route path="/help" element={<HelpPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />

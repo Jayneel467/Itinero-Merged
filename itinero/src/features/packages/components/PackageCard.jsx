@@ -1,9 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCurrency } from "@/context/CurrencyContext";
 import { PlacesCarousel } from "@/components/shared";
 import { usePlacesGallery } from "@/hooks/usePlacesPhoto";
-import { destForPackage } from "@/features/packages/utils/packageIntel";
+import { destForPackage, packagePhotoCities } from "@/features/packages/utils/packageIntel";
+import { isSaved, onSavedChange, toggleSaved } from "@/features/account/savedService";
 import styles from "./PackageCard.module.css";
 
 function regionLabel(region) {
@@ -11,17 +12,10 @@ function regionLabel(region) {
 }
 
 function packageCities(pkg, dest) {
-  const anchors = Array.isArray(pkg?.requiredAnchors) ? pkg.requiredAnchors.filter(Boolean) : [];
-  const dests = Array.isArray(pkg?.destinations) ? pkg.destinations.filter(Boolean) : [];
-  const extra = [dest?.city, pkg?.stay?.city, pkg?.flight?.gatewayCity].filter(Boolean);
-  const list = [...(anchors.length ? anchors : dests), ...extra];
-  const seen = new Set();
-  return list.filter((c) => {
-    const k = String(c || "").trim().toLowerCase();
-    if (!k || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  }).slice(0, 4);
+  const fromPkg = packagePhotoCities(pkg);
+  if (fromPkg.length) return fromPkg;
+  const city = String(dest?.city || "").trim();
+  return city ? [city] : [];
 }
 
 function packageCountry(pkg, dest) {
@@ -50,6 +44,13 @@ export default function PackageCard({ pkg, liveQuote, liveLoading }) {
     maxSlides: 5,
     enabled: Boolean(cities.length || cover),
   });
+  const savedId = `package:${pkg?.slug || pkg?.id || ""}`;
+  const [saved, setSaved] = useState(() => isSaved(savedId));
+  useEffect(() => {
+    const sync = () => setSaved(isSaved(savedId));
+    sync();
+    return onSavedChange(sync);
+  }, [savedId]);
   if (!pkg) return null;
 
   const nights = pkg.durationNights;
@@ -81,7 +82,18 @@ export default function PackageCard({ pkg, liveQuote, liveLoading }) {
   };
 
   return (
-    <button type="button" className={styles.card} onClick={open}>
+    <div
+      className={styles.card}
+      role="link"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      }}
+    >
       <div className={styles.media}>
         <PlacesCarousel
           slides={slides}
@@ -91,6 +103,33 @@ export default function PackageCard({ pkg, liveQuote, liveLoading }) {
         />
         <div className={styles.mediaShade} aria-hidden />
         <span className={styles.region}>{region}</span>
+        <button
+          type="button"
+          className={`${styles.saveBtn}${saved ? ` ${styles.saveBtnOn}` : ""}`}
+          aria-label={saved ? "Remove from saved" : "Save package"}
+          aria-pressed={saved}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const next = toggleSaved({
+              id: savedId,
+              type: "package",
+              title: pkg.title || destLabel || "Package",
+              subtitle: destLabel || region,
+              url: `/packages/${pkg.slug || pkg.id}`,
+              image: cover || slides[0] || "",
+            });
+            setSaved(Boolean(next));
+          }}
+        >
+          <svg width="18" height="16" viewBox="0 0 20 18" aria-hidden>
+            <path
+              d="M10 18L8.55 16.68C3.4 12.02 0 8.94 0 5.12C0 2.24 2.24 0 5.12 0C6.75 0 8.32 0.77 9.28 2.02C9.48 2.28 9.73 2.28 9.93 2.02C10.89 0.77 12.46 0 14.09 0C16.97 0 19.21 2.24 19.21 5.12C19.21 8.94 15.81 12.02 10.66 16.69L10 18Z"
+              fill={saved ? "#F97211" : "#242A31"}
+              fillOpacity={saved ? 1 : 0.35}
+            />
+          </svg>
+        </button>
         <div className={styles.mediaMeta}>
           {themeLabel ? <p className={styles.theme}>{themeLabel}</p> : null}
           <p className={styles.mediaNights}>
@@ -148,6 +187,6 @@ export default function PackageCard({ pkg, liveQuote, liveLoading }) {
         </div>
         <span className={styles.cta}>View</span>
       </div>
-    </button>
+    </div>
   );
 }

@@ -241,13 +241,13 @@ def baggage_facts(
             "extra": (
                 f"{(lane or {}).get('extra') or ''} "
                 f"Published {(spec or {}).get('name') or 'carrier'} policy is often more generous "
-                "than this LiteAPI line (cabin ~7 kg is common) — confirm in the airline app / boarding pass."
+                "than this fare line (cabin ~7 kg is common) — confirm in the airline app / boarding pass."
             ).strip(),
         }
 
     from_ticket = bool(positive)
     default_checked = (
-        "15 kg check-in on a typical India domestic economy fare (Lite/unbundled can be 0 kg)"
+        "15 kg check-in on a typical India domestic economy fare (basic/unbundled can be 0 kg)"
         if domestic
         else "check-in kg is printed on your e-ticket for this international sector"
     )
@@ -277,8 +277,7 @@ def format_baggage_reply(
     route = " → ".join(p for p in (origin_city or origin, dest_city or dest) if p)
     if f.get("supplier_zero"):
         ticket_note = (
-            "That’s what **LiteAPI / Nuitee stored on this PNR** (their portal often shows "
-            "“0 checked / 0 carry-on”). It is **not** always IndiGo’s published cabin rule — "
+            "That’s what **this ticket stored** (often “0 checked / 0 carry-on”). It is **not** always IndiGo’s published cabin rule — "
             "confirm in the airline app or at the airport before you pack."
         )
     elif f.get("from_ticket"):
@@ -286,12 +285,12 @@ def format_baggage_reply(
     elif f.get("domestic"):
         ticket_note = (
             "Your e-ticket didn’t store a custom bag line, so this is **published domestic allowance** "
-            "for this carrier — Lite fares can drop check-in to 0 kg."
+            "for this carrier — basic/unbundled fares can drop check-in to 0 kg."
         )
     else:
         ticket_note = (
             "Your e-ticket didn’t store a custom bag line, so this is the **usual published allowance** "
-            "for this carrier — not a live read of the Nuitee portal."
+            "for this carrier — confirm in the airline app."
         )
     lite_hint = ""
     if not f.get("from_ticket") and f.get("code") == "QP" and f.get("domestic"):

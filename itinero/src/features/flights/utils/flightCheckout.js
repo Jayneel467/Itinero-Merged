@@ -147,6 +147,38 @@ export function resolveFlightConfirmation(routeState) {
   return null;
 }
 
+export function confirmationFromFlightTrip(trip) {
+  if (!trip) return null;
+  const leg = (trip.legs || []).find((l) => l.type === "flight" && (l.bookingId || l.pnr || l.flightSnapshot));
+  if (!leg) return null;
+  const snap = leg.flightSnapshot && typeof leg.flightSnapshot === "object" ? leg.flightSnapshot : {};
+  const origin = trip.origin || snap.departure?.airport || "";
+  const dest = trip.destination || snap.arrival?.airport || "";
+  const flight = {
+    ...snap,
+    airline: snap.airline || { name: leg.airline, code: leg.airlineCode },
+    flightNumber: snap.flightNumber || leg.flightNumber,
+    departure: snap.departure || { airport: origin, date: leg.departDate || trip.departDate, time: leg.departureTime },
+    arrival: snap.arrival || { airport: dest, time: leg.arrivalTime },
+    duration: snap.duration || leg.duration,
+    stops: snap.stops ?? leg.stops,
+    price: snap.price ?? leg.price,
+    currency: snap.currency || leg.currency,
+    cabin: snap.cabin,
+  };
+  return {
+    flight,
+    travelers: [],
+    contact: trip.contact || {},
+    paymentId: leg.paymentId || null,
+    bookingRef: leg.pnr || leg.bookingId || null,
+    supplierBookingId: leg.bookingId || null,
+    amount: Number(leg.price || snap.price) || 0,
+    currency: leg.currency || snap.currency || "INR",
+    liteapi: { booking_id: leg.bookingId, airline_pnr: leg.pnr },
+  };
+}
+
 export function confirmationToPdfBooking(confirmation, recap) {
   const c = confirmation || {};
   const f = c.flight || {};

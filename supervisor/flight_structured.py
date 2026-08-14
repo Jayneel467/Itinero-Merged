@@ -446,6 +446,9 @@ def _friendly_liteapi_error(exc: BaseException) -> str:
         text = str(exc).strip() or type(exc).__name__
         return (
             text.replace("LiteAPIError: ", "")
+            .replace("LiteAPI", "")
+            .replace("liteapi", "")
+            .replace("Nuitee", "")
             .replace("ValidationError: ", "")
             .replace("unable to process prebook request", "We couldn't hold this fare")
         )
@@ -744,16 +747,15 @@ async def structured_prebook(
         }
 
         if ok and has_stripe:
-            message = "Hold created. Complete card payment with LiteAPI Payment SDK (Stripe)."
+            message = "Hold created. Complete card payment to finish booking."
         elif ok and allow_mock:
             message = (
-                "Hold created. LiteAPI did not return Stripe Payment SDK keys for this sandbox "
+                "Hold created. Card checkout keys were missing for this sandbox "
                 "account — use the demo card form (4242…) to continue the booking flow."
             )
         elif ok:
             message = (
-                "Hold created, but Payment SDK keys are missing. "
-                "Set STRIPE_PUBLISHABLE_KEY or enable Payment SDK on the LiteAPI account."
+                "Hold created, but card checkout keys are missing. Try again in a moment."
             )
         else:
             message = "Prebook did not succeed."
@@ -791,7 +793,7 @@ async def structured_prebook(
     except asyncio.TimeoutError:
         return {
             "ok": False,
-            "error": "Booking hold timed out waiting for LiteAPI. Try again or pick another flight.",
+            "error": "Booking hold timed out. Try again or pick another flight.",
             "error_code": "prebook_timeout",
             "session_id": session["session_id"],
             "booking_ready": False,
@@ -1147,7 +1149,7 @@ async def structured_complete(
             mode = "sandbox"
             message = (
                 f"Sandbox demo payment recorded. Fare hold ID: {pid}. "
-                "No airline ticket was issued — LiteAPI complete did not return a booking."
+                "No airline ticket was issued — booking complete did not return a ticket."
             )
             if complete_error:
                 message += f" ({complete_error})"
@@ -1306,19 +1308,19 @@ async def structured_flight_cancel_booking(
 
         if pending and liteapi_handles_refund:
             message = (
-                f"{message} Refund (if any) is credited by LiteAPI to {dest} "
+                f"{message} Refund (if any) is credited to {dest} "
                 "after the airline confirms cancel."
             ).strip()
         elif cancelled and liteapi_handles_refund:
             amt = result.get("refund_amount")
             if amt is not None:
                 message = (
-                    f"{message} LiteAPI refund amount {amt} {result.get('currency') or ''} "
+                    f"{message} Refund amount {amt} {result.get('currency') or ''} "
                     f"→ {dest}."
                 ).strip()
             else:
                 message = (
-                    f"{message} LiteAPI handles refund to {dest} per cancellation policy."
+                    f"{message} Refund goes to {dest} per cancellation policy."
                 ).strip()
         elif stripe_refund and stripe_refund.get("ok") and not stripe_refund.get("skipped"):
             amt = stripe_refund.get("refund_amount")

@@ -4,7 +4,7 @@ import api from "@/services/api";
 import { ENDPOINTS } from "@/services/endpoints";
 
 const MEM = new Map();
-const LS_PREFIX = "itinero.placesPhoto.v3:";
+const LS_PREFIX = "itinero.placesPhoto.v4:";
 const LS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function cacheKey(parts) {

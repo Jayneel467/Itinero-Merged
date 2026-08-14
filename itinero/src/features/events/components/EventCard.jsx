@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCurrency } from "@/context/CurrencyContext";
+import { isSaved, toggleSaved } from "@/features/account/savedService";
 import styles from "./EventCard.module.css";
 
 const FALLBACK =
@@ -10,6 +11,8 @@ export default function EventCard({ event }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { formatFrom } = useCurrency();
+  const savedId = event?.id ? `event:${event.id}` : "";
+  const [saved, setSaved] = useState(() => isSaved(savedId));
   if (!event?.id) return null;
 
   const priceLabel =
@@ -25,7 +28,18 @@ export default function EventCard({ event }) {
   };
 
   return (
-    <button type="button" className={styles.card} onClick={open}>
+    <div
+      className={styles.card}
+      role="link"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      }}
+    >
       <div className={styles.media}>
         <img
           src={event.image || FALLBACK}
@@ -42,6 +56,33 @@ export default function EventCard({ event }) {
           <span className={styles.badge}>{event.classification}</span>
         ) : null}
         {event.city ? <span className={styles.region}>{event.city}</span> : null}
+        <button
+          type="button"
+          className={`${styles.saveBtn}${saved ? ` ${styles.saveBtnOn}` : ""}`}
+          aria-label={saved ? "Remove from saved" : "Save event"}
+          aria-pressed={saved}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const next = toggleSaved({
+              id: savedId,
+              type: "event",
+              title: event.name || "Event",
+              subtitle: event.city || event.venue || "Event",
+              url: `/events/${encodeURIComponent(event.id)}`,
+              image: event.image || "",
+            });
+            setSaved(Boolean(next));
+          }}
+        >
+          <svg width="18" height="16" viewBox="0 0 20 18" aria-hidden>
+            <path
+              d="M10 18L8.55 16.68C3.4 12.02 0 8.94 0 5.12C0 2.24 2.24 0 5.12 0C6.75 0 8.32 0.77 9.28 2.02C9.48 2.28 9.73 2.28 9.93 2.02C10.89 0.77 12.46 0 14.09 0C16.97 0 19.21 2.24 19.21 5.12C19.21 8.94 15.81 12.02 10.66 16.69L10 18Z"
+              fill={saved ? "#F97211" : "#242A31"}
+              fillOpacity={saved ? 1 : 0.35}
+            />
+          </svg>
+        </button>
         <div className={styles.mediaMeta}>
           <p className={styles.when}>{event.when || event.localDate || "Date TBA"}</p>
           <p className={styles.venue}>{event.venue || ""}</p>
@@ -58,6 +99,6 @@ export default function EventCard({ event }) {
         </div>
         <span className={styles.cta}>Get tickets</span>
       </div>
-    </button>
+    </div>
   );
 }

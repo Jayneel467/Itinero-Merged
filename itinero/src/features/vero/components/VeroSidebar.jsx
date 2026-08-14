@@ -9,8 +9,10 @@ import {
   UserRound,
   Trash2,
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { NAVBAR_IMAGES } from "@/constants/images";
+import VeroCreditMeter from "@/features/billing/VeroCreditMeter";
 import "./VeroSidebar.css";
 
 function chatTitle(raw) {
@@ -80,6 +82,7 @@ export default function VeroSidebar({
           </div>
         </div>
         <p className="vero-sidebar__tagline">Your travel agent, always on</p>
+        <VeroCreditMeter compact />
       </div>
 
       <div className="vero-sidebar__top">
@@ -97,7 +100,7 @@ export default function VeroSidebar({
 
       <div className="vero-sidebar__chats" aria-label="Saved chats">
         <div className="vero-sidebar__chats-head">
-          <p className="vero-sidebar__chats-label">Recent</p>
+          <p className="vero-sidebar__chats-label">Recent on this device</p>
           {chatCount ? (
             <span className="vero-sidebar__chats-count">{chatCount}</span>
           ) : null}
@@ -185,6 +188,10 @@ export default function VeroSidebar({
           >
             <UserRound size={16} strokeWidth={2} aria-hidden />
             <span>Profile</span>
+          </Link>
+          <Link to="/plus" className="vero-sidebar__nav-item vero-sidebar__nav-item--wide" onClick={onNavClick}>
+            <Sparkles size={16} strokeWidth={2} aria-hidden />
+            <span>Buy Vero credits</span>
           </Link>
         </div>
       </nav>

@@ -11,3 +11,4 @@ export {
   useHomeLocationOptional,
 } from './HomeLocationContext';
 export { VeroUiProvider, useVeroUi, useVeroUiOptional } from './VeroUiContext';
+export { BillingProvider, useBilling, useBillingOptional } from "@/features/billing/BillingContext";

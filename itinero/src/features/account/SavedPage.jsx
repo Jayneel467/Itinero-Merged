@@ -7,7 +7,9 @@ import { useVeroUiOptional } from "@/context/VeroUiContext";
 import { placesPhotoProxyUrl } from "@/hooks/usePlacesPhoto";
 import { EXPLORE_CATALOG } from "@/features/explore/data/catalog";
 import { veroInsights } from "@/features/explore/exploreEngine";
-import { isSaved, listSaved, removeSaved, toggleSaved } from "./savedService";
+import { isSaved, listSaved, onSavedChange, removeSaved, toggleSaved } from "./savedService";
+import { hydrateAccountFromServer } from "@/features/profile/accountSync";
+import { useAuthOptional } from "@/features/auth/context/AuthContext";
 import styles from "./SavedPage.module.css";
 
 const STARTERS = ["udaipur", "bali", "dubai", "istanbul"]
@@ -52,15 +54,15 @@ function destSlides(city, country = "", fallback = "", theme = "") {
 export default function SavedPage() {
   const navigate = useNavigate();
   const veroUi = useVeroUiOptional();
+  const auth = useAuthOptional();
   const [rows, setRows] = useState(() => listSaved());
 
   const refresh = () => setRows(listSaved());
 
   useEffect(() => {
     refresh();
-    const onFocus = () => refresh();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    hydrateAccountFromServer().then(() => refresh()).catch(() => {});
+    return onSavedChange(refresh);
   }, []);
 
   useEffect(() => {
@@ -126,6 +128,14 @@ export default function SavedPage() {
             <p className={styles.lede}>
               Places you want later. Bookings stay in{" "}
               <Link to="/trips">My Trips</Link>.
+              {auth?.isAuthenticated ? (
+                " Hearts stay with your account."
+              ) : (
+                <>
+                  {" "}
+                  <Link to="/login">Sign in</Link> to keep them on every device.
+                </>
+              )}
             </p>
           </div>
           <ActionRow align="end" className={styles.headActions}>
@@ -280,7 +290,7 @@ export default function SavedPage() {
               <Bookmark size={26} strokeWidth={2.2} />
             </div>
             <h2>Nothing saved yet</h2>
-            <p>Tap Save on a destination from Explore, or start with one below.</p>
+            <p>Tap the heart on a stay, package, or destination — or start with one below.</p>
 
             {starters.length ? (
               <div className={styles.starterRow}>

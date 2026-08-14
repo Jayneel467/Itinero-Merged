@@ -4,17 +4,18 @@
   max-width: 1200px;
   margin: 0 auto;
   font-family: var(--font-sans);
+  color: var(--text-primary, #001438);
 }
 
 .deals-page__header h1 {
   margin: 0 0 8px;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
-  color: #001438;
+  color: var(--text-primary, #001438);
 }
 
 .deals-page__header p {
   margin: 0 0 20px;
-  color: #49607e;
+  color: var(--text-secondary, #49607e);
 }
 
 .deals-page__filters {
@@ -25,12 +26,12 @@
 }
 
 .deals-page__chip {
-  border: 1px solid #e8edf2;
-  background: #fff;
+  border: 1px solid var(--border-subtle, #e8edf2);
+  background: var(--surface-elevated, #fff);
   border-radius: 999px;
   padding: 8px 14px;
   cursor: pointer;
-  color: #001438;
+  color: var(--text-primary, #001438);
   font-weight: 650;
 }
 
@@ -66,4 +67,89 @@
   margin-top: 40px;
   text-align: center;
   color: #49607e;
+}
+
+.deals-page__offers {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+
+.deals-page__offer {
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--surface-elevated, #fff8f3);
+}
+
+.deals-page__offerKicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f97316;
+  letter-spacing: 0.08em;
+}
+
+.deals-page__offer h3 {
+  margin: 6px 0;
+  color: var(--text-primary, #001439);
+}
+
+.deals-page__offer p {
+  margin: 0;
+  color: var(--text-secondary, #64748b);
+  font-size: 14px;
+}
+
+.deals-page__offerCode {
+  margin: 10px 0 0 !important;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-primary, #001439) !important;
+}
+
+.deals-page__offerLink {
+  display: inline-block;
+  margin-top: 10px;
+  font-weight: 700;
+  color: #f97316;
+}
+
+.deals-page__liveCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px;
+  border: 1px solid var(--border-subtle, #e8edf2);
+  border-radius: 18px;
+  background: var(--surface-elevated, #fff);
+}
+
+.deals-page__liveFrom {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.deals-page__liveRoute {
+  margin: 0;
+  color: var(--text-secondary, #49607e);
+  font-weight: 650;
+}
+
+.deals-page__liveDest {
+  margin: 0 0 8px;
+  color: var(--text-secondary, #49607e);
+}
+
+.deals-page__livePrice {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.deals-page__liveHint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary, #49607e);
 }
