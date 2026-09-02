@@ -27,7 +27,7 @@ _SCHEMA_PATH = _SUPERVISOR_DIR / "schema.sql"
 _pool = None
 
 _DEFAULT_DATABASE_URL = (
-    "postgresql://neondb_owner:npg_PewpjJ8dY4xE@ep-cool-band-aytfc09a-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    "postgresql://neondb_owner:npg_PewpjJ8dY4xE@ep-cool-band-aytfc09a.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
 )
 
 
@@ -44,17 +44,21 @@ def _conninfo() -> str:
     url = database_url()
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://") :]
-    # Neon pooler is PgBouncer — SCRAM channel binding fails on PgBouncer
-    if "channel_binding=" in url.lower():
-        from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+    if "-pooler." in url:
+        url = url.replace("-pooler.", ".")
+    
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-        parts = urlsplit(url)
-        query = [
-            (k, v)
-            for k, v in parse_qsl(parts.query, keep_blank_values=True)
-            if k.lower() != "channel_binding"
-        ]
-        url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+    parts = urlsplit(url)
+    db_path = parts.path
+    if not db_path or db_path == "/":
+        db_path = "/neondb"
+    query = [
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=True)
+        if k.lower() != "channel_binding"
+    ]
+    url = urlunsplit((parts.scheme, parts.netloc, db_path, urlencode(query), parts.fragment))
     return url
 
 
@@ -63,34 +67,44 @@ def init_db() -> bool:
     global _pool
     if not configured():
         return False
-    from psycopg_pool import ConnectionPool
+    import psycopg
 
-    def _pool_int(name: str, default: int, lo: int, hi: int) -> int:
-        try:
-            return max(lo, min(int(os.getenv(name) or str(default)), hi))
-        except ValueError:
-            return default
-
-    if _pool is None:
-        # Neon pooler: keep min 0 (no idle compute). 4 was too small for
-        # chat + search + webhook + watches at once.
-        _pool = ConnectionPool(
-            conninfo=_conninfo(),
-            min_size=_pool_int("DB_POOL_MIN", 0, 0, 8),
-            max_size=_pool_int("DB_POOL_MAX", 12, 2, 32),
-            timeout=_pool_int("DB_POOL_TIMEOUT", 15, 5, 60),
-            kwargs={"connect_timeout": _pool_int("DB_CONNECT_TIMEOUT", 8, 3, 30)},
-            open=True,
+    try:
+        sql = _SCHEMA_PATH.read_text(encoding="utf-8")
+        cleaned = "\n".join(
+            line for line in sql.splitlines() if line.strip() and not line.strip().startswith("--")
         )
-    sql = _SCHEMA_PATH.read_text(encoding="utf-8")
-    cleaned = "\n".join(
-        line for line in sql.splitlines() if line.strip() and not line.strip().startswith("--")
-    )
-    statements = [s.strip() for s in cleaned.split(";") if s.strip()]
-    with _pool.connection() as conn:
-        with conn.transaction():
+        statements = [s.strip() for s in cleaned.split(";") if s.strip()]
+        with psycopg.connect(_conninfo(), autocommit=True) as direct_conn:
             for stmt in statements:
-                conn.execute(stmt)
+                direct_conn.execute(stmt)
+    except Exception as exc:
+        import logging
+
+        logging.getLogger("itinero.db").warning("schema apply warning: %s", exc)
+
+    try:
+        from psycopg_pool import ConnectionPool
+
+        def _pool_int(name: str, default: int, lo: int, hi: int) -> int:
+            try:
+                return max(lo, min(int(os.getenv(name) or str(default)), hi))
+            except ValueError:
+                return default
+
+        if _pool is None:
+            _pool = ConnectionPool(
+                conninfo=_conninfo(),
+                min_size=_pool_int("DB_POOL_MIN", 0, 0, 8),
+                max_size=_pool_int("DB_POOL_MAX", 12, 2, 32),
+                timeout=_pool_int("DB_POOL_TIMEOUT", 10, 3, 30),
+                kwargs={"connect_timeout": _pool_int("DB_CONNECT_TIMEOUT", 8, 3, 30)},
+                open=False,
+            )
+            _pool.open(wait=False)
+    except Exception:
+        _pool = None
+
     return True
 
 
@@ -98,8 +112,6 @@ def ping() -> str:
     if not configured():
         return "unset"
     try:
-        if _pool is None:
-            init_db()
         with connection() as conn:
             conn.execute("SELECT 1")
         return "ready"
@@ -112,11 +124,20 @@ def ping() -> str:
 
 @contextmanager
 def connection() -> Iterator[Any]:
-    if _pool is None:
-        if not init_db():
-            raise RuntimeError("DATABASE_URL is not set")
-    assert _pool is not None
-    with _pool.connection() as conn:
+    global _pool
+    if not configured():
+        raise RuntimeError("DATABASE_URL is not set")
+    import psycopg
+
+    if _pool is not None:
+        try:
+            with _pool.connection(timeout=3.0) as conn:
+                yield conn
+                return
+        except Exception:
+            pass
+
+    with psycopg.connect(_conninfo()) as conn:
         yield conn
 
 
