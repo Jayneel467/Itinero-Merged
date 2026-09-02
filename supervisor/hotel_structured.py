@@ -851,21 +851,65 @@ def _collect_hotel_images(hotel: dict[str, Any] | None, *, limit: int = 200) -> 
     return urls
 
 
+def _h_rating(h: dict[str, Any] | None) -> float:
+    if not isinstance(h, dict):
+        return 0.0
+    for k in ("rating", "reviewScore", "review_score", "guestRating", "hotelRating", "userRating", "score"):
+        r = h.get(k)
+        if r not in (None, ""):
+            try:
+                val = float(r)
+                if val > 0:
+                    return val
+            except (TypeError, ValueError):
+                pass
+    for k in ("stars", "starRating", "star_rating"):
+        s = h.get(k)
+        if s not in (None, ""):
+            try:
+                val = float(s)
+                if val > 0:
+                    return val * 2.0 if val <= 5.0 else val
+            except (TypeError, ValueError):
+                pass
+    return 0.0
+
+
+def _h_reviews(h: dict[str, Any] | None) -> int:
+    if not isinstance(h, dict):
+        return 0
+    for k in ("reviewCount", "reviewsCount", "review_count", "reviews", "totalReviews"):
+        r = h.get(k)
+        if r not in (None, ""):
+            try:
+                return int(float(r))
+            except (TypeError, ValueError):
+                pass
+    return 0
+
+
+def _h_stars(h: dict[str, Any] | None) -> int:
+    if not isinstance(h, dict):
+        return 0
+    for k in ("stars", "starRating", "star_rating"):
+        s = h.get(k)
+        if s not in (None, ""):
+            try:
+                return int(float(s))
+            except (TypeError, ValueError):
+                pass
+    return 0
+
+
 def _hotel_meta_to_ui(hotel_meta: dict[str, Any], *, currency: str = "INR") -> dict[str, Any]:
     """Full LiteAPI /data/hotel payload → UI hotel object (nothing inventable dropped)."""
     meta = hotel_meta if isinstance(hotel_meta, dict) else {}
     hid = str(meta.get("id") or meta.get("hotelId") or "")
     images = _collect_hotel_images(meta, limit=200)
     image = images[0] if images else (meta.get("main_photo") or meta.get("thumbnail") or "")
-    try:
-        stars = int(float(meta.get("stars") or 0))
-    except (TypeError, ValueError):
-        stars = 0
-    rating_raw = meta.get("rating")
-    try:
-        rating = float(rating_raw) if rating_raw not in (None, "") else None
-    except (TypeError, ValueError):
-        rating = None
+    stars = _h_stars(meta)
+    rating = _h_rating(meta)
+    reviews = _h_reviews(meta)
     lat, lng = _lat_lng(meta)
     facilities = _facility_names(meta)
     description = _plain_text(
@@ -889,8 +933,8 @@ def _hotel_meta_to_ui(hotel_meta: dict[str, Any], *, currency: str = "INR") -> d
         "images": images,
         "stars": stars,
         "rating": rating,
-        "ratingText": _rating_text(rating),
-        "reviewCount": int(meta.get("reviewCount") or meta.get("reviewsCount") or 0),
+        "ratingText": _rating_text(rating if rating > 0 else None),
+        "reviewCount": reviews,
         "description": description,
         "importantInformation": important,
         "facilities": facilities,
@@ -946,15 +990,9 @@ def _hotel_to_ui(
     city = str(hotel.get("city") or hotel.get("cityName") or hotel.get("city_name") or "").strip()
     address = str(hotel.get("address") or city or "")
     area = _area_label(hotel)
-    rating_raw = hotel.get("rating")
-    try:
-        rating = float(rating_raw) if rating_raw not in (None, "") else None
-    except (TypeError, ValueError):
-        rating = None
-    try:
-        stars = int(float(hotel.get("stars") or 0))
-    except (TypeError, ValueError):
-        stars = 0
+    rating = _h_rating(hotel)
+    stars = _h_stars(hotel)
+    review_count = _h_reviews(hotel)
 
     image = _normalize_image_url(
         hotel.get("main_photo") or hotel.get("mainPhoto") or hotel.get("thumbnail") or hotel.get("thumbnailUrl") or ""
@@ -996,9 +1034,9 @@ def _hotel_to_ui(
         "country": str(hotel.get("country") or hotel.get("countryCode") or ""),
         "area": area,
         "distance": f"{stars}★" if stars else "Hotel",
-        "rating": rating if rating is not None else (float(stars) if stars else 0),
-        "ratingText": _rating_text(rating if rating is not None else None),
-        "reviewCount": int(hotel.get("reviewCount") or hotel.get("reviewsCount") or 0),
+        "rating": rating,
+        "ratingText": _rating_text(rating if rating > 0 else None),
+        "reviewCount": review_count,
         "image": image or (images[0] if images else ""),
         "images": images or ([image] if image else []),
         "pricePerNight": per_night if per_night is not None else 0,
@@ -1124,53 +1162,6 @@ async def structured_hotel_search(
         if cat == "homes":
             catalog = [h for h in catalog if _is_homes_property(h)]
 
-        def _h_rating(h: dict[str, Any]) -> float:
-            if not isinstance(h, dict):
-                return 0.0
-            for k in ("rating", "reviewScore", "review_score", "guestRating", "hotelRating", "userRating", "score"):
-                r = h.get(k)
-                if r not in (None, ""):
-                    try:
-                        val = float(r)
-                        if val > 0:
-                            return val
-                    except (TypeError, ValueError):
-                        pass
-            for k in ("stars", "starRating", "star_rating"):
-                s = h.get(k)
-                if s not in (None, ""):
-                    try:
-                        val = float(s)
-                        if val > 0:
-                            return val * 2.0 if val <= 5.0 else val
-                    except (TypeError, ValueError):
-                        pass
-            return 0.0
-
-        def _h_reviews(h: dict[str, Any]) -> int:
-            if not isinstance(h, dict):
-                return 0
-            for k in ("reviewCount", "reviewsCount", "review_count", "reviews", "totalReviews"):
-                r = h.get(k)
-                if r not in (None, ""):
-                    try:
-                        return int(float(r))
-                    except (TypeError, ValueError):
-                        pass
-            return 0
-
-        def _h_stars(h: dict[str, Any]) -> int:
-            if not isinstance(h, dict):
-                return 0
-            for k in ("stars", "starRating", "star_rating"):
-                s = h.get(k)
-                if s not in (None, ""):
-                    try:
-                        return int(float(s))
-                    except (TypeError, ValueError):
-                        pass
-            return 0
-
         sort_s = (sort_by or "recommended").strip().lower()
         if sort_s == "rating":
             catalog.sort(key=lambda h: (_h_rating(h), _h_reviews(h)), reverse=True)
@@ -1182,63 +1173,37 @@ async def structured_hotel_search(
                 reverse=True,
             )
 
-        total = len(catalog)
-        total_pages = max(1, (total + size_n - 1) // size_n) if total else 0
-        if page_n > total_pages and total_pages > 0:
-            page_n = total_pages
+        # Batch-price top candidate catalog hotels (up to 300) in parallel chunks of 100
+        candidate_hotels = catalog[:300] if len(catalog) > 300 else catalog
+        candidate_ids = [str(h.get("id") or "") for h in candidate_hotels if str(h.get("id") or "").strip()]
+        chunks = [candidate_ids[i : i + 100] for i in range(0, len(candidate_ids), 100)]
 
-        if not catalog:
-            return {
-                "hotels": [],
-                "mode": "live",
-                "category": cat,
-                "category_label": category_label,
-                "message": f"No {product_label} found near {place_label}.",
-                "error": None,
-                "route_path": ["start", "manual_booking", "hotel_search", "liteapi"],
-                "guests": guests,
-                "rooms": rooms,
-                "geo": geo,
-                "page": page_n,
-                "page_size": size_n,
-                "total": 0,
-                "total_pages": 0,
-                "total_catalog": 0,
-            }
-
-        nights = _nights(check_in, check_out)
-        start_idx = (page_n - 1) * size_n
-        subset = catalog[start_idx : start_idx + size_n]
-        detail_sem = asyncio.Semaphore(_DETAIL_CONCURRENCY)
-        hotel_ids = [str(h.get("id") or "") for h in subset]
-        async with httpx.AsyncClient(timeout=50.0) as client:
-            min_rates, details = await asyncio.gather(
-                _fetch_min_rates(
-                    client,
-                    hotel_ids=hotel_ids,
-                    check_in=check_in,
-                    check_out=check_out,
-                    guests=guests,
-                    rooms=rooms,
-                    currency=currency,
-                    nationality=nationality,
-                ),
-                asyncio.gather(
-                    *[
-                        _fetch_hotel_detail(
-                            client,
-                            hotel_id=str(h.get("id") or ""),
-                            sem=detail_sem,
-                        )
-                        for h in subset
-                    ]
-                ),
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            chunk_results = await asyncio.gather(
+                *[
+                    _fetch_min_rates(
+                        client,
+                        hotel_ids=chunk,
+                        check_in=check_in,
+                        check_out=check_out,
+                        guests=guests,
+                        rooms=rooms,
+                        currency=currency,
+                        nationality=nationality,
+                    )
+                    for chunk in chunks
+                ]
             )
 
-        # If min-rates returned nothing, fall back to full /hotels/rates per hotel.
-        if not min_rates and subset:
+        min_rates: dict[str, dict[str, Any]] = {}
+        for r in chunk_results:
+            if isinstance(r, dict):
+                min_rates.update(r)
+
+        # Fall back to single hotel rates if min_rates returned nothing on smaller candidate sets
+        if not min_rates and len(candidate_hotels) <= 30:
             rate_sem = asyncio.Semaphore(_RATE_CONCURRENCY)
-            async with httpx.AsyncClient(timeout=50.0) as client:
+            async with httpx.AsyncClient(timeout=45.0) as client:
                 rate_payloads = await asyncio.gather(
                     *[
                         _fetch_rate(
@@ -1252,10 +1217,10 @@ async def structured_hotel_search(
                             nationality=nationality,
                             sem=rate_sem,
                         )
-                        for h in subset
+                        for h in candidate_hotels
                     ]
                 )
-            for hotel, rates in zip(subset, rate_payloads):
+            for hotel, rates in zip(candidate_hotels, rate_payloads):
                 hid = str(hotel.get("id") or "")
                 total_price, cur, _board = _min_rate(rates)
                 if hid and total_price is not None:
@@ -1264,6 +1229,93 @@ async def structured_hotel_search(
                         "currency": cur or currency,
                         "offerId": None,
                     }
+
+        # Keep only genuinely priced & available hotels
+        priced_catalog = [
+            h for h in candidate_hotels
+            if str(h.get("id") or "") in min_rates and min_rates[str(h.get("id") or "")].get("price")
+        ]
+
+        if sort_s == "rating":
+            priced_catalog.sort(
+                key=lambda h: (
+                    _h_rating(h),
+                    _h_reviews(h),
+                    -(float(min_rates.get(str(h.get("id") or ""), {}).get("price") or 0)),
+                ),
+                reverse=True,
+            )
+        elif sort_s == "stars":
+            priced_catalog.sort(
+                key=lambda h: (
+                    _h_stars(h),
+                    _h_rating(h),
+                    _h_reviews(h),
+                    -(float(min_rates.get(str(h.get("id") or ""), {}).get("price") or 0)),
+                ),
+                reverse=True,
+            )
+        elif sort_s == "price_asc":
+            priced_catalog.sort(
+                key=lambda h: float(min_rates.get(str(h.get("id") or ""), {}).get("price") or 1e18)
+            )
+        elif sort_s == "price_desc":
+            priced_catalog.sort(
+                key=lambda h: float(min_rates.get(str(h.get("id") or ""), {}).get("price") or 0),
+                reverse=True,
+            )
+        else:
+            # Recommended
+            priced_catalog.sort(
+                key=lambda h: (
+                    _h_rating(h) * 2.0
+                    + (_h_stars(h) or 2.5)
+                    + min(5.0, (_h_reviews(h) ** 0.5) / 4.0)
+                    - (float(min_rates.get(str(h.get("id") or ""), {}).get("price") or 0) / 100000.0)
+                ),
+                reverse=True,
+            )
+
+        total = len(priced_catalog)
+        total_pages = max(1, (total + size_n - 1) // size_n) if total else 0
+        if page_n > total_pages and total_pages > 0:
+            page_n = total_pages
+
+        if not priced_catalog:
+            return {
+                "hotels": [],
+                "mode": "live",
+                "category": cat,
+                "category_label": category_label,
+                "message": f"No live rates available for {product_label} near {place_label} on these dates.",
+                "error": "no_live_rates",
+                "route_path": ["start", "manual_booking", "hotel_search", "liteapi"],
+                "guests": guests,
+                "rooms": rooms,
+                "geo": geo,
+                "page": page_n,
+                "page_size": size_n,
+                "total": 0,
+                "total_pages": 0,
+                "total_catalog": len(catalog),
+            }
+
+        nights = _nights(check_in, check_out)
+        start_idx = (page_n - 1) * size_n
+        subset = priced_catalog[start_idx : start_idx + size_n]
+
+        detail_sem = asyncio.Semaphore(_DETAIL_CONCURRENCY)
+        async with httpx.AsyncClient(timeout=40.0) as client:
+            details = await asyncio.gather(
+                *[
+                    _fetch_hotel_detail(
+                        client,
+                        hotel_id=str(h.get("id") or ""),
+                        sem=detail_sem,
+                    )
+                    for h in subset
+                ]
+            )
 
         ui: list[dict[str, Any]] = []
         priced = 0
