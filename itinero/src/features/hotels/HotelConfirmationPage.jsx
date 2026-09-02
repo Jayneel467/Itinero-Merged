@@ -607,13 +607,30 @@ export default function HotelConfirmationPage() {
               <h3 className={styles.summaryTitle}>Payment summary</h3>
 
               <div className={styles.summaryRow}>
-                <span>Room ({bookingData.nights} night{Number(bookingData.nights) === 1 ? "" : "s"})</span>
+                <span>Room ({bookingData.nights || 1} night{Number(bookingData.nights) === 1 ? "" : "s"})</span>
                 <span>{formatMoney(bookingData.roomsTotal)}</span>
               </div>
-              <div className={styles.summaryRow}>
-                <span>Taxes &amp; fees</span>
-                <span>{formatMoney(bookingData.taxesTotal)}</span>
-              </div>
+              {Number(bookingData.taxesTotal) > 0 ? (
+                <div className={styles.summaryRow}>
+                  <span>Taxes &amp; fees</span>
+                  <span>{formatMoney(bookingData.taxesTotal)}</span>
+                </div>
+              ) : null}
+              {Array.isArray(bookingData.addons) && bookingData.addons.length > 0
+                ? bookingData.addons.map((addon, i) => (
+                    <div key={i} className={styles.summaryRow}>
+                      <span>
+                        {addon.label ||
+                          (addon.type === "esim" || addon.type === "esimply"
+                            ? "eSIM data"
+                            : "Uber ride credit")}
+                      </span>
+                      <span>
+                        {formatMoney(addon.amount != null ? addon.amount : addon.price ?? addon.valueUsd)}
+                      </span>
+                    </div>
+                  ))
+                : null}
               <div className={styles.summaryDivider} />
               <div className={styles.summaryTotal}>
                 <span>Amount paid</span>

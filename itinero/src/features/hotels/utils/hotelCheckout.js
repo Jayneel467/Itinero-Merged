@@ -61,6 +61,7 @@ export function confirmationFromHotelBooking(booking, extra = {}) {
       totalPrice: Number(b.price || extra.totalPrice) || 0,
       roomsTotal: Number(extra.roomsTotal || b.price) || 0,
       taxesTotal: Number(extra.taxesTotal) || 0,
+      addons: Array.isArray(extra.addons) ? extra.addons : (Array.isArray(b.addons) ? b.addons : []),
       currency: b.currency || extra.currency || "INR",
       guestName: extra.guestName || [holder.firstName, holder.lastName].filter(Boolean).join(" "),
       email: extra.email || holder.email || "",

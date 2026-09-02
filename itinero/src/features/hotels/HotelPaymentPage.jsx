@@ -97,6 +97,8 @@ export default function HotelPaymentPage() {
         roomName: room?.roomName || room?.name || "Room",
         roomsTotal: roomBase,
         taxesTotal: taxesIncluded ? taxesTotal : 0,
+        addons: [],
+        addonsTotal: 0,
         totalPrice: displayTotal,
         starRating: Number(hotel?.starRating || 0) || 0,
         offerId,
@@ -104,8 +106,10 @@ export default function HotelPaymentPage() {
     }
     return {
       ...baseSummary,
-      roomsTotal: roomBase,
-      taxesTotal: taxesIncluded ? taxesTotal : 0,
+      roomsTotal: Number(baseSummary.roomsTotal ?? roomBase),
+      taxesTotal: Number(baseSummary.taxesTotal ?? (taxesIncluded ? taxesTotal : 0)),
+      addons: baseSummary.addons || [],
+      addonsTotal: Number(baseSummary.addonsTotal || 0),
       totalPrice: displayTotal,
     };
   }, [
@@ -184,6 +188,7 @@ export default function HotelPaymentPage() {
     const booking = bookRes.booking || {};
     const g = guestUsed || guest;
     clearLiteApiCheckout(pb?.prebook_id || booking.prebook_id);
+    const usedSummary = summaryUsed || summaryData;
     const confirmState = {
       paymentId: payRef || booking.payment_id,
       paymentProvider: "stripe",
@@ -191,12 +196,12 @@ export default function HotelPaymentPage() {
       prebookId: booking.prebook_id || pb?.prebook_id,
       hotelConfirmationCode: booking.hotel_confirmation_code,
       bookingData: {
-        ...(summaryUsed || summaryData),
+        ...usedSummary,
         totalPrice: Number(booking.price ?? pb?.price ?? displayTotal),
         guestName: `${g.firstName || ""} ${g.lastName || ""}`.trim(),
         email: g.email,
         phone: g.phone,
-        addons: booking.addons || [],
+        addons: usedSummary?.addons || booking.addons || [],
       },
     };
     saveHotelConfirmation(confirmState);
