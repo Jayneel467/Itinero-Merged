@@ -8,12 +8,31 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-_SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
+from dotenv import load_dotenv
+
+_SUPERVISOR_DIR = Path(__file__).resolve().parent
+_REPO_ROOT = _SUPERVISOR_DIR.parent
+
+for _env_path in [
+    _SUPERVISOR_DIR / ".env",
+    _REPO_ROOT / ".env",
+    _REPO_ROOT / "supervisor" / ".env",
+    _REPO_ROOT / "backend" / "supervisor" / ".env",
+    _REPO_ROOT / "general_agent" / ".env",
+]:
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
+
+_SCHEMA_PATH = _SUPERVISOR_DIR / "schema.sql"
 _pool = None
+
+_DEFAULT_DATABASE_URL = (
+    "postgresql://neondb_owner:npg_PewpjJ8dY4xE@ep-cool-band-aytfc09a-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+)
 
 
 def database_url() -> str:
-    return (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or "").strip()
+    return (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or _DEFAULT_DATABASE_URL).strip()
 
 
 def configured() -> bool:
@@ -25,8 +44,8 @@ def _conninfo() -> str:
     url = database_url()
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://") :]
-    # Neon pooler is PgBouncer — SCRAM channel binding usually fails there.
-    if "-pooler." in url.lower() and "channel_binding=" in url.lower():
+    # Neon pooler is PgBouncer — SCRAM channel binding fails on PgBouncer
+    if "channel_binding=" in url.lower():
         from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
         parts = urlsplit(url)
