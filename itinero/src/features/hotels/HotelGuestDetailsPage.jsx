@@ -235,7 +235,7 @@ export default function HotelGuestDetailsPage() {
             <HotelBookingSummary
               bookingInfo={summaryData}
               showContinue
-              buttonText={`Continue to payment · ${formatMoney(roomTotal)}`}
+              buttonText={`Continue to payment · ${formatMoney(totalPriceWithAddons)}`}
               onButtonClick={goToPayment}
               chargeHint="Next: hold the room and pay securely"
             />

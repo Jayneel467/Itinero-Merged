@@ -120,6 +120,8 @@ export const HotelCard = ({ hotel, searchQuery, rank }) => {
     const qs = new URLSearchParams();
     if (searchQuery?.checkIn) qs.set("checkIn", searchQuery.checkIn);
     if (searchQuery?.checkOut) qs.set("checkOut", searchQuery.checkOut);
+    if (searchQuery?.adults) qs.set("adults", String(searchQuery.adults));
+    if (searchQuery?.children != null) qs.set("children", String(searchQuery.children));
     if (searchQuery?.guests) qs.set("guests", String(searchQuery.guests));
     if (searchQuery?.rooms) qs.set("rooms", String(searchQuery.rooms));
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
@@ -128,6 +130,8 @@ export const HotelCard = ({ hotel, searchQuery, rank }) => {
         hotel,
         checkIn: searchQuery?.checkIn,
         checkOut: searchQuery?.checkOut,
+        adults: searchQuery?.adults,
+        children: searchQuery?.children,
         guests: searchQuery?.guests,
         rooms: searchQuery?.rooms,
       },

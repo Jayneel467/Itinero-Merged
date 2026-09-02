@@ -754,8 +754,10 @@ export default function BookingPopup({
       }
 
       const rawPb = prebookRes.prebook || {};
+      const basePbPrice = Number(rawPb.price ?? flight?.price ?? 0);
       const pb = await withResolvedStripeKeys({
         ...rawPb,
+        base_prebook_price: basePbPrice,
         allow_mock_payment:
           rawPb.allow_mock_payment === true ||
           prebookRes?.payment_ready === true ||
@@ -798,6 +800,12 @@ export default function BookingPopup({
     const list = Array.isArray(selections) ? selections : [];
     setSelectedExtras(list);
 
+    const extrasTotal = list.reduce(
+      (sum, item) => sum + (Number(item?.price) || 0),
+      0
+    );
+    const base = Number(hold.base_prebook_price || hold.price || flight?.price || 0);
+
     // Filter only real LiteAPI external ancillary service IDs to send to backend API
     const liteapiServices = list.filter(
       (item) => item?.service_id && !String(item.service_id).startsWith("seat_")
@@ -808,6 +816,7 @@ export default function BookingPopup({
       try {
         const pb = {
           ...hold,
+          price: base + extrasTotal,
           selected_services: list,
         };
         setHold(pb);
@@ -832,9 +841,13 @@ export default function BookingPopup({
           res?.error || res?.message || "Could not add those extras. Try again or skip."
         );
       }
+      const serverPrice = res?.prebook?.price != null ? Number(res.prebook.price) : null;
+      const effectivePrice = serverPrice && serverPrice > base ? serverPrice : base + extrasTotal;
+
       const pb = await withResolvedStripeKeys({
         ...hold,
         ...(res.prebook || {}),
+        price: effectivePrice,
         selected_services: list,
         allow_mock_payment:
           res?.prebook?.allow_mock_payment === true ||
@@ -852,6 +865,7 @@ export default function BookingPopup({
       try {
         const pb = {
           ...hold,
+          price: base + extrasTotal,
           selected_services: list,
         };
         setHold(pb);
@@ -1091,7 +1105,7 @@ export default function BookingPopup({
       : calculatedCombinedPrice || Number(flight.price || 0);
   const currency = (hold?.currency || flight.currencyCode || "INR").toUpperCase();
   const currencySym = flight.currency || (currency === "INR" ? "₹" : `${currency} `);
-  const priceLabel = `${currencySym}${priceNum.toLocaleString("en-IN")}`;
+  const priceLabel = `${currencySym}${priceNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const baseFare =
     flight.price_base != null
       ? Number(flight.price_base)

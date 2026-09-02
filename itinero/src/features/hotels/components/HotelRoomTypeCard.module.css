@@ -1,32 +1,40 @@
 .card {
   display: flex;
   gap: 0;
-  border: 1px solid #e8edf2;
-  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
   overflow: hidden;
-  background: #fff;
-  margin-bottom: 18px;
-  box-shadow: 0 8px 24px rgba(0, 20, 56, 0.05);
+  background: #ffffff;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(0, 20, 56, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 24px rgba(0, 20, 56, 0.07);
 }
 
 .left {
-  flex: 0 0 250px;
+  flex: 0 0 270px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #eef2f6;
-  background: #fafbfc;
+  border-right: 1px solid #f1f5f9;
+  background: #f8fafc;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .imageWrap {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 185px;
   flex-shrink: 0;
-  background: #eef2f6;
+  background: #e2e8f0;
+  overflow: hidden;
 }
 
 .image {
@@ -34,6 +42,11 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.3s ease;
+}
+
+.imageWrap:hover .image {
+  transform: scale(1.03);
 }
 
 .imageMissing {
@@ -44,7 +57,7 @@
   justify-content: center;
   color: #94a3b8;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   background: #f1f5f9;
 }
 
@@ -52,19 +65,20 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #001438;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(4px);
 }
 
 .imageWrap:hover .navBtn {
@@ -72,7 +86,8 @@
 }
 
 .navBtn:hover {
-  background: #fff;
+  background: #ffffff;
+  transform: translateY(-50%) scale(1.08);
 }
 
 .navPrev {
@@ -85,31 +100,38 @@
 
 .counter {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
-  background: rgba(0, 20, 56, 0.7);
-  color: #fff;
+  right: 8px;
+  bottom: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
   font-size: 11px;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 999px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.02em;
 }
 
 .thumbs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  padding: 8px 8px 0;
+  gap: 5px;
+  padding: 8px 10px 0;
 }
 
 .thumb {
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   padding: 0;
-  height: 48px;
+  height: 44px;
   cursor: pointer;
-  background: #eef2f6;
+  background: #e2e8f0;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.thumb:hover {
+  transform: translateY(-1px);
 }
 
 .thumb img {
@@ -121,43 +143,80 @@
 
 .thumbActive {
   border-color: #f97211;
+  box-shadow: 0 0 0 1px #f97211;
 }
 
 .meta {
-  padding: 14px 16px 18px;
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .title {
-  margin: 0 0 6px;
+  margin: 0;
   font-family: Outfit, var(--font-sans), system-ui, sans-serif;
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #001438;
-  line-height: 1.3;
+  font-size: 1.02rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  color: #0f172a;
+  line-height: 1.35;
 }
 
 .specs {
-  margin: 0;
-  font-size: 13px;
+  margin: 2px 0 0;
+  font-size: 12.5px;
   color: #64748b;
-  line-height: 1.4;
+  line-height: 1.45;
+  font-weight: 450;
 }
 
-.view {
-  margin: 6px 0 0;
-  font-size: 13px;
+.viewBadge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
   font-weight: 650;
-  color: #334155;
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin-top: 4px;
 }
 
-.fromPrice {
-  margin: 12px 0 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: #001438;
+.fromPriceRow {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
+.fromPriceLabel {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fromPriceValue {
+  font-family: Outfit, var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.fromPriceUnit {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Right column: Rates list
+   ═══════════════════════════════════════════════════════ */
 .rates {
   flex: 1;
   display: flex;
@@ -170,7 +229,7 @@
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid #f1f5f9;
   transition: background 0.15s ease;
 }
 
@@ -179,11 +238,12 @@
 }
 
 .rateRow:hover {
-  background: #fffbf7;
+  background: #f8fafc;
 }
 
 .rateRowSelected {
-  background: #fff7f0;
+  background: #fff9f5;
+  border-left: 3px solid #f97211;
 }
 
 .rateInfo {
@@ -194,13 +254,15 @@
 .boardName {
   font-size: 15px;
   font-weight: 750;
-  color: #001438;
+  color: #0f172a;
   margin-bottom: 6px;
+  letter-spacing: -0.01em;
 }
 
 .rateTags {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
@@ -209,26 +271,38 @@
 .tagMuted {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  gap: 4.5px;
+  font-size: 11.5px;
   font-weight: 650;
-  border-radius: 999px;
-  padding: 4px 9px;
+  border-radius: 6px;
+  padding: 3px 9px;
+  line-height: 1.3;
 }
 
 .tagGreen {
-  color: #067647;
-  background: #ecfdf3;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
 }
 
 .tagBlue {
-  color: #175cd3;
-  background: #eff8ff;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #e0f2fe;
 }
 
 .tagMuted {
   color: #64748b;
-  background: #f2f4f7;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.rateAction {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
 }
 
 .ratePrice {
@@ -242,19 +316,28 @@
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #001438;
-  line-height: 1.1;
+  color: #0f172a;
+  line-height: 1.15;
 }
 
 .priceSub {
   font-size: 12px;
-  color: #94a3b8;
+  font-weight: 500;
+  color: #64748b;
 }
 
 .priceTax {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #64748b;
   margin-top: 2px;
+  font-weight: 500;
+}
+
+.priceTaxIncluded {
+  font-size: 11px;
+  color: #059669;
+  margin-top: 2px;
+  font-weight: 600;
 }
 
 .btnSelect,
@@ -263,8 +346,8 @@
   min-width: 130px;
   height: 42px;
   border-radius: 999px;
-  font-weight: 750;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 13.5px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -272,22 +355,60 @@
   gap: 6px;
   border: none;
   font-family: inherit;
+  transition: all 0.15s ease;
+  padding: 0 18px;
 }
 
 .btnSelect {
-  background: #f97211;
-  color: #fff;
+  background: linear-gradient(135deg, #f97211 0%, #ea580c 100%);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(249, 114, 17, 0.22);
 }
 
 .btnSelect:hover {
-  background: #e5670f;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(249, 114, 17, 0.32);
+}
+
+.btnSelect:active {
+  transform: translateY(0);
 }
 
 .btnSelected {
-  background: #12b76a;
-  color: #fff;
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.22);
 }
 
+/* ═══════════════════════════════════════════════════════
+   When Vero AI is OPEN: stack price on top, button on bottom
+   ═══════════════════════════════════════════════════════ */
+html[data-vero-open] .rateAction {
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  min-width: 136px;
+  text-align: right;
+}
+
+html[data-vero-open] .ratePrice {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+html[data-vero-open] .btnSelect,
+html[data-vero-open] .btnSelected {
+  width: 136px;
+  min-width: 136px;
+  height: 38px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Responsive Rules
+   ═══════════════════════════════════════════════════════ */
 @media (max-width: 1180px) {
   html[data-vero-open] .card {
     flex-direction: column;
@@ -297,7 +418,7 @@
     flex: none;
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid #eef2f6;
+    border-bottom: 1px solid #f1f5f9;
   }
 
   html[data-vero-open] .imageWrap {
@@ -305,21 +426,33 @@
   }
 
   html[data-vero-open] .thumbs {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   html[data-vero-open] .rateRow {
     flex-wrap: wrap;
     gap: 12px;
+    align-items: flex-start;
+  }
+
+  html[data-vero-open] .rateAction {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px dashed #f1f5f9;
   }
 
   html[data-vero-open] .ratePrice {
     text-align: left;
+    align-items: flex-start;
   }
 
   html[data-vero-open] .btnSelect,
   html[data-vero-open] .btnSelected {
-    width: 100%;
+    width: 140px;
   }
 }
 
@@ -332,27 +465,55 @@
     flex: none;
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid #eef2f6;
+    border-bottom: 1px solid #f1f5f9;
   }
 
   .imageWrap {
-    height: 220px;
+    height: 210px;
   }
 
   .thumbs {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .rateRow {
     flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .rateAction {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px dashed #f1f5f9;
   }
 
   .ratePrice {
     text-align: left;
+    align-items: flex-start;
   }
 
   .btnSelect,
   .btnSelected {
+    width: 140px;
+  }
+}
+
+@media (max-width: 540px) {
+  .rateAction,
+  html[data-vero-open] .rateAction {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btnSelect,
+  .btnSelected,
+  html[data-vero-open] .btnSelect,
+  html[data-vero-open] .btnSelected {
     width: 100%;
   }
 }

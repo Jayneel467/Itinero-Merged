@@ -346,6 +346,10 @@ async def structured_search(
         ui = normalize_search_list(
             offers, origin=origin.upper(), destination=destination.upper()
         )
+        for u in ui:
+            u["adults"] = params.adults
+            u["children"] = params.children
+            u["infants"] = params.infants
 
         # Seed one-way calendar cache for this depart day (skip RT — different fare).
         if not return_date:

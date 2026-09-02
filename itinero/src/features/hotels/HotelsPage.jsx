@@ -241,6 +241,8 @@ export default function HotelsPage({ mode = "hotels" }) {
       const qs = new URLSearchParams();
       if (query?.checkIn) qs.set("checkIn", query.checkIn);
       if (query?.checkOut) qs.set("checkOut", query.checkOut);
+      if (query?.adults) qs.set("adults", String(query.adults));
+      if (query?.children != null) qs.set("children", String(query.children));
       if (query?.guests) qs.set("guests", String(query.guests));
       if (query?.rooms) qs.set("rooms", String(query.rooms));
       const suffix = qs.toString() ? `?${qs.toString()}` : "";
@@ -249,6 +251,8 @@ export default function HotelsPage({ mode = "hotels" }) {
           hotel,
           checkIn: query?.checkIn,
           checkOut: query?.checkOut,
+          adults: query?.adults,
+          children: query?.children,
           guests: query?.guests,
           rooms: query?.rooms,
         },

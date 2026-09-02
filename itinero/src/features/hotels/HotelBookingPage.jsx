@@ -52,8 +52,8 @@ export default function HotelBookingPage() {
   const [checkIn, setCheckIn] = useState(() => toDate(searchParams.get('checkIn') || location.state?.checkIn, 0));
   const [checkOut, setCheckOut] = useState(() => toDate(searchParams.get('checkOut') || location.state?.checkOut, 3));
   const [roomsCount, setRoomsCount] = useState(() => Number(searchParams.get('rooms') || location.state?.rooms || 1));
-  const [adults, setAdults] = useState(() => Number(searchParams.get('guests') || location.state?.guests || 2));
-  const [children, setChildren] = useState(0);
+  const [adults, setAdults] = useState(() => Number(searchParams.get('adults') || searchParams.get('guests') || location.state?.adults || location.state?.guests || 2));
+  const [children, setChildren] = useState(() => Number(searchParams.get('children') || location.state?.children || 0));
 
   const [rooms, setRooms] = useState([]);
   const [hotelMeta, setHotelMeta] = useState(initialHotel);
@@ -209,6 +209,8 @@ export default function HotelBookingPage() {
     const next = {
       checkIn: toYmd(modalCheckIn),
       checkOut: toYmd(modalCheckOut),
+      adults: String(modalAdults),
+      children: String(modalChildren),
       guests: String(modalAdults + modalChildren),
       rooms: String(modalRooms),
     };
@@ -224,6 +226,8 @@ export default function HotelBookingPage() {
         room: selectedRoom,
         checkIn: toYmd(checkIn),
         checkOut: toYmd(checkOut),
+        adults,
+        children,
         guests: adults + children,
         rooms: roomsCount,
         offerId: selectedRoom.offerId,

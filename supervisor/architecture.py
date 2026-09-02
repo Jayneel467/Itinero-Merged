@@ -573,11 +573,39 @@ def extract_trip_slots(message: str, session: dict[str, Any] | None = None) -> T
         # stale prior depart_date (that incorrectly triggers live search).
         slots.depart_date = None
 
-    adults_m = re.search(r"\b(\d+)\s*(adults?|passengers?|pax|people|travellers?)\b", text, re.I)
+    adults_m = re.search(
+        r"\b(\d+)\s*(adults?|passengers?|pax|people|travellers?|travelers?|persons?|person|members?|jano?|log)\b",
+        text,
+        re.I,
+    )
+    if not adults_m:
+        adults_m = re.search(r"\b(?:for|mate|ke liye)\s+(\d+)\b", text, re.I)
+    if not adults_m:
+        adults_m = re.search(r"\b(\d+)\s*(?:mate|ke liye)\b", text, re.I)
     if adults_m:
         slots.adults = max(1, int(adults_m.group(1)))
+    else:
+        word_m = re.search(
+            r"\b(one|two|three|four|five|six|seven|eight|nine|ek|be|tran|char|paanch|do|teen)\s*(?:adults?|passengers?|pax|people|travellers?|travelers?|persons?|person|members?|jano?|log)?\b",
+            text,
+            re.I,
+        )
+        if word_m:
+            wmap = {
+                "one": 1, "ek": 1,
+                "two": 2, "be": 2, "do": 2,
+                "three": 3, "tran": 3, "teen": 3,
+                "four": 4, "char": 4,
+                "five": 5, "paanch": 5,
+                "six": 6,
+                "seven": 7,
+                "eight": 8,
+                "nine": 9,
+            }
+            if word_m.group(1).lower() in wmap:
+                slots.adults = wmap[word_m.group(1).lower()]
 
-    children_m = re.search(r"\b(\d+)\s*(children|child|kids?)\b", text, re.I)
+    children_m = re.search(r"\b(\d+)\s*(children|child|kids?|kid|bachhe)\b", text, re.I)
     if children_m:
         slots.children = max(0, int(children_m.group(1)))
 

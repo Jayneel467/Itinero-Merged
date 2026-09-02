@@ -39,8 +39,8 @@ export default function HotelBookingCard() {
   });
   
   const [rooms, setRooms] = useState(Number(searchParams.get('rooms') || 1));
-  const [adults, setAdults] = useState(Number(searchParams.get('guests') || 2));
-  const [children, setChildren] = useState(0);
+  const [adults, setAdults] = useState(Number(searchParams.get('adults') || searchParams.get('guests') || 2));
+  const [children, setChildren] = useState(Number(searchParams.get('children') || 0));
   const [showGuests, setShowGuests] = useState(false);
   const [minNight, setMinNight] = useState(null);
   const [total, setTotal] = useState(null);
@@ -71,15 +71,22 @@ export default function HotelBookingCard() {
         currency,
       });
       if (cancelled) return;
-      const first = (res.rooms || [])[0];
-      if (first) {
-        setMinNight(first.pricePerNight || first.price || null);
-        setTotal(first.totalPrice || null);
-      } else {
-        setMinNight(null);
-        setTotal(null);
-      }
       setLoadingPrice(false);
+      const list = Array.isArray(res.rooms) ? res.rooms : [];
+      let minN = null;
+      let minT = null;
+      list.forEach((r) => {
+        (r.rates || []).forEach((rt) => {
+          if (typeof rt.price === 'number') {
+            if (minT === null || rt.price < minT) minT = rt.price;
+          }
+          if (typeof rt.price_per_night === 'number') {
+            if (minN === null || rt.price_per_night < minN) minN = rt.price_per_night;
+          }
+        });
+      });
+      setMinNight(minN);
+      setTotal(minT);
     }
     load();
     return () => { cancelled = true; };
@@ -89,6 +96,8 @@ export default function HotelBookingCard() {
     const qs = new URLSearchParams({
       checkIn: toYmd(checkIn),
       checkOut: toYmd(checkOut),
+      adults: String(adults),
+      children: String(children),
       guests: String(adults + children),
       rooms: String(rooms),
     });

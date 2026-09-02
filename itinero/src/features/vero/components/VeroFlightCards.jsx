@@ -291,6 +291,9 @@ export default function VeroFlightCards({ flights, sessionId }) {
         }}
         flight={bookingFlight}
         sessionId={sessionId}
+        adults={bookingFlight?.adults || sample?.adults || 1}
+        childrenCount={bookingFlight?.children || sample?.children || 0}
+        infants={bookingFlight?.infants || sample?.infants || 0}
         origin={origin}
         destination={destination}
       />

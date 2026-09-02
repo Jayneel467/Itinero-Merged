@@ -37,6 +37,17 @@ function collectImages(roomType, hotelImages = []) {
   return out;
 }
 
+function formatCancelDate(str) {
+  if (!str) return "";
+  try {
+    const d = new Date(String(str).includes("T") ? str : str.replace(" ", "T"));
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    }
+  } catch {}
+  return String(str).slice(0, 10);
+}
+
 /**
  * Nuitee-style room type: photo gallery + stacked rate rows.
  */
@@ -83,7 +94,7 @@ export default function HotelRoomTypeCard({
           {images.length ? (
             <img
               src={images[safeIndex]}
-              alt=""
+              alt={roomType.title || "Room image"}
               className={styles.image}
               loading="lazy"
               referrerPolicy="no-referrer"
@@ -119,7 +130,7 @@ export default function HotelRoomTypeCard({
 
         {images.length > 1 ? (
           <div className={styles.thumbs} role="tablist" aria-label="Room photos">
-            {images.slice(0, 6).map((src, idx) => (
+            {images.slice(0, 4).map((src, idx) => (
               <button
                 key={src}
                 type="button"
@@ -146,12 +157,13 @@ export default function HotelRoomTypeCard({
               .join(" · ")}
           </p>
           {roomType.view && roomType.view !== "Standard view" ? (
-            <p className={styles.view}>{roomType.view}</p>
+            <span className={styles.viewBadge}>{roomType.view}</span>
           ) : null}
           {Number.isFinite(fromPrice) ? (
-            <p className={styles.fromPrice}>
-              From {formatMoney(fromPrice, moneyOpts)} / night
-            </p>
+            <div className={styles.fromPriceRow}>
+              <span className={styles.fromPriceLabel}>Starts from</span>
+              <span className={styles.fromPriceValue}>{formatMoney(fromPrice, moneyOpts)} <span className={styles.fromPriceUnit}>/ night</span></span>
+            </div>
           ) : null}
         </div>
       </div>
@@ -159,6 +171,7 @@ export default function HotelRoomTypeCard({
       <div className={styles.rates}>
         {rates.map((rate) => {
           const selected = rate.id === selectedRateId;
+          const cancelShort = rate.cancelUntil ? formatCancelDate(rate.cancelUntil) : "";
           return (
             <div
               key={rate.id}
@@ -168,55 +181,58 @@ export default function HotelRoomTypeCard({
                 <div className={styles.boardName}>{rate.board || "Room only"}</div>
                 <div className={styles.rateTags}>
                   {rate.freeCancellation ? (
-                    <span className={styles.tagGreen}>
-                      <Check size={12} /> Free cancellation
-                      {rate.cancelUntil ? ` until ${rate.cancelUntil}` : ""}
+                    <span className={styles.tagGreen} title={rate.cancelUntil ? `Free cancellation until ${rate.cancelUntil}` : "Free cancellation"}>
+                      <Check size={12} className="flex-shrink-0" /> Free cancellation {cancelShort ? `• until ${cancelShort}` : ""}
                     </span>
                   ) : (
                     <span className={styles.tagMuted}>
-                      <Ban size={12} /> Non-refundable
+                      <Ban size={12} className="flex-shrink-0" /> Non-refundable
                     </span>
                   )}
                   {rate.freeBreakfast ? (
                     <span className={styles.tagGreen}>
-                      <Coffee size={12} /> Breakfast
+                      <Coffee size={12} className="flex-shrink-0" /> Breakfast included
                     </span>
                   ) : (
-                    <span className={styles.tagMuted}>No meals included</span>
+                    <span className={styles.tagMuted}>No meals</span>
                   )}
                   {rate.payAtHotel ? (
                     <span className={styles.tagBlue}>
-                      <Clock size={12} /> Pay at hotel
+                      <Clock size={12} className="flex-shrink-0" /> Pay at hotel
                     </span>
                   ) : null}
                 </div>
               </div>
 
-              <div className={styles.ratePrice}>
-                <div className={styles.priceMain}>
-                  {formatMoney(rate.price || 0, moneyOpts)}
-                </div>
-                <div className={styles.priceSub}>/ night</div>
-                {rate.taxes > 0 ? (
-                  <div className={styles.priceTax}>
-                    +{formatMoney(rate.taxes, moneyOpts)} taxes
+              <div className={styles.rateAction}>
+                <div className={styles.ratePrice}>
+                  <div className={styles.priceMain}>
+                    {formatMoney(rate.price || 0, moneyOpts)}
+                    <span className={styles.priceSub}> / night</span>
                   </div>
-                ) : null}
-              </div>
+                  {rate.taxes > 0 ? (
+                    <div className={styles.priceTax}>
+                      +{formatMoney(rate.taxes, moneyOpts)} taxes & fees
+                    </div>
+                  ) : (
+                    <div className={styles.priceTaxIncluded}>Taxes included</div>
+                  )}
+                </div>
 
-              <button
-                type="button"
-                className={selected ? styles.btnSelected : styles.btnSelect}
-                onClick={() => onSelectRate(rate.id)}
-              >
-                {selected ? (
-                  <>
-                    <Check size={16} /> Selected
-                  </>
-                ) : (
-                  "Choose room"
-                )}
-              </button>
+                <button
+                  type="button"
+                  className={selected ? styles.btnSelected : styles.btnSelect}
+                  onClick={() => onSelectRate(rate.id)}
+                >
+                  {selected ? (
+                    <>
+                      <Check size={15} /> Selected
+                    </>
+                  ) : (
+                    "Choose room"
+                  )}
+                </button>
+              </div>
             </div>
           );
         })}

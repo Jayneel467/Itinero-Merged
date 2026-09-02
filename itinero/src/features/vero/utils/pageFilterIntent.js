@@ -71,6 +71,111 @@ function cityIataPair(text, { fuzzy = true } = {}) {
 }
 
 /** Destination advice / saved shortlist - do not hijack into flight search. */
+export function extractAdultsFromText(text) {
+  if (!text) return null;
+  const str = String(text);
+  // Match "3 adults", "3 pax", "3 passengers", "3 people", "3 persons", "3 person", "3 travellers", "3 travelers", "3 members", "3 jano", "3 log", "3 adult"
+  const m = str.match(/\b(\d+)\s*(?:adults?|passengers?|pax|people|travellers?|travelers?|persons?|person|members?|jano?|log)\b/i);
+  if (m) {
+    const num = parseInt(m[1], 10);
+    if (!Number.isNaN(num) && num >= 1 && num <= 9) return num;
+  }
+  // Match "for 3 persons", "for 3", "mate 3", "3 mate", "3 ke liye"
+  const forMatch = str.match(/\b(?:for|mate|ke liye)\s+(\d+)\b/i) || str.match(/\b(\d+)\s*(?:mate|ke liye)\b/i);
+  if (forMatch) {
+    const num = parseInt(forMatch[1], 10);
+    if (!Number.isNaN(num) && num >= 1 && num <= 9) return num;
+  }
+  // Word forms
+  const wordMatch = str.match(/\b(one|two|three|four|five|six|seven|eight|nine|ek|be|tran|char|paanch|do|teen)\s*(?:adults?|passengers?|pax|people|travellers?|travelers?|persons?|person|members?|jano?|log)?\b/i);
+  if (wordMatch) {
+    const map = {
+      one: 1, ek: 1,
+      two: 2, be: 2, do: 2,
+      three: 3, tran: 3, teen: 3,
+      four: 4, char: 4,
+      five: 5, paanch: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+    };
+    const hit = map[wordMatch[1].toLowerCase()];
+    if (hit) return hit;
+  }
+  return null;
+}
+
+export function extractChildrenFromText(text) {
+  if (!text) return 0;
+  const m = String(text).match(/\b(\d+)\s*(?:children|child|kids?|kid|bachhe)\b/i);
+  if (m) {
+    const num = parseInt(m[1], 10);
+    if (!Number.isNaN(num) && num >= 0 && num <= 9) return num;
+  }
+  return 0;
+}
+
+export function extractRoomsFromText(text) {
+  if (!text) return 1;
+  const m = String(text).match(/\b(\d+)\s*(?:rooms?|room|kamra|kamre)\b/i);
+  if (m) {
+    const num = parseInt(m[1], 10);
+    if (!Number.isNaN(num) && num >= 1 && num <= 9) return num;
+  }
+  return 1;
+}
+
+const HOTEL_MONTH_NAMES = {
+  jan: 1, january: 1,
+  feb: 2, february: 2,
+  mar: 3, march: 3,
+  apr: 4, april: 4,
+  may: 5,
+  jun: 6, june: 6,
+  jul: 7, july: 7,
+  aug: 8, august: 8,
+  sep: 9, sept: 9, september: 9,
+  oct: 10, october: 10,
+  nov: 11, november: 11,
+  dec: 12, december: 12,
+};
+
+export function extractHotelDatesFromText(text) {
+  if (!text) return null;
+  const str = String(text);
+
+  // Pattern: "from 3 Oct to 7th Oct" / "from 3rd Oct to 7 Oct" / "from 3 to 7 Oct" / "3 Oct to 7 Oct 2026"
+  const rangeMatch = str.match(
+    /\b(?:from\s+)?(\d{1,2})(?:st|nd|rd|th)?\s*(?:(?:of\s+)?([a-z]+))?\s*(?:to|-|–|till|until)\s*(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?([a-z]+)(?:\s+(\d{4}))?\b/i
+  );
+  if (rangeMatch) {
+    const day1 = parseInt(rangeMatch[1], 10);
+    const m1Str = (rangeMatch[2] || rangeMatch[4] || "").toLowerCase();
+    const day2 = parseInt(rangeMatch[3], 10);
+    const m2Str = (rangeMatch[4] || "").toLowerCase();
+    const yearStr = rangeMatch[5];
+
+    const m1 = HOTEL_MONTH_NAMES[m1Str];
+    const m2 = HOTEL_MONTH_NAMES[m2Str];
+    if (m1 && m2 && day1 >= 1 && day1 <= 31 && day2 >= 1 && day2 <= 31) {
+      const yr = yearStr ? parseInt(yearStr, 10) : new Date().getFullYear();
+      const pad = (n) => String(n).padStart(2, "0");
+      const checkIn = `${yr}-${pad(m1)}-${pad(day1)}`;
+      const checkOut = `${yr}-${pad(m2)}-${pad(day2)}`;
+      return { checkIn, checkOut };
+    }
+  }
+
+  // Pattern ISO: "2026-10-03 to 2026-10-07"
+  const isoMatch = str.match(/\b(\d{4}-\d{2}-\d{2})\s*(?:to|-|till)\s*(\d{4}-\d{2}-\d{2})\b/i);
+  if (isoMatch) {
+    return { checkIn: isoMatch[1], checkOut: isoMatch[2] };
+  }
+
+  return null;
+}
+
 export function isDestinationAdviceIntent(text) {
   const t = String(text || "");
   if (!t) return false;
@@ -619,7 +724,11 @@ export function hotelsSearchPath(action) {
   params.set("city", city);
   params.set("checkIn", action.check_in || action.checkIn || ymdPlusDays(7));
   params.set("checkOut", action.check_out || action.checkOut || ymdPlusDays(10));
-  params.set("guests", String(action.guests || 2));
+  const adults = Number(action.adults || action.guests || 2);
+  const children = Number(action.children || 0);
+  params.set("adults", String(adults));
+  params.set("children", String(children));
+  params.set("guests", String(adults + children));
   params.set("rooms", String(action.rooms || 1));
   const ap = findAirportByCityName(city) || findAirportByCode(toIata(city));
   if (ap?.code) params.set("cityCode", ap.code);
@@ -640,6 +749,8 @@ export function flightsSearchPath(action) {
     params.set("trip", action.trip || "oneway");
   }
   params.set("adults", String(action.adults || 1));
+  if (action.children) params.set("children", String(action.children));
+  if (action.infants) params.set("infants", String(action.infants));
   params.set("cabin", action.cabin || "Economy");
   return `/flights?${params.toString()}`;
 }
@@ -686,7 +797,9 @@ export function navActionFromVeroCards(cards) {
         undefined,
       trip: pick.return_date || pick.returnDate ? "return" : "oneway",
       return_date: pick.return_date || pick.returnDate || undefined,
-      adults: pick.adults || 1,
+      adults: pick.adults || extractAdultsFromText(cards.subtitle || "") || extractAdultsFromText(cards.title || "") || 1,
+      children: pick.children || extractChildrenFromText(cards.subtitle || "") || 0,
+      infants: pick.infants || extractInfantsFromText(cards.subtitle || "") || 0,
       cabin: pick.cabin || "Economy",
     };
   }
@@ -926,11 +1039,22 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
       if (sameHotelCity(pageContext, city) && looksLikeHotelListAction(t, pageContext)) {
         return null;
       }
-      const guestsMatch = t.match(/\b(\d+)\s*(?:adults?|guests?|people|pax)\b/i);
+      const explicitAdults = extractAdultsFromText(t);
+      const explicitChildren = extractChildrenFromText(t);
+      const explicitRooms = extractRoomsFromText(t);
+      const explicitDates = extractHotelDatesFromText(t);
+      const adults = explicitAdults || 2;
+      const children = explicitChildren || 0;
+      const rooms = explicitRooms || 1;
       return {
         type: "search_hotels",
         city,
-        guests: guestsMatch ? Number(guestsMatch[1]) : 2,
+        adults,
+        children,
+        guests: adults + children,
+        rooms,
+        check_in: explicitDates?.checkIn,
+        check_out: explicitDates?.checkOut,
       };
     }
     if (pageContext?.screen !== "hotels") {
@@ -945,19 +1069,48 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
       : null;
   const pair = explicitPair || fuzzyPair;
   const newDate = extractDepartDateFromText(t);
+  const explicitAdults = extractAdultsFromText(t);
+  const explicitChildren = extractChildrenFromText(t);
+  const explicitInfants = extractInfantsFromText(t);
+
+  // If user is on flights page and specifies a passenger count (e.g. "3 adults", "for 3 people", "3 persons")
+  if (
+    explicitAdults &&
+    pageContext?.screen === "flights" &&
+    pageContext.search?.origin &&
+    pageContext.search?.destination &&
+    Number(pageContext.search.adults || 1) !== explicitAdults
+  ) {
+    return {
+      type: "search_flights",
+      origin: String(pageContext.search.origin).toUpperCase(),
+      destination: String(pageContext.search.destination).toUpperCase(),
+      depart_date: newDate || pageContext.search.depart_date || pageContext.search.departDate,
+      trip: pageContext.search.trip_type === "return" || pageContext.search.return_date ? "return" : "oneway",
+      return_date: pageContext.search.return_date || undefined,
+      adults: explicitAdults,
+      children: explicitChildren || pageContext.search.children || 0,
+      infants: explicitInfants || pageContext.search.infants || 0,
+      cabin: pageContext.search.cabin || "Economy",
+    };
+  }
+
   if (pair && (FLIGHT_ASK_RE.test(t) || Boolean(explicitPair))) {
     const sameRoute =
       pageContext?.screen === "flights" &&
       String(pageContext.search?.origin || "").toUpperCase() === pair.origin &&
       String(pageContext.search?.destination || "").toUpperCase() === pair.destination;
-    if (sameRoute && !newDate) return null;
+    const sameAdults = !explicitAdults || Number(pageContext?.search?.adults || 1) === explicitAdults;
+    if (sameRoute && !newDate && sameAdults) return null;
     return {
       type: "search_flights",
       origin: pair.origin,
       destination: pair.destination,
       depart_date: newDate || undefined,
       trip: "oneway",
-      adults: pageContext?.search?.adults || 1,
+      adults: explicitAdults || pageContext?.search?.adults || 1,
+      children: explicitChildren || pageContext?.search?.children || 0,
+      infants: explicitInfants || pageContext?.search?.infants || 0,
       cabin: pageContext?.search?.cabin || "Economy",
     };
   }
@@ -983,7 +1136,9 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
           pageContext?.search?.depart_date ||
           undefined,
         trip: "oneway",
-        adults: pageContext?.search?.adults || knownRoute?.adults || 1,
+        adults: explicitAdults || pageContext?.search?.adults || knownRoute?.adults || 1,
+        children: explicitChildren || pageContext?.search?.children || knownRoute?.children || 0,
+        infants: explicitInfants || pageContext?.search?.infants || knownRoute?.infants || 0,
         cabin: pageContext?.search?.cabin || "Economy",
       };
     }
@@ -996,7 +1151,7 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
     pageContext.search?.origin &&
     pageContext.search?.destination
   ) {
-    if (String(pageContext.search.depart_date || "") === newDate) return null;
+    if (String(pageContext.search.depart_date || "") === newDate && (!explicitAdults || Number(pageContext.search.adults || 1) === explicitAdults)) return null;
     return {
       type: "search_flights",
       origin: String(pageContext.search.origin).toUpperCase(),
@@ -1004,7 +1159,9 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
       depart_date: newDate,
       trip: pageContext.search.trip_type === "return" || pageContext.search.return_date ? "return" : "oneway",
       return_date: pageContext.search.return_date || undefined,
-      adults: pageContext.search.adults || 1,
+      adults: explicitAdults || pageContext.search.adults || 1,
+      children: explicitChildren || pageContext.search.children || 0,
+      infants: explicitInfants || pageContext.search.infants || 0,
       cabin: pageContext.search.cabin || "Economy",
     };
   }
