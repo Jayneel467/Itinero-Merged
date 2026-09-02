@@ -412,14 +412,10 @@ async def request_otp(
         "expires_in": issued["expires_in"],
         "message": f"Code sent to {label}. Valid 10 minutes.",
     }
-    # Local/dev: always surface the code so login works without inbox access
-    # (SMTP may still deliver when configured).
-    if dev_mode() or delivered.get("channel") == "dev":
+    # Local/dev: only surface code if SMTP was not configured and delivery used dev mock
+    if delivered.get("channel") == "dev":
         out["dev_otp"] = code
-        if delivered.get("channel") == "dev":
-            out["message"] = f"Local test code for {label}: {code}"
-        else:
-            out["message"] = f"Code sent to {label}. Local test code: {code}"
+        out["message"] = f"Local test code for {label}: {code}"
     out["kind"] = kind
     return out
 
