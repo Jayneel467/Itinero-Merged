@@ -73,6 +73,20 @@
   }
 }
 
+@media (max-width: 1250px) {
+  html[data-vero-open] .contentGrid {
+    flex-direction: column;
+  }
+
+  html[data-vero-open] .sidebarColumn {
+    width: 100%;
+  }
+
+  html[data-vero-open] .stickySidebar {
+    position: static;
+  }
+}
+
 @media (max-width: 768px) {
   .mainLayout {
     padding: 0 16px 60px 16px;

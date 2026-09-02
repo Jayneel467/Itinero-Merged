@@ -7,10 +7,13 @@
   background: #fff;
   margin-bottom: 18px;
   box-shadow: 0 8px 24px rgba(0, 20, 56, 0.05);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .left {
-  flex: 0 0 300px;
+  flex: 0 0 250px;
   display: flex;
   flex-direction: column;
   border-right: 1px solid #eef2f6;
@@ -283,6 +286,41 @@
 .btnSelected {
   background: #12b76a;
   color: #fff;
+}
+
+@media (max-width: 1180px) {
+  html[data-vero-open] .card {
+    flex-direction: column;
+  }
+
+  html[data-vero-open] .left {
+    flex: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #eef2f6;
+  }
+
+  html[data-vero-open] .imageWrap {
+    height: 200px;
+  }
+
+  html[data-vero-open] .thumbs {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  html[data-vero-open] .rateRow {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  html[data-vero-open] .ratePrice {
+    text-align: left;
+  }
+
+  html[data-vero-open] .btnSelect,
+  html[data-vero-open] .btnSelected {
+    width: 100%;
+  }
 }
 
 @media (max-width: 900px) {

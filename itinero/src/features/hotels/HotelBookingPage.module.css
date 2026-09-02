@@ -19,33 +19,66 @@
 }
 
 .mainLayout {
+  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
-  padding: 0 70px;
+  padding: 0 32px;
   display: flex;
-  gap: 32px;
+  gap: 28px;
   align-items: flex-start;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .roomsList {
   flex: 1;
+  min-width: 0;
 }
 
 .sidebar {
-  width: 400px;
+  width: 360px;
+  min-width: 320px;
+  max-width: 100%;
   flex-shrink: 0;
   position: sticky;
   top: 88px;
   align-self: flex-start;
+  box-sizing: border-box;
+}
+
+/* When Vero AI is open on laptops / tablets */
+html[data-vero-open] .mainLayout {
+  padding: 0 16px;
+  gap: 20px;
+}
+
+html[data-vero-open] .sidebar {
+  width: 320px;
+  min-width: 290px;
+}
+
+@media (max-width: 1280px) {
+  html[data-vero-open] .mainLayout {
+    flex-direction: column;
+    padding: 0 16px;
+  }
+  
+  html[data-vero-open] .sidebar {
+    width: 100%;
+    position: static;
+  }
 }
 
 @media (max-width: 1024px) {
   .mainLayout {
     flex-direction: column;
-    padding: 0 24px;
+    padding: 0 20px;
+    gap: 24px;
   }
   
   .sidebar {
     width: 100%;
+    position: static;
   }
 }
 
