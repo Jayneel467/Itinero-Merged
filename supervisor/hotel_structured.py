@@ -1125,31 +1125,51 @@ async def structured_hotel_search(
             catalog = [h for h in catalog if _is_homes_property(h)]
 
         def _h_rating(h: dict[str, Any]) -> float:
-            r = h.get("rating")
-            try:
-                if r is not None and r != "":
-                    return float(r)
-            except (TypeError, ValueError):
-                pass
-            s = h.get("stars")
-            try:
-                if s is not None and s != "":
-                    return float(s) * 2.0
-            except (TypeError, ValueError):
-                pass
+            if not isinstance(h, dict):
+                return 0.0
+            for k in ("rating", "reviewScore", "review_score", "guestRating", "hotelRating", "userRating", "score"):
+                r = h.get(k)
+                if r not in (None, ""):
+                    try:
+                        val = float(r)
+                        if val > 0:
+                            return val
+                    except (TypeError, ValueError):
+                        pass
+            for k in ("stars", "starRating", "star_rating"):
+                s = h.get(k)
+                if s not in (None, ""):
+                    try:
+                        val = float(s)
+                        if val > 0:
+                            return val * 2.0 if val <= 5.0 else val
+                    except (TypeError, ValueError):
+                        pass
             return 0.0
 
         def _h_reviews(h: dict[str, Any]) -> int:
-            try:
-                return int(h.get("reviewCount") or h.get("reviewsCount") or 0)
-            except (TypeError, ValueError):
+            if not isinstance(h, dict):
                 return 0
+            for k in ("reviewCount", "reviewsCount", "review_count", "reviews", "totalReviews"):
+                r = h.get(k)
+                if r not in (None, ""):
+                    try:
+                        return int(float(r))
+                    except (TypeError, ValueError):
+                        pass
+            return 0
 
         def _h_stars(h: dict[str, Any]) -> int:
-            try:
-                return int(float(h.get("stars") or 0))
-            except (TypeError, ValueError):
+            if not isinstance(h, dict):
                 return 0
+            for k in ("stars", "starRating", "star_rating"):
+                s = h.get(k)
+                if s not in (None, ""):
+                    try:
+                        return int(float(s))
+                    except (TypeError, ValueError):
+                        pass
+            return 0
 
         sort_s = (sort_by or "recommended").strip().lower()
         if sort_s == "rating":

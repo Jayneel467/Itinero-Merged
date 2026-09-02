@@ -663,7 +663,7 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
   return (
     <div className={`shared-flight-search-bar w-full relative ${activeDropdown ? 'z-50' : 'z-10'}`}>
       <ScrollReveal delay={0.3} className="w-full">
-        <div className={`flex items-center mb-4 max-w-[1600px] w-full mx-auto gap-3  flex-wrap relative ${['tripType', 'specialFare'].includes(activeDropdown) ? 'z-[130]' : 'z-10'}`}>
+        <div className={`flex items-center mb-4 max-w-[1600px] w-full mx-auto px-4 lg:px-6 2xl:px-8 gap-3 flex-wrap relative ${['tripType', 'specialFare'].includes(activeDropdown) ? 'z-[130]' : 'z-10'}`}>
           <div className="relative trip-type-dropdown">
             <button 
               type="button"
