@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import smtplib
+import traceback
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
