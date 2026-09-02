@@ -88,7 +88,7 @@ async def create_itinero_stripe_intent(
     data: dict[str, Any] = {
         "amount": str(units),
         "currency": cur.lower(),
-        "automatic_payment_methods[enabled]": "true",
+        "payment_method_types[0]": "card",
     }
     if email:
         data["receipt_email"] = email.strip()

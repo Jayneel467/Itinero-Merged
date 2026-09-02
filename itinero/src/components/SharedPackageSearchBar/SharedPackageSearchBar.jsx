@@ -74,10 +74,38 @@ function Divider() {
   return <div className="hidden lg:block w-px h-10 bg-white/[0.12] shrink-0 lg:self-center" />;
 }
 
+function useAutoFlipPlacement(ref, estimatedHeight = 240) {
+  const [openUp, setOpenUp] = useState(false);
+
+  useEffect(() => {
+    const el = ref?.current;
+    if (!el) return;
+    const check = () => {
+      const r = el.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - r.bottom - 12;
+      const spaceAbove = r.top - 12;
+      setOpenUp(spaceBelow < estimatedHeight && spaceAbove > spaceBelow);
+    };
+    check();
+    window.addEventListener("resize", check);
+    window.addEventListener("scroll", check, true);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("scroll", check, true);
+    };
+  }, [ref, estimatedHeight]);
+
+  return openUp;
+}
+
 function OptionMenu({ options, value, onSelect }) {
+  const menuRef = useRef(null);
+  const openUp = useAutoFlipPlacement(menuRef, 240);
+
   return (
     <div
-      className="absolute left-0 top-full mt-3 w-[min(100vw-32px,280px)] bg-white rounded-[20px] shadow-2xl z-[80] py-2 border border-gray-100 cursor-default"
+      ref={menuRef}
+      className={`absolute left-0 ${openUp ? "bottom-full mb-3" : "top-full mt-3"} w-[min(100vw-32px,280px)] bg-white rounded-[20px] shadow-2xl z-[80] py-2 border border-gray-100 cursor-default`}
       onClick={(e) => e.stopPropagation()}
     >
       {options.map((opt) => (
@@ -92,6 +120,84 @@ function OptionMenu({ options, value, onSelect }) {
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function PackageCheckInMenu({ checkIn, setCheckIn, checkOut, setCheckOut }) {
+  const menuRef = useRef(null);
+  const openUp = useAutoFlipPlacement(menuRef, 280);
+
+  return (
+    <div
+      ref={menuRef}
+      className={`absolute left-0 ${openUp ? "bottom-full mb-3" : "top-full mt-3"} w-[min(100vw-32px,280px)] bg-white rounded-[20px] shadow-2xl z-[80] p-4 border border-gray-100 cursor-default`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <p className="text-[13px] font-bold text-[#001438] mb-2">Check-in</p>
+      <input
+        type="date"
+        autoFocus
+        value={toYmd(checkIn)}
+        onChange={(e) => {
+          const d = parseYmd(e.target.value);
+          if (!d) return;
+          setCheckIn(d);
+          if (d >= checkOut) setCheckOut(addDays(d, 3));
+        }}
+        className="w-full rounded-[12px] border border-gray-200 px-3 py-2.5 text-[14px] font-semibold text-[#001438] outline-none focus:border-[#F97211]"
+      />
+      <p className="text-[12px] text-gray-500 mt-3 mb-1 font-semibold">Check-out</p>
+      <input
+        type="date"
+        value={toYmd(checkOut)}
+        min={toYmd(addDays(checkIn, 1))}
+        onChange={(e) => {
+          const d = parseYmd(e.target.value);
+          if (d) setCheckOut(d);
+        }}
+        className="w-full rounded-[12px] border border-gray-200 px-3 py-2.5 text-[14px] font-semibold text-[#001438] outline-none focus:border-[#F97211]"
+      />
+    </div>
+  );
+}
+
+function PackageGuestsMenu({ guests, setGuests }) {
+  const menuRef = useRef(null);
+  const openUp = useAutoFlipPlacement(menuRef, 200);
+
+  return (
+    <div
+      ref={menuRef}
+      className={`absolute right-0 ${openUp ? "bottom-full mb-3" : "top-full mt-3"} w-[min(280px,calc(100vw-32px))] max-w-[calc(100vw-32px)] bg-white rounded-[20px] shadow-2xl z-[80] p-5 border border-gray-100 cursor-default`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[15px] font-medium text-gray-900">Guests</div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setGuests(Math.max(1, guests - 1))}
+            className={`w-8 h-8 rounded-lg border flex items-center justify-center ${
+              guests <= 1
+                ? "border-gray-200 text-gray-300 cursor-not-allowed"
+                : "border-gray-300 text-gray-600 hover:border-gray-400 cursor-pointer"
+            }`}
+          >
+            -
+          </button>
+          <span className="w-4 text-center font-bold text-[15px] text-gray-900">{guests}</span>
+          <button
+            type="button"
+            onClick={() => setGuests(Math.min(8, guests + 1))}
+            className="w-8 h-8 rounded-lg border border-gray-300 text-gray-600 flex items-center justify-center cursor-pointer hover:border-gray-400"
+          >
+            +
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -232,35 +338,12 @@ export default function SharedPackageSearchBar({ compact = false }) {
               <span className={valueClass}>{formatDate(checkIn) || "Add Date"}</span>
             </div>
             {activeDropdown === "checkIn" && (
-              <div
-                className="absolute left-0 top-full mt-3 w-[min(100vw-32px,280px)] bg-white rounded-[20px] shadow-2xl z-[80] p-4 border border-gray-100 cursor-default"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p className="text-[13px] font-bold text-[#001438] mb-2">Check-in</p>
-                <input
-                  type="date"
-                  autoFocus
-                  value={toYmd(checkIn)}
-                  onChange={(e) => {
-                    const d = parseYmd(e.target.value);
-                    if (!d) return;
-                    setCheckIn(d);
-                    if (d >= checkOut) setCheckOut(addDays(d, 3));
-                  }}
-                  className="w-full rounded-[12px] border border-gray-200 px-3 py-2.5 text-[14px] font-semibold text-[#001438] outline-none focus:border-[#F97211]"
-                />
-                <p className="text-[12px] text-gray-500 mt-3 mb-1 font-semibold">Check-out</p>
-                <input
-                  type="date"
-                  value={toYmd(checkOut)}
-                  min={toYmd(addDays(checkIn, 1))}
-                  onChange={(e) => {
-                    const d = parseYmd(e.target.value);
-                    if (d) setCheckOut(d);
-                  }}
-                  className="w-full rounded-[12px] border border-gray-200 px-3 py-2.5 text-[14px] font-semibold text-[#001438] outline-none focus:border-[#F97211]"
-                />
-              </div>
+              <PackageCheckInMenu
+                checkIn={checkIn}
+                setCheckIn={setCheckIn}
+                checkOut={checkOut}
+                setCheckOut={setCheckOut}
+              />
             )}
           </div>
 
@@ -278,37 +361,7 @@ export default function SharedPackageSearchBar({ compact = false }) {
               </span>
             </div>
             {activeDropdown === "guests" && (
-              <div
-                className="absolute right-0 top-full mt-3 w-[min(280px,calc(100vw-32px))] max-w-[calc(100vw-32px)] bg-white rounded-[20px] shadow-2xl z-[80] p-5 border border-gray-100 cursor-default"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[15px] font-medium text-gray-900">Guests</div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setGuests(Math.max(1, guests - 1))}
-                      className={`w-8 h-8 rounded-lg border flex items-center justify-center ${
-                        guests <= 1
-                          ? "border-gray-200 text-gray-300 cursor-not-allowed"
-                          : "border-gray-300 text-gray-600 hover:border-gray-400 cursor-pointer"
-                      }`}
-                    >
-                      -
-                    </button>
-                    <span className="w-4 text-center font-bold text-[15px] text-gray-900">{guests}</span>
-                    <button
-                      type="button"
-                      onClick={() => setGuests(Math.min(8, guests + 1))}
-                      className="w-8 h-8 rounded-lg border border-gray-300 text-gray-600 flex items-center justify-center cursor-pointer hover:border-gray-400"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <PackageGuestsMenu guests={guests} setGuests={setGuests} />
             )}
           </div>
 

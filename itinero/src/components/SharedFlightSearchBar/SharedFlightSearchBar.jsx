@@ -116,8 +116,8 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchError, setSearchError] = useState("");
   
-  const [departDate, setDepartDate] = useState(defaultDepartDate);
-  const [returnDate, setReturnDate] = useState(() => defaultReturnDate(defaultDepartDate()));
+  const [departDate, setDepartDate] = useState(null);
+  const [returnDate, setReturnDate] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
   const [adults, setAdults] = useState(1);
@@ -286,8 +286,9 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
       cabin: cabinClass,
       trip: tripType === "One way" ? "oneway" : tripType === "Multi-way" ? "multiway" : "return",
     });
-    if (tripType === "Return" && returnDate) {
-      params.set("return", toYmd(returnDate));
+    if (tripType === "Return") {
+      const activeReturn = returnDate || defaultReturnDate(departDate || new Date());
+      params.set("return", toYmd(activeReturn));
     }
     if (tripType === "Multi-way") {
       const legs = [{ from, to, departDate }, ...multiFlights];
@@ -343,7 +344,8 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target) &&
         !event.target.closest(".special-fares-dropdown") &&
-        !event.target.closest(".trip-type-dropdown")
+        !event.target.closest(".trip-type-dropdown") &&
+        !event.target.closest(".flight-search-button")
       ) {
         setActiveDropdown(null);
         setSearchQuery("");
@@ -659,76 +661,78 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
   );
 
   return (
-    <div className="shared-flight-search-bar w-full relative z-10">
+    <div className={`shared-flight-search-bar w-full relative ${activeDropdown ? 'z-50' : 'z-10'}`}>
       <ScrollReveal delay={0.3} className="w-full">
-        <div className={`flex items-center mb-4 max-w-[1600px] w-full mx-auto gap-3 px-4 lg:px-8 flex-wrap relative ${['tripType', 'specialFare'].includes(activeDropdown) ? 'z-[130]' : 'z-10'}`}>
+        <div className={`flex items-center mb-4 max-w-[1600px] w-full mx-auto gap-3  flex-wrap relative ${['tripType', 'specialFare'].includes(activeDropdown) ? 'z-[130]' : 'z-10'}`}>
           <div className="relative trip-type-dropdown">
-          <button 
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'tripType' ? null : 'tripType'); }}
-            className="flex items-center bg-[#FFFFFF1A] backdrop-blur-sm py-[7px] px-4 gap-2 rounded-full border border-white/10 cursor-pointer hover:bg-[#FFFFFF26] transition-colors"
-          >
-            <span className="text-white text-sm font-medium">{tripType}</span>
-            <svg className="w-3.5 h-3.5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-          </button>
-          
-          {activeDropdown === 'tripType' && (
-            <div
-              className="absolute top-[110%] left-0 w-[200px] bg-white rounded-xl shadow-2xl z-[140] py-2 cursor-default"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
+            <button 
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'tripType' ? null : 'tripType'); }}
+              className="flex items-center backdrop-blur-md py-[7px] px-4 gap-2 rounded-full border border-white/15 cursor-pointer hover:bg-white/20 transition-all shadow-sm"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
             >
-              {['Return', 'One way', 'Multi-way'].map(type => (
-                <button
-                  type="button"
-                  key={type} 
-                  className={`w-full text-left px-4 py-2.5 text-sm cursor-pointer hover:bg-gray-50 transition-colors border-0 bg-transparent ${tripType === type ? 'text-orange-500 font-bold bg-orange-50/50' : 'text-gray-700'}`}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setTripType(type);
-                    if (type === "One way") {
-                      setReturnDate(null);
-                      setMultiFlights([{ id: 1, from: null, to: null, departDate: null }]);
-                    }
-                    if (type === "Multi-way") {
-                      setReturnDate(null);
-                      // Multi-city uses one airport per field
-                      setFromAirports((prev) => (prev[0] ? [prev[0]] : prev));
-                      setToAirports((prev) => (prev[0] ? [prev[0]] : prev));
-                      setMultiFlights([
-                        {
-                          id: Date.now(),
-                          from: to || null,
-                          to: null,
-                          departDate: departDate
-                            ? new Date(departDate.getTime() + 3 * 86400000)
-                            : null,
-                        },
-                      ]);
-                    }
-                    if (type === "Return") {
-                      setMultiFlights([{ id: 1, from: null, to: null, departDate: null }]);
-                    }
-                    setActiveDropdown(null);
-                  }}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        <div className="relative special-fares-dropdown">
-          <button 
-            onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'specialFare' ? null : 'specialFare'); }}
-            className="flex items-center bg-[#FFFFFF1A] backdrop-blur-sm py-[7px] px-4 gap-2 rounded-full border border-white/10 cursor-pointer hover:bg-[#FFFFFF26] transition-colors"
-            title="Special fares aren’t available on live search yet"
-          >
-            <span className="text-white text-sm font-medium">{specialFare || "Special Fares"}</span>
-            <svg className="w-3.5 h-3.5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-          </button>
+              <span className="text-white text-sm font-medium">{tripType}</span>
+              <svg className="w-3.5 h-3.5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            
+            {activeDropdown === 'tripType' && (
+              <div
+                className="absolute top-[110%] left-0 w-[200px] bg-white rounded-xl shadow-2xl z-[140] py-2 cursor-default"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {['Return', 'One way', 'Multi-way'].map(type => (
+                  <button
+                    type="button"
+                    key={type} 
+                    className={`w-full text-left px-4 py-2.5 text-sm cursor-pointer hover:bg-gray-50 transition-colors border-0 bg-transparent ${tripType === type ? 'text-orange-500 font-bold bg-orange-50/50' : 'text-gray-700'}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTripType(type);
+                      if (type === "One way") {
+                        setReturnDate(null);
+                        setMultiFlights([{ id: 1, from: null, to: null, departDate: null }]);
+                      }
+                      if (type === "Multi-way") {
+                        setReturnDate(null);
+                        // Multi-city uses one airport per field
+                        setFromAirports((prev) => (prev[0] ? [prev[0]] : prev));
+                        setToAirports((prev) => (prev[0] ? [prev[0]] : prev));
+                        setMultiFlights([
+                          {
+                            id: Date.now(),
+                            from: to || null,
+                            to: null,
+                            departDate: departDate
+                              ? new Date(departDate.getTime() + 3 * 86400000)
+                              : null,
+                          },
+                        ]);
+                      }
+                      if (type === "Return") {
+                        setMultiFlights([{ id: 1, from: null, to: null, departDate: null }]);
+                      }
+                      setActiveDropdown(null);
+                    }}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div className="relative special-fares-dropdown">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'specialFare' ? null : 'specialFare'); }}
+              className="flex items-center backdrop-blur-md py-[7px] px-4 gap-2 rounded-full border border-white/15 cursor-pointer hover:bg-white/20 transition-all shadow-sm"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
+              title="Special fares aren’t available on live search yet"
+            >
+              <span className="text-white text-sm font-medium">{specialFare || "Special Fares"}</span>
+              <svg className="w-3.5 h-3.5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
 
           {activeDropdown === 'specialFare' && (
             <div className="absolute top-[110%] left-0 w-[240px] bg-white rounded-xl shadow-2xl z-50 py-3 px-4 cursor-default" onClick={e => e.stopPropagation()}>
@@ -1200,7 +1204,7 @@ export default function SharedFlightSearchBar({ onSearchTriggered }) {
           type="button"
           onClick={handleSearch}
           aria-label="Search"
-          className="flex items-center justify-center shrink-0 w-full lg:w-auto bg-gradient-to-r from-[#F97316] to-[#EA580C] py-2.5 2xl:py-3 px-4 xl:px-5 2xl:px-6 gap-1.5 xl:gap-2 rounded-[14px] 2xl:rounded-[16px] border-0 cursor-pointer hover:from-[#FB923C] hover:to-[#F97316] transition-all shadow-[0_4px_15px_rgba(249,115,22,0.4)] hover:shadow-[0_4px_20px_rgba(249,115,22,0.6)] mt-2 lg:mt-0 lg:self-center lg:ml-2 disabled:opacity-70 disabled:cursor-wait whitespace-nowrap">
+          className="flight-search-button flex items-center justify-center shrink-0 w-full lg:w-auto bg-gradient-to-r from-[#F97316] to-[#EA580C] py-2.5 2xl:py-3 px-4 xl:px-5 2xl:px-6 gap-1.5 xl:gap-2 rounded-[14px] 2xl:rounded-[16px] border-0 cursor-pointer hover:from-[#FB923C] hover:to-[#F97316] transition-all shadow-[0_4px_15px_rgba(249,115,22,0.4)] hover:shadow-[0_4px_20px_rgba(249,115,22,0.6)] mt-2 lg:mt-0 lg:self-center lg:ml-2 disabled:opacity-70 disabled:cursor-wait whitespace-nowrap">
           <svg className="w-4 h-4 2xl:w-5 2xl:h-5 text-white shrink-0" fill="currentColor" viewBox="0 0 24 24">
             <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z" clipRule="evenodd" />
           </svg>

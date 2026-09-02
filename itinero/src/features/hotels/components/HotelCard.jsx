@@ -19,7 +19,6 @@ function amenityFamily(label) {
 
 function amenityScore(label) {
   const s = String(label || "").toLowerCase();
-  // Prefer concrete freebie wording over vague “available”
   if (/^free\b/.test(s)) return 3;
   if (/included/.test(s)) return 2;
   if (/available/.test(s)) return 0;
@@ -43,7 +42,7 @@ function pickAmenities(hotel) {
     if (!prev || amenityScore(item) > amenityScore(prev)) best.set(family, item);
   }
 
-  return [...best.values()].slice(0, 4);
+  return [...best.values()].slice(0, 5);
 }
 
 function hasFreeCancel(hotel) {
@@ -54,7 +53,14 @@ function hasFreeCancel(hotel) {
   return blob.includes("cancel");
 }
 
-export const HotelCard = ({ hotel, searchQuery }) => {
+function ratingLabel(rating) {
+  if (rating >= 9) return "Excellent";
+  if (rating >= 8) return "Very Good";
+  if (rating >= 7) return "Good";
+  return "Okay";
+}
+
+export const HotelCard = ({ hotel, searchQuery, rank }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saved, setSaved] = useState(() => isSaved(`hotel:${hotel.id}`));
   const navigate = useNavigate();
@@ -96,6 +102,7 @@ export const HotelCard = ({ hotel, searchQuery }) => {
   if (!hasPrice) return null;
 
   const moneyOpts = { maximumFractionDigits: 0 };
+  const isTopPick = rank != null && rank < 3;
 
   const nextImage = (e) => {
     e.preventDefault();
@@ -129,10 +136,11 @@ export const HotelCard = ({ hotel, searchQuery }) => {
 
   return (
     <article className={styles.hotelCard} onClick={openRooms}>
+      {/* Image Section */}
       <div className={styles.hotelImageWrapper}>
-        {freeCancel ? (
-          <div className={styles.imageBadgeTopLeft}>Free cancellation</div>
-        ) : null}
+        {isTopPick && (
+          <div className={styles.topPickBadge}>🏆 Top Pick</div>
+        )}
         <div className={styles.carouselViewport}>
           <div
             className={styles.carouselTrack}
@@ -211,22 +219,23 @@ export const HotelCard = ({ hotel, searchQuery }) => {
         ) : null}
       </div>
 
+      {/* Details Section */}
       <div className={styles.hotelDetails}>
         <div className={styles.hotelDetailsLeft}>
           <h3 className={styles.hotelName}>{hotel.name}</h3>
 
           <div className={styles.hotelLocationRow}>
-            <MapPin size={14} aria-hidden />
+            <MapPin size={13} aria-hidden />
             <span className={styles.hotelLocation}>
               {[
                 place,
                 stars ? `${stars}★` : null,
                 hotel.distance && !/★/.test(String(hotel.distance))
-                  ? hotel.distance
+                  ? `· ${hotel.distance} from center`
                   : null,
               ]
                 .filter(Boolean)
-                .join(" · ")}
+                .join(" ")}
             </span>
           </div>
 
@@ -234,16 +243,27 @@ export const HotelCard = ({ hotel, searchQuery }) => {
             <div className={styles.hotelRatingRow}>
               <div className={styles.ratingBadge}>{rating.toFixed(1)}</div>
               <span className={styles.ratingText}>
-                {hotel.ratingText || (rating >= 9 ? "Excellent" : rating >= 8 ? "Very good" : "Good")}
+                {hotel.ratingText || ratingLabel(rating)}
               </span>
               {reviews > 0 ? (
                 <span className={styles.reviewCount}>
-                  ({reviews.toLocaleString()} reviews)
+                  {reviews.toLocaleString()} reviews
                 </span>
               ) : null}
             </div>
           ) : null}
 
+          {/* Freebies Row */}
+          <div className={styles.hotelFreebiesRow}>
+            {freeCancel && (
+              <span className={styles.freebieBadge}>✓ Free cancellation</span>
+            )}
+            {hotel.payAtHotel && (
+              <span className={styles.freebieBadge}>✓ Pay at hotel</span>
+            )}
+          </div>
+
+          {/* Amenities Row */}
           {amenities.length ? (
             <div className={styles.hotelAmenitiesRow}>
               {amenities.map((a) => (
@@ -255,6 +275,7 @@ export const HotelCard = ({ hotel, searchQuery }) => {
           ) : null}
         </div>
 
+        {/* Price + CTA */}
         <div className={styles.hotelDetailsRight}>
           <div className={styles.priceLabel}>Per night</div>
           <div className={styles.pricePerNight}>{formatMoney(nightPrice, moneyOpts)}</div>
@@ -265,7 +286,14 @@ export const HotelCard = ({ hotel, searchQuery }) => {
             <span className={styles.taxesText}>incl. taxes & fees</span>
           </div>
           <button className={styles.bookNowBtn} type="button">
-            See rooms
+            Book Now
+          </button>
+          <button
+            className={styles.seeMoreOptionsBtn}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openRooms(); }}
+          >
+            See more options
           </button>
         </div>
       </div>

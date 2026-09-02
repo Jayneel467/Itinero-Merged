@@ -76,10 +76,38 @@ function Divider() {
   return <div className="hidden lg:block w-px h-10 bg-white/[0.12] shrink-0 lg:self-center" />;
 }
 
+function useAutoFlipPlacement(ref, estimatedHeight = 240) {
+  const [openUp, setOpenUp] = useState(false);
+
+  useEffect(() => {
+    const el = ref?.current;
+    if (!el) return;
+    const check = () => {
+      const r = el.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - r.bottom - 12;
+      const spaceAbove = r.top - 12;
+      setOpenUp(spaceBelow < estimatedHeight && spaceAbove > spaceBelow);
+    };
+    check();
+    window.addEventListener("resize", check);
+    window.addEventListener("scroll", check, true);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("scroll", check, true);
+    };
+  }, [ref, estimatedHeight]);
+
+  return openUp;
+}
+
 function OptionMenu({ options, value, onSelect }) {
+  const menuRef = useRef(null);
+  const openUp = useAutoFlipPlacement(menuRef, 240);
+
   return (
     <div
-      className="absolute left-0 top-full mt-3 w-[min(100vw-32px,260px)] bg-white rounded-[20px] shadow-2xl z-[80] py-2 border border-gray-100 cursor-default"
+      ref={menuRef}
+      className={`absolute left-0 ${openUp ? "bottom-full mb-3" : "top-full mt-3"} w-[min(100vw-32px,260px)] bg-white rounded-[20px] shadow-2xl z-[80] py-2 border border-gray-100 cursor-default`}
       onClick={(e) => e.stopPropagation()}
     >
       {options.map((opt) => (
@@ -94,6 +122,29 @@ function OptionMenu({ options, value, onSelect }) {
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function EventDateInputMenu({ label, value, min, onChange, align = "left" }) {
+  const menuRef = useRef(null);
+  const openUp = useAutoFlipPlacement(menuRef, 200);
+
+  return (
+    <div
+      ref={menuRef}
+      className={`absolute ${align === "right" ? "right-0" : "left-0"} ${openUp ? "bottom-full mb-3" : "top-full mt-3"} w-[min(100vw-32px,260px)] bg-white rounded-[20px] shadow-2xl z-[80] p-4 border border-gray-100 cursor-default`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <p className="text-[13px] font-bold text-[#001438] mb-2">{label}</p>
+      <input
+        type="date"
+        autoFocus
+        min={min}
+        value={value}
+        onChange={onChange}
+        className="w-full rounded-[12px] border border-gray-200 px-3 py-2.5 text-[14px] font-semibold text-[#001438] outline-none focus:border-[#F97211]"
+      />
     </div>
   );
 }
@@ -268,24 +319,16 @@ export default function SharedEventSearchBar({ compact = false }) {
               </span>
             </div>
             {activeDropdown === "from" && (
-              <div
-                className="absolute left-0 top-full mt-3 w-[min(100vw-32px,260px)] bg-white rounded-[20px] shadow-2xl z-[80] p-4 border border-gray-100 cursor-default"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p className="text-[13px] font-bold text-[#001438] mb-2">From</p>
-                <input
-                  type="date"
-                  autoFocus
-                  value={start}
-                  onChange={(e) => {
-                    setStart(e.target.value);
-                    if (e.target.value && end && e.target.value > end) {
-                      setEnd(toYmd(addDays(new Date(`${e.target.value}T12:00:00`), 7)));
-                    }
-                  }}
-                  className="w-full rounded-[12px] border border-gray-200 px-3 py-2.5 text-[14px] font-semibold text-[#001438] outline-none focus:border-[#F97211]"
-                />
-              </div>
+              <EventDateInputMenu
+                label="From"
+                value={start}
+                onChange={(e) => {
+                  setStart(e.target.value);
+                  if (e.target.value && end && e.target.value > end) {
+                    setEnd(toYmd(addDays(new Date(`${e.target.value}T12:00:00`), 7)));
+                  }
+                }}
+              />
             )}
           </div>
 
@@ -305,20 +348,13 @@ export default function SharedEventSearchBar({ compact = false }) {
               </span>
             </div>
             {activeDropdown === "to" && (
-              <div
-                className="absolute right-0 top-full mt-3 w-[min(100vw-32px,260px)] bg-white rounded-[20px] shadow-2xl z-[80] p-4 border border-gray-100 cursor-default"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p className="text-[13px] font-bold text-[#001438] mb-2">To</p>
-                <input
-                  type="date"
-                  autoFocus
-                  min={start || undefined}
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                  className="w-full rounded-[12px] border border-gray-200 px-3 py-2.5 text-[14px] font-semibold text-[#001438] outline-none focus:border-[#F97211]"
-                />
-              </div>
+              <EventDateInputMenu
+                label="To"
+                align="right"
+                min={start || undefined}
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+              />
             )}
           </div>
 

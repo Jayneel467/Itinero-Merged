@@ -300,3 +300,67 @@
   border-radius: 999px;
   padding: 8px 14px;
 }
+
+/* ═══════════════════════════════════════════════════════
+   PackageCard Dark Mode System
+   ═══════════════════════════════════════════════════════ */
+
+:global(html.dark) .card {
+  background: #111c2e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+:global(html.dark) .card:hover {
+  border-color: rgba(249, 114, 17, 0.5) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(249, 114, 17, 0.15) !important;
+}
+
+:global(html.dark) .saveBtn {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+:global(html.dark) .saveBtn:hover {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+:global(html.dark) .saveBtn svg path {
+  fill: #ffffff !important;
+  fill-opacity: 0.85 !important;
+}
+
+:global(html.dark) .saveBtnOn svg path {
+  fill: #f97211 !important;
+  fill-opacity: 1 !important;
+}
+
+:global(html.dark) .title {
+  color: #ffffff !important;
+}
+
+:global(html.dark) .overview {
+  color: #94a3b8 !important;
+}
+
+/* White round box pills replaced with modern dark glass pills in Dark Mode */
+:global(html.dark) .chips li {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+:global(html.dark) .months {
+  color: #fb923c !important;
+}
+
+:global(html.dark) .gearHint {
+  color: #60a5fa !important;
+}
+
+:global(html.dark) .priceBar {
+  background: #0b1424 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}

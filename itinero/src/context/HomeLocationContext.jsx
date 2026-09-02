@@ -141,30 +141,51 @@ export function HomeLocationProvider({ children }) {
       const code = String(cc || "")
         .toUpperCase()
         .slice(0, 2);
-      setHomeLocation({ passportCountry: code });
+      const defaults = COUNTRY_DEFAULTS[code];
+      const patch = {
+        passportCountry: code,
+        countryCode: code,
+      };
+      if (defaults?.airport) {
+        patch.airportCode = defaults.airport;
+        patch.city = defaults.city || "";
+      }
+      setHomeLocation(patch);
+
+      const suggested = currencyForCountry(code);
+      if (suggested) {
+        try {
+          setCurrency(suggested);
+          localStorage.setItem(CURRENCY_SYNCED_KEY, suggested);
+        } catch {
+          /* ignore */
+        }
+      }
     },
-    [setHomeLocation]
+    [setCurrency, setHomeLocation]
   );
 
   const value = useMemo(() => {
     const airportCode = home.airportCode || "";
-    const countryCode = home.countryCode || "";
-    // Passport only when explicitly stored - do not equate home country with nationality.
+    const countryCode = home.countryCode || home.passportCountry || "";
     const passportCountry = home.passportCountry || "";
+    const effectiveCountry = countryCode || passportCountry;
+    const countryName = COUNTRY_DEFAULTS[effectiveCountry]?.label || effectiveCountry || "";
+
     return {
       ready,
       home,
       airportCode,
       city: home.city || "",
-      countryCode,
+      countryCode: effectiveCountry,
       passportCountry,
       originLabel: homeLocationLabel(home),
-      countryFlag: countryFlagUrl(countryCode || passportCountry),
+      countryFlag: countryFlagUrl(effectiveCountry),
       passportLabel: passportCountry
         ? passportLabel(passportCountry)
         : "your passport",
       hasPassport: Boolean(passportCountry),
-      countryName: COUNTRY_DEFAULTS[countryCode]?.label || countryCode || "",
+      countryName,
       hasOrigin: Boolean(airportCode),
       setHomeLocation,
       setHomeAirport,

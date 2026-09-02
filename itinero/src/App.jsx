@@ -11,7 +11,7 @@ import { APP_CONFIG } from "@/app/config";
 export default function App() {
   return (
     <AppProviders>
-      <BrowserRouter basename={APP_CONFIG.BASE_PATH || "/itinero"}>
+      <BrowserRouter basename={APP_CONFIG.BASE_PATH || undefined}>
         <AppRouter />
       </BrowserRouter>
     </AppProviders>

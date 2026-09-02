@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Business logic layer for flight operations."""
 
 import asyncio

@@ -1,0 +1,14 @@
+{
+  "python.analysis.extraPaths": [
+    "./ITINERARY_AGENT",
+    "./general_agent",
+    "./Travel_Agent",
+    "./supervisor"
+  ],
+  "python.autoComplete.extraPaths": [
+    "./ITINERARY_AGENT",
+    "./general_agent",
+    "./Travel_Agent",
+    "./supervisor"
+  ]
+}

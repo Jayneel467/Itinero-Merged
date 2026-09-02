@@ -63,6 +63,40 @@
   font-weight: 600;
 }
 
+.ticketHeaderRow {
+  margin: 18px 24px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ticketBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ticketBadgeReturn {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+
+.ticketSectionDivider {
+  margin: 28px 24px 20px;
+  border: none;
+  border-top: 2px dashed #fed7aa;
+}
+
 .airlineCard {
   margin: 16px 24px 0;
   border: 1px solid #e5e7eb;

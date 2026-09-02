@@ -1,36 +1,82 @@
 .rail {
-  margin: 0 0 18px;
-  padding: 14px 16px;
-  background: #fff;
+  margin: 0 0 20px;
+  padding: 18px 20px;
+  background: #ffffff;
   border: 1px solid #e8edf2;
-  border-radius: 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 12px -2px rgba(0, 20, 56, 0.04);
 }
 
 .head {
-  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.headLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.iconBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #ffedd5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .title {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-sans, "Outfit", sans-serif);
   font-size: 16px;
   font-weight: 750;
-  color: #001439;
+  color: #001438;
+  letter-spacing: -0.01em;
 }
 
 .sub {
   margin: 2px 0 0;
   font-size: 12px;
-  font-weight: 550;
-  color: #637588;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.originPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.originDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
 .track {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding-bottom: 2px;
+  padding: 2px 2px 6px;
 }
 
 .track::-webkit-scrollbar {
@@ -38,41 +84,255 @@
 }
 
 .card {
-  flex: 0 0 auto;
-  width: 148px;
+  flex: 0 0 178px;
+  min-width: 178px;
   text-align: left;
-  border: 1px solid #e8edf2;
-  border-radius: 14px;
-  background: #fafbfc;
-  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 13px 14px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 108px;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
 
 .card:hover {
-  border-color: #f97211;
-  background: #fff7f0;
+  background: #ffffff;
+  border-color: #fdba74;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px -4px rgba(249, 114, 22, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
 }
 
-.route {
-  display: block;
-  font-size: 14px;
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.airportBadges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.codeFrom,
+.codeTo {
+  font-size: 13px;
   font-weight: 800;
-  color: #001439;
+  color: #001438;
+  letter-spacing: 0.02em;
 }
 
-.city {
+.routeArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planeIcon {
+  width: 12px;
+  height: 12px;
+  transform: rotate(90deg);
+  color: #f97211;
+}
+
+.arrowPill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cardActionIcon {
+  width: 13px;
+  height: 13px;
+}
+
+.card:hover .arrowPill {
+  background: #f97211;
+  border-color: #f97211;
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+.cardBody {
+  margin-bottom: 8px;
+}
+
+.cityName {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.countryName {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
-  font-weight: 550;
-  color: #637588;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.price {
-  display: block;
-  margin-top: 10px;
-  font-size: 13px;
-  font-weight: 750;
+.cardFooter {
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.priceContainer {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.priceLabel {
+  font-size: 11px;
+  font-weight: 550;
+  color: #64748b;
+}
+
+.priceValue {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #ea580c;
+  letter-spacing: -0.01em;
+}
+
+.searchFaresLabel {
+  font-size: 12px;
+  font-weight: 700;
   color: #f97211;
+  display: inline-flex;
+  align-items: center;
+}
+
+.loadingSkeleton {
+  width: 100%;
+}
+
+.skeletonLine {
+  display: block;
+  height: 14px;
+  width: 70%;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Dark mode support */
+:global(html.dark) .rail {
+  background: #111c2e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+:global(html.dark) .iconBadge {
+  background: #0b1424 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:global(html.dark) .title {
+  color: #ffffff !important;
+}
+
+:global(html.dark) .sub {
+  color: #94a3b8 !important;
+}
+
+:global(html.dark) .originPill {
+  background: #0b1424 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+}
+
+:global(html.dark) .card {
+  background: #0b1424 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+:global(html.dark) .card:hover {
+  background: #162238 !important;
+  border-color: #f97211 !important;
+  box-shadow: 0 10px 22px -4px rgba(249, 114, 22, 0.25) !important;
+}
+
+:global(html.dark) .codeFrom,
+:global(html.dark) .codeTo,
+:global(html.dark) .cityName {
+  color: #ffffff !important;
+}
+
+:global(html.dark) .countryName {
+  color: #94a3b8 !important;
+}
+
+:global(html.dark) .arrowPill {
+  background: #182338 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+:global(html.dark) .card:hover .arrowPill {
+  background: #f97211 !important;
+  border-color: #f97211 !important;
+  color: #ffffff !important;
+}
+
+:global(html.dark) .cardFooter {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+:global(html.dark) .priceLabel {
+  color: #94a3b8 !important;
+}
+
+:global(html.dark) .priceValue {
+  color: #f97211 !important;
+}
+
+@media (max-width: 640px) {
+  .rail {
+    padding: 14px 14px;
+    border-radius: 16px;
+  }
+  .card {
+    flex: 0 0 160px;
+    min-width: 160px;
+    padding: 11px 12px;
+  }
+  .originPill {
+    display: none;
+  }
 }

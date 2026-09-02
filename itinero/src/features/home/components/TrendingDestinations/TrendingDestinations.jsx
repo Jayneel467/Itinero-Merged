@@ -249,7 +249,7 @@ export default function TrendingDestinations() {
                     />
                   </div>
 
-                  <div className="flex flex-col flex-1 p-4 md:p-5">
+                  <div className="flex flex-col flex-1 w-full px-[20px] py-4 md:py-5">
                     <div className="flex flex-col items-start mb-4 md:mb-6">
                       <span className="text-black text-[18px] md:text-[22px] font-bold">
                         {dest.title}

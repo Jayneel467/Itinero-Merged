@@ -42,7 +42,7 @@
       rgba(0, 20, 57, 0.42) 52%,
       rgba(0, 20, 57, 0.2) 100%
     ),
-    url("/itinero/hero-transits.jpg");
+    url("/hero-transits.jpg");
   background-size: cover;
   background-position: center;
   pointer-events: none;

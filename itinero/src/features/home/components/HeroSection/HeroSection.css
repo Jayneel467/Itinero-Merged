@@ -1,21 +1,231 @@
 /* Hero always has a navy base so white type stays readable if the photo fails. */
 
 .hero-section {
-  background-color: #001438;
-  color: #fff;
+  background-color: #001438 !important;
+  color: #ffffff !important;
   isolation: isolate;
+  position: relative;
 }
 
 .hero-section__title {
-  color: #fff;
-  text-shadow: 0 2px 18px rgba(0, 12, 32, 0.45);
+  color: #ffffff !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+  display: inline-block;
 }
 
 .hero-section__tab {
   background: transparent;
-  color: #fff;
+  color: #ffffff !important;
+  transition: all 0.2s ease;
 }
 
 .hero-section__tab:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12) !important;
 }
+
+.hero-section__tab--active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.hero-section__tab span,
+.hero-section__tab svg {
+  color: #ffffff !important;
+}
+
+.hero-section__tab span[class*="badge"],
+.hero-section__tab span.badge {
+  background-color: #F97211 !important;
+  color: #ffffff !important;
+}
+
+/* Dark mode explicit overrides for Hero Section */
+html.dark .hero-section {
+  background-color: #001438 !important;
+  color: #ffffff !important;
+}
+
+html.dark .hero-section__title,
+html.dark .hero-section span.hero-section__title,
+html.dark .hero-section [class*="hero-section__title"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #ffffff !important;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.7);
+}
+
+html.dark .hero-section__tab {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+
+html.dark .hero-section__tab:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+html.dark .hero-section__tab--active {
+  background: rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.dark .hero-section__tab span,
+html.dark .hero-section__tab svg {
+  color: #ffffff !important;
+}
+
+html.dark .hero-section__tab span[class*="badge"] {
+  background-color: #F97211 !important;
+  color: #ffffff !important;
+}
+
+/* Ensure all icons inside hero search bar have completely transparent background */
+.hero-section svg,
+.hero-section [class*="search-bar"] svg,
+.hero-section .shared-flight-search-bar svg,
+html.dark .hero-section svg,
+html.dark .hero-section [class*="search-bar"] svg,
+html.dark .hero-section .shared-flight-search-bar svg {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Return & Special Fares Trigger Buttons in Hero Section */
+.hero-section .trip-type-dropdown > button,
+.hero-section .special-fares-dropdown > button,
+html.dark .hero-section .trip-type-dropdown > button,
+html.dark .hero-section .special-fares-dropdown > button {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+.hero-section .trip-type-dropdown > button:hover,
+.hero-section .special-fares-dropdown > button:hover,
+html.dark .hero-section .trip-type-dropdown > button:hover,
+html.dark .hero-section .special-fares-dropdown > button:hover {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+/* Force search bar inputs, labels, and text on hero to be crisp pure white */
+.hero-section .shared-flight-search-bar > div:first-child > div > span,
+.hero-section .shared-flight-search-bar > div:first-child > div > p,
+.hero-section .shared-flight-search-bar input,
+html.dark .hero-section .shared-flight-search-bar input {
+  color: #ffffff !important;
+}
+
+.hero-section .shared-flight-search-bar input::placeholder,
+html.dark .hero-section .shared-flight-search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.hero-section .shared-flight-search-bar > div:first-child svg,
+html.dark .hero-section .shared-flight-search-bar > div:first-child svg {
+  color: #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Trip Type & Special Fares Dropdowns (Light & Dark)
+   ═══════════════════════════════════════════════════════ */
+
+/* Light Mode Dropdown Menus */
+html:not(.dark) .trip-type-dropdown > div,
+html:not(.dark) .special-fares-dropdown > div {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+html:not(.dark) .trip-type-dropdown > div button {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #374151 !important;
+}
+
+html:not(.dark) .trip-type-dropdown > div button:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+html:not(.dark) .trip-type-dropdown > div button[class*="text-orange"] {
+  color: #f97211 !important;
+  background-color: #fff7ed !important;
+  font-weight: 700 !important;
+}
+
+html:not(.dark) .special-fares-dropdown > div p {
+  color: #4b5563 !important;
+}
+
+html:not(.dark) .special-fares-dropdown > div p:first-child {
+  color: #111827 !important;
+}
+
+html:not(.dark) .special-fares-dropdown > div button {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #ea580c !important;
+}
+
+/* Dark Mode Dropdown Menus */
+html.dark .trip-type-dropdown > div,
+html.dark .special-fares-dropdown > div {
+  background-color: #111c2e !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55) !important;
+}
+
+html.dark .trip-type-dropdown > div button {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .trip-type-dropdown > div button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+html.dark .trip-type-dropdown > div button[class*="text-orange"] {
+  color: #f97211 !important;
+  background-color: rgba(249, 114, 17, 0.15) !important;
+  font-weight: 700 !important;
+}
+
+html.dark .special-fares-dropdown > div p {
+  color: #94a3b8 !important;
+}
+
+html.dark .special-fares-dropdown > div p:first-child {
+  color: #ffffff !important;
+}
+
+html.dark .special-fares-dropdown > div button {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #f97211 !important;
+}
+

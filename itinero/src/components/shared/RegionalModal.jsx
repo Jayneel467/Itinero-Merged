@@ -237,14 +237,25 @@ export default function RegionalModal({
                 defaults to India.
               </p>
               <div className={styles.locationSummary}>
-                <MapPin size={18} />
+                {home.countryFlag ? (
+                  <img
+                    src={home.countryFlag}
+                    alt=""
+                    style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                  />
+                ) : (
+                  <MapPin size={18} />
+                )}
                 <div>
-                  <strong>{home.originLabel}</strong>
+                  <strong>
+                    {home.countryName || home.originLabel || "Select country"}
+                    {home.airportCode ? ` (${home.airportCode})` : ""}
+                  </strong>
                   <span>
                     {home.hasPassport
                       ? home.passportLabel
                       : "Passport not set - pick below"}
-                    {home.countryName ? ` · ${home.countryName}` : ""}
+                    {home.city ? ` · ${home.city}` : ""}
                   </span>
                 </div>
               </div>

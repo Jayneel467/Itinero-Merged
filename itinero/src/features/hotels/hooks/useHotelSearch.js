@@ -25,6 +25,7 @@ export default function useHotelSearch({ category = "hotels" } = {}) {
   );
 
   const page = Math.max(1, Number(searchParams.get("page") || 1));
+  const sortBy = searchParams.get("sortBy") || "recommended";
   const searchCategory = category === "homes" ? "homes" : "hotels";
 
   const query = {
@@ -37,6 +38,7 @@ export default function useHotelSearch({ category = "hotels" } = {}) {
     lat: searchParams.get("lat") || "",
     lng: searchParams.get("lng") || "",
     page,
+    sortBy,
     category: searchCategory,
   };
 
@@ -45,6 +47,18 @@ export default function useHotelSearch({ category = "hotels" } = {}) {
       const n = Math.max(1, Number(nextPage) || 1);
       const next = new URLSearchParams(searchParams);
       next.set("page", String(n));
+      setSearchParams(next, { replace: true });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const setSortBy = useCallback(
+    (nextSort) => {
+      const s = String(nextSort || "recommended");
+      const next = new URLSearchParams(searchParams);
+      next.set("sortBy", s);
+      next.set("page", "1");
       setSearchParams(next, { replace: true });
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
@@ -90,6 +104,7 @@ export default function useHotelSearch({ category = "hotels" } = {}) {
         currency,
         page: query.page,
         page_size: PAGE_SIZE,
+        sort_by: query.sortBy || "recommended",
         category: searchCategory,
       };
       if (query.cityCode) payload.city_code = query.cityCode;
@@ -161,6 +176,7 @@ export default function useHotelSearch({ category = "hotels" } = {}) {
     query.guests,
     query.rooms,
     query.page,
+    query.sortBy,
     query.lat,
     query.lng,
     currency,
@@ -177,6 +193,7 @@ export default function useHotelSearch({ category = "hotels" } = {}) {
     query.guests,
     query.rooms,
     query.page,
+    query.sortBy,
     query.lat,
     query.lng,
     currency,
@@ -198,6 +215,8 @@ export default function useHotelSearch({ category = "hotels" } = {}) {
     total,
     totalPages,
     setPage,
+    sortBy,
+    setSortBy,
     category: searchCategory,
     categoryLabel,
   };

@@ -37,10 +37,10 @@ export default class AppErrorBoundary extends Component {
           <button type="button" className={styles.primary} onClick={() => window.location.reload()}>
             Reload
           </button>
-          <a className={styles.secondary} href={`${APP_CONFIG.BASE_PATH || "/itinero"}/`}>
+          <a className={styles.secondary} href={`${APP_CONFIG.BASE_PATH || ""}/`}>
             Home
           </a>
-          <a className={styles.secondary} href={`${APP_CONFIG.BASE_PATH || "/itinero"}/help`}>
+          <a className={styles.secondary} href={`${APP_CONFIG.BASE_PATH || ""}/help`}>
             Help
           </a>
         </div>

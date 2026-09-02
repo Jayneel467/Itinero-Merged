@@ -360,8 +360,8 @@ _HUB_RANK: dict[str, int] = {
     "SYD": 86, "MEL": 80, "AKL": 72,
 }
 
-_METRO_KM = 90.0
-_NEARBY_MAJOR_KM = 450.0
+_METRO_KM = 60.0
+_NEARBY_MAJOR_KM = 120.0
 _FEEDER_HUB_KM = 2200.0
 _LONGHAUL_KM = 2800.0
 
@@ -594,13 +594,6 @@ async def expand_route_airports(origin: str, destination: str) -> dict[str, Any]
     dest_codes = {row["code"] for row in destinations}
     origin_codes = {row["code"] for row in origins}
     exclude = origin_codes | dest_codes
-
-    if len(origins) < 3:
-        for nearby in _nearby_majors(index, origin_code, exclude, limit=3 - len(origins)):
-            if nearby["code"] not in origin_codes:
-                origins.append(nearby)
-                origin_codes.add(nearby["code"])
-                exclude.add(nearby["code"])
 
     origin_ll = _latlng(index[origin_code]) if origin_code in index else None
     dest_ll = _latlng(index[dest_code]) if dest_code in index else None

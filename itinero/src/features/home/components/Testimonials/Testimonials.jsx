@@ -8,24 +8,21 @@ const CARD_THEMES = [
   {
     bg: "#F9F7FD",
     borderColor: "#E4D7FF",
-    bottomImg:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/v9k2j59v_expires_30_days.png",
+    bottomImg: `${import.meta.env.BASE_URL}australia.png`,
     bottomImgClasses: "absolute bottom-0 right-0 w-[284px] h-[123px] object-cover",
     avatarBg: "#EDE5FF",
   },
   {
     bg: "#FEFAF6",
     borderColor: "#FFE3CF",
-    bottomImg:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/q9f0c8qm_expires_30_days.png",
+    bottomImg: `${import.meta.env.BASE_URL}us.png`,
     bottomImgClasses: "absolute bottom-0 right-0 w-[263px] h-[158px] object-cover",
     avatarBg: "#FFE8D6",
   },
   {
     bg: "#F6FAFF",
     borderColor: "#D0DEFF",
-    bottomImg:
-      "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/pkx73rfx_expires_30_days.png",
+    bottomImg: `${import.meta.env.BASE_URL}newyork.png`,
     bottomImgClasses: "absolute bottom-0 right-0 w-[304px] h-[140px] object-cover",
     avatarBg: "#DCE8FF",
   },
@@ -126,7 +123,7 @@ export default function Testimonials() {
       <ScrollReveal delay={0.1}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center self-stretch px-4 md:px-[53px]">
           <div className="flex flex-col shrink-0 items-start gap-1 mb-4 md:mb-0">
-            <span className="text-[#001438] text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight">
+            <span className="text-[#001438] dark:text-white text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight">
               Loved by Explorers
             </span>
             <span className="text-[#F97211] text-[16px] md:text-xl lg:text-[18px] 2xl:text-2xl font-medium">
@@ -137,7 +134,7 @@ export default function Testimonials() {
             <button
               type="button"
               onClick={() => navigate("/hotels")}
-              className="text-black text-[16px] md:text-xl font-medium cursor-pointer hover:underline mr-2 md:mr-4 bg-transparent border-0 p-0"
+              className="text-black dark:text-white text-[16px] md:text-xl font-medium cursor-pointer hover:underline mr-2 md:mr-4 bg-transparent border-0 p-0"
             >
               Browse stays
             </button>
@@ -146,9 +143,9 @@ export default function Testimonials() {
                 type="button"
                 onClick={scrollLeft}
                 aria-label="Previous reviews"
-                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 shadow-sm transition-colors"
+                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 dark:border-white/15 flex items-center justify-center bg-white dark:bg-[#121a2b] hover:bg-gray-50 dark:hover:bg-[#1a263d] shadow-sm transition-colors cursor-pointer"
               >
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-black dark:text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
               </button>
@@ -156,9 +153,9 @@ export default function Testimonials() {
                 type="button"
                 onClick={scrollRight}
                 aria-label="Next reviews"
-                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 shadow-sm transition-colors"
+                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 dark:border-white/15 flex items-center justify-center bg-white dark:bg-[#121a2b] hover:bg-gray-50 dark:hover:bg-[#1a263d] shadow-sm transition-colors cursor-pointer"
               >
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-black dark:text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </button>
@@ -202,6 +199,7 @@ export default function Testimonials() {
                   <button
                     type="button"
                     key={review.id || `${review.name}-${review.date}-${index}`}
+                    data-testimonial-card
                     onClick={() => {
                       if (review.hotelId) {
                         navigate(`/hotel/${encodeURIComponent(review.hotelId)}`);
@@ -217,27 +215,27 @@ export default function Testimonials() {
                   >
                     <div className="flex items-center self-stretch mb-4 md:mb-[29px] mx-4 md:mx-[25px]">
                       <div
-                        className="w-12 h-12 md:w-20 md:h-20 mr-4 md:mr-6 rounded-full flex items-center justify-center shrink-0 font-bold text-[#001438] text-[14px] md:text-[22px]"
+                        className="testimonial-avatar w-12 h-12 md:w-20 md:h-20 mr-4 md:mr-6 rounded-full flex items-center justify-center shrink-0 font-bold text-[#001438] text-[14px] md:text-[22px]"
                         style={{ backgroundColor: theme.avatarBg }}
                         aria-hidden
                       >
                         {initials(review.name)}
                       </div>
                       <div className="flex flex-col shrink-0 items-start gap-1 min-w-0">
-                        <span className="text-black text-[18px] md:text-[22px] font-bold truncate max-w-[180px] md:max-w-[220px]">
+                        <span className="testimonial-name text-black dark:text-white text-[18px] md:text-[22px] font-bold truncate max-w-[180px] md:max-w-[220px]">
                           {review.name || "Guest"}
                         </span>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <svg className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#868686] shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#868686] dark:text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                           </svg>
-                          <span className="text-[#868686] text-[14px] md:text-lg font-medium truncate max-w-[160px] md:max-w-[200px]">
+                          <span className="testimonial-location text-[#868686] dark:text-gray-400 text-[14px] md:text-lg font-medium truncate max-w-[160px] md:max-w-[200px]">
                             {place}
                           </span>
                         </div>
                       </div>
                       <div className="flex-1" />
-                      <div className="flex shrink-0 items-center bg-[#FEFAF4] py-1.5 px-2 md:py-2 md:px-3 gap-1 rounded-[10px] border border-solid border-[#FFE1CB]">
+                      <div className="testimonial-badge flex shrink-0 items-center bg-[#FEFAF4] dark:bg-[#182338] py-1.5 px-2 md:py-2 md:px-3 gap-1 rounded-[10px] border border-solid border-[#FFE1CB] dark:border-[#f97211]/30">
                         <svg className="w-4 h-4 md:w-5 md:h-5 text-[#F97211]" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                         </svg>
@@ -252,7 +250,7 @@ export default function Testimonials() {
                     </svg>
 
                     <div className="relative flex flex-col items-start self-stretch h-[160px] md:h-[200px] ml-4 md:ml-[25px] overflow-hidden rounded-br-[20px]">
-                      <span className="text-black text-[16px] md:text-[20px] font-medium leading-snug w-[85%] relative z-10 line-clamp-4">
+                      <span className="testimonial-text text-black dark:text-white text-[16px] md:text-[20px] font-medium leading-snug w-[85%] relative z-10 line-clamp-4">
                         “{review.text}”
                       </span>
 
@@ -260,7 +258,7 @@ export default function Testimonials() {
                         {[1, 2, 3, 4, 5].map((star) => (
                           <svg
                             key={star}
-                            className={`w-6 h-6 ${star <= stars ? "text-[#F97211]" : "text-[#E5E7EB]"}`}
+                            className={`w-6 h-6 ${star <= stars ? "text-[#F97211]" : "text-[#E5E7EB] dark:text-gray-700"}`}
                             fill="currentColor"
                             viewBox="0 0 24 24"
                           >
@@ -271,7 +269,7 @@ export default function Testimonials() {
 
                       <img
                         src={theme.bottomImg}
-                        className={theme.bottomImgClasses}
+                        className={`${theme.bottomImgClasses} dark:opacity-30`}
                         alt=""
                         aria-hidden
                       />

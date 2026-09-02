@@ -12,7 +12,7 @@ import { isTrainsMarket } from "@/constants/regionalFeatures";
 import "./HeroSection.css";
 
 // Saved from the Pixano/Figma export in itinero-web (CDN links expired).
-const HERO_BG = `${import.meta.env.BASE_URL}hero-flights.png`;
+const HERO_BG = `${import.meta.env.BASE_URL}hero.jpg`;
 
 const ALL_TABS = [
   { id: "Flights", Icon: Plane },
@@ -53,7 +53,7 @@ export default function HeroSection() {
       className="hero-section flex flex-col items-start self-stretch bg-cover bg-center pt-[40px] md:pt-[60px] 2xl:pt-[84px] mx-[8px] md:mx-[15px] rounded-[24px] overflow-visible lg:min-h-[calc(100vh-120px)] 2xl:min-h-0"
       style={{
         backgroundColor: "#001438",
-        backgroundImage: `linear-gradient(180deg, rgba(0, 20, 56, 0.35) 0%, rgba(0, 20, 56, 0.62) 72%, rgba(0, 20, 56, 0.78) 100%), url(${HERO_BG})`,
+        backgroundImage: `url(${HERO_BG})`,
       }}
     >
       <ScrollReveal delay={0.1} className="w-full">
@@ -66,7 +66,7 @@ export default function HeroSection() {
 
       <ScrollReveal delay={0.2} className="w-full">
         <div className="flex flex-col items-center self-stretch mb-[30px] md:mb-[40px] 2xl:mb-[240px]">
-          <div className="flex flex-nowrap items-center justify-center gap-2 md:gap-3 2xl:gap-4 px-1 md:px-0 w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex flex-nowrap items-center justify-start md:justify-center gap-2 md:gap-3 2xl:gap-4 px-4 md:px-0 w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {tabs.map((tab) => {
               const isActive = activeSearchTab === tab.id;
               const Icon = tab.Icon;
@@ -75,16 +75,12 @@ export default function HeroSection() {
                   key={tab.id}
                   type="button"
                   onClick={() => handleTabClick(tab.id)}
-                  className="hero-section__tab relative flex shrink-0 items-center justify-center text-left py-2 lg:py-2 2xl:py-3 px-3 md:px-4 lg:px-[16px] 2xl:px-[22px] gap-1.5 md:gap-2 lg:gap-[8px] 2xl:gap-[12px] rounded-[80px] border-0 cursor-pointer transition-colors whitespace-nowrap"
+                  className={`hero-section__tab relative flex shrink-0 items-center justify-center text-left py-2 lg:py-2 2xl:py-3 px-3 md:px-4 lg:px-[16px] 2xl:px-[22px] gap-1.5 md:gap-2 lg:gap-[8px] 2xl:gap-[12px] rounded-[80px] border-0 cursor-pointer transition-all whitespace-nowrap ${
+                    isActive
+                      ? "hero-section__tab--active bg-white/20 backdrop-blur-md shadow-sm"
+                      : "hover:bg-white/10"
+                  }`}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeSearchTabBackground"
-                      className="absolute inset-0 bg-[#FFFFFF1A] rounded-[80px]"
-                      initial={false}
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
                   <Icon
                     className="relative z-10 w-6 h-6 md:w-7 md:h-7 lg:w-[22px] lg:h-[22px] 2xl:w-10 2xl:h-10 text-white shrink-0"
                     strokeWidth={2.1}

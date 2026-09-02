@@ -49,6 +49,8 @@ export default function PackageCheckoutPage() {
     lastName: "",
     email: "",
     phone: "",
+    dob: "",
+    additionalGuests: [],
   });
 
   const cardMountRef = useRef(null);
@@ -143,6 +145,7 @@ export default function PackageCheckoutPage() {
         const stripe = Stripe(stripePk);
         const elements = stripe.elements();
         const card = elements.create("card", {
+          hidePostalCode: true,
           style: {
             base: {
               fontSize: "16px",
@@ -174,16 +177,18 @@ export default function PackageCheckoutPage() {
     };
   }, [phase, paymentHold?.client_secret, sdkReady, stripePk]);
 
-  const ready = useMemo(
-    () =>
-      pkg &&
-      quote &&
-      guest.firstName.trim() &&
-      guest.lastName.trim() &&
-      guest.email.trim() &&
-      String(guest.phone || "").replace(/\D/g, "").length >= 8,
-    [pkg, quote, guest]
-  );
+  const ready = useMemo(() => {
+    if (!pkg || !quote) return false;
+    if (!guest.firstName.trim() || !guest.lastName.trim() || !guest.email.trim() || !guest.dob) return false;
+    if (String(guest.phone || "").replace(/\D/g, "").length < 8) return false;
+    if (guests > 1) {
+      for (let i = 0; i < guests - 1; i++) {
+        const ag = guest.additionalGuests?.[i];
+        if (!ag || !ag.firstName?.trim() || !ag.lastName?.trim() || !ag.dob) return false;
+      }
+    }
+    return true;
+  }, [pkg, quote, guest, guests]);
 
   if (hydrating) {
     return (
@@ -360,14 +365,31 @@ export default function PackageCheckoutPage() {
         }
         setStatus("Processing your payment…");
         const result = await stripeRef.current.confirmCardPayment(paymentHold.client_secret, {
-          payment_method: { card: cardRef.current },
+          payment_method: { 
+            card: cardRef.current,
+            billing_details: {
+              name: `${guest.firstName || ""} ${guest.lastName || ""}`.trim() || undefined,
+              email: guest.email?.trim() || undefined,
+            }
+          },
         });
-        if (result.error) throw new Error(result.error.message || "Payment failed.");
-        const pi = result.paymentIntent;
-        if (!pi || !["succeeded", "processing"].includes(pi.status)) {
-          throw new Error(`Unexpected payment status: ${pi?.status || "unknown"}`);
+        if (result.error) {
+          // If the PaymentIntent already succeeded (user re-clicked Pay), proceed with it
+          const alreadyPi = result.error?.payment_intent;
+          if (alreadyPi?.status === "succeeded") {
+            console.warn("[Stripe] PaymentIntent already succeeded, proceeding:", alreadyPi.id);
+            paymentId = alreadyPi.id;
+          } else {
+            console.error("[Stripe confirmCardPayment error]", JSON.stringify(result.error));
+            throw new Error(result.error.message || "Payment failed.");
+          }
+        } else {
+          const pi = result.paymentIntent;
+          if (!pi || !["succeeded", "processing"].includes(pi.status)) {
+            throw new Error(`Unexpected payment status: ${pi?.status || "unknown"}`);
+          }
+          paymentId = pi.id || paymentHold.payment_intent_id;
         }
-        paymentId = pi.id || paymentHold.payment_intent_id;
       } else if (allowMock) {
         mockPayment = true;
         setStatus("Confirming sandbox package…");
@@ -382,6 +404,7 @@ export default function PackageCheckoutPage() {
         expectedAmount: payHotel,
       });
     } catch (err) {
+      console.error("[handlePay error]", err);
       setError(err?.message || "Payment failed.");
       setStatus("");
       setBusy(false);
@@ -441,16 +464,76 @@ export default function PackageCheckoutPage() {
                 onChange={(e) => setGuest({ ...guest, email: e.target.value })}
               />
             </label>
-            <label>
-              Phone
-              <input
-                required
-                disabled={phase === "pay" || busy}
-                value={guest.phone}
-                onChange={(e) => setGuest({ ...guest, phone: e.target.value })}
-                placeholder="Include country code if outside India"
-              />
-            </label>
+            <div className={styles.row2}>
+              <label>
+                Phone
+                <input
+                  required
+                  disabled={phase === "pay" || busy}
+                  value={guest.phone}
+                  onChange={(e) => setGuest({ ...guest, phone: e.target.value })}
+                  placeholder="Include country code if outside India"
+                />
+              </label>
+              <label>
+                Date of Birth
+                <input
+                  required
+                  type="date"
+                  disabled={phase === "pay" || busy}
+                  value={guest.dob || ""}
+                  onChange={(e) => setGuest({ ...guest, dob: e.target.value })}
+                />
+              </label>
+            </div>
+
+            {guests > 1 && Array.from({ length: guests - 1 }).map((_, i) => (
+              <div key={i} style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <h3>Passenger {i + 2}</h3>
+                <div className={styles.row2}>
+                  <label>
+                    First name
+                    <input
+                      required
+                      disabled={phase === "pay" || busy}
+                      value={guest.additionalGuests?.[i]?.firstName || ""}
+                      onChange={(e) => {
+                        const newAdditional = [...(guest.additionalGuests || [])];
+                        newAdditional[i] = { ...newAdditional[i], firstName: e.target.value };
+                        setGuest({ ...guest, additionalGuests: newAdditional });
+                      }}
+                    />
+                  </label>
+                  <label>
+                    Last name
+                    <input
+                      required
+                      disabled={phase === "pay" || busy}
+                      value={guest.additionalGuests?.[i]?.lastName || ""}
+                      onChange={(e) => {
+                        const newAdditional = [...(guest.additionalGuests || [])];
+                        newAdditional[i] = { ...newAdditional[i], lastName: e.target.value };
+                        setGuest({ ...guest, additionalGuests: newAdditional });
+                      }}
+                    />
+                  </label>
+                </div>
+                <label>
+                  Date of Birth
+                  <input
+                    required
+                    type="date"
+                    disabled={phase === "pay" || busy}
+                    value={guest.additionalGuests?.[i]?.dob || ""}
+                    onChange={(e) => {
+                      const newAdditional = [...(guest.additionalGuests || [])];
+                      newAdditional[i] = { ...newAdditional[i], dob: e.target.value };
+                      setGuest({ ...guest, additionalGuests: newAdditional });
+                    }}
+                  />
+                </label>
+              </div>
+            ))}
 
             {phase === "pay" ? (
               <div className={styles.payPanel}>

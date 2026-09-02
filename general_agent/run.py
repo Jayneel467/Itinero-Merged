@@ -25,9 +25,29 @@ import logging
 _GA_DIR = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_GA_DIR)
 
-for _p in [_ROOT, _GA_DIR]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+for _candidate_root in [_ROOT, os.path.dirname(_ROOT), _GA_DIR]:
+    for _subdir in ["ITINERARY_AGENT", "general_agent", "Travel_Agent", "supervisor"]:
+        _path = os.path.join(_candidate_root, _subdir)
+        if os.path.isdir(_path) and _path not in sys.path:
+            sys.path.insert(0, _path)
+    if _candidate_root not in sys.path:
+        sys.path.insert(0, _candidate_root)
+
+# Compatibility patch for LangGraph JsonPlusSerializer dumps/loads mismatch
+try:
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+    if not hasattr(JsonPlusSerializer, "dumps"):
+        def _dumps(self, obj):
+            res = self.dumps_typed(obj)
+            return res[1] if isinstance(res, tuple) else res
+        def _loads(self, data):
+            if isinstance(data, tuple):
+                return self.loads_typed(data)
+            return self.loads_typed(("msgpack", data))
+        JsonPlusSerializer.dumps = _dumps
+        JsonPlusSerializer.loads = _loads
+except Exception:
+    pass
 
 # ── Imports ────────────────────────────────────────────────────────────────
 from typing import Any, Optional

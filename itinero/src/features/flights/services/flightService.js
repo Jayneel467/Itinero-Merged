@@ -50,7 +50,7 @@ export const flightService = {
     } catch (error) {
       const unreachable = error.code === "unreachable" || error.code === "timeout" || !error.status;
       return {
-        session_id: params.session_id || crypto.randomUUID(),
+        session_id: params.session_id || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2)),
         flights: [],
         mode: "degraded",
         message: unreachable

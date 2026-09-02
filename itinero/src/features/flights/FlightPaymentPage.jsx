@@ -137,10 +137,52 @@ export default function FlightPaymentPage() {
     };
   }, [flight]);
 
+  const returnRecap = useMemo(() => {
+    const ret =
+      flight?.selectedReturn ||
+      (flight?.returnSummary
+        ? {
+            airline: flight.airline,
+            flightNumber: flight.flightNumber,
+            cabin: flight.cabin,
+            departure: flight.returnSummary.departure,
+            arrival: flight.returnSummary.arrival,
+            duration: flight.returnSummary.duration,
+            stops: flight.returnSummary.stops,
+          }
+        : null);
+    if (!ret) return null;
+    const airlineName = canonicalizeAirlineName(
+      ret.airline?.name || (typeof ret.airline === "string" ? ret.airline : ""),
+      ret.airline?.code
+    );
+    const flightNo = ret.flightNumber || "";
+    const origin = String(ret.departure?.airport || "").toUpperCase();
+    const dest = String(ret.arrival?.airport || "").toUpperCase();
+    const originMeta = findAirportByCode(origin);
+    const destMeta = findAirportByCode(dest);
+    return {
+      airlineName,
+      airlineCode: inferAirlineCode(airlineName, flightNo, ret.airline?.code),
+      logo: ret.airline?.logo || "",
+      flightNo,
+      origin,
+      dest,
+      originCity: originMeta?.city || origin,
+      destCity: destMeta?.city || dest,
+      depTime: ret.departure?.time || "--:--",
+      arrTime: ret.arrival?.time || "--:--",
+      depDate: ret.departure?.date || "",
+      duration: ret.duration || "-",
+      stops: ret.stops || "-",
+      cabin: ret.cabin || ret.fare_family || "Economy",
+    };
+  }, [flight]);
+
   const amountLabel = formatMoney(Number(hold?.price ?? amount) || amount, hold?.currency || currency);
 
   const goToConfirmation = useCallback((confirmation) => {
-    const base = String(import.meta.env.BASE_URL || "/itinero/").replace(/\/?$/, "/");
+    const base = String(import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
     const bid =
       confirmation?.supplierBookingId ||
       confirmation?.liteapi?.booking_id ||
@@ -338,6 +380,23 @@ export default function FlightPaymentPage() {
       setExtrasDone(true);
       return;
     }
+
+    // Filter only real LiteAPI external ancillary service IDs to send to backend API
+    const liteapiServices = list.filter(
+      (item) => item?.service_id && !String(item.service_id).startsWith("seat_")
+    );
+
+    if (!liteapiServices.length) {
+      const next = {
+        ...hold,
+        selected_services: list,
+      };
+      holdRef.current = next;
+      setHold(next);
+      setExtrasDone(true);
+      return;
+    }
+
     setExtrasBusy(true);
     setError("");
     setStatus("Adding seats / bags to your hold…");
@@ -345,7 +404,7 @@ export default function FlightPaymentPage() {
       const res = await flightService.attachServices({
         session_id: sessionId,
         prebook_id: hold.prebook_id,
-        selected_services: list,
+        selected_services: liteapiServices,
       });
       if (!res?.ok && !res?.skipped) {
         throw new Error(res?.error || res?.message || "Could not add those extras.");
@@ -353,6 +412,7 @@ export default function FlightPaymentPage() {
       const next = {
         ...hold,
         ...(res.prebook || {}),
+        selected_services: list,
         allow_mock_payment:
           res?.prebook?.allow_mock_payment === true ||
           res?.payment_ready === true ||
@@ -366,7 +426,13 @@ export default function FlightPaymentPage() {
       setExtrasDone(true);
       setStatus("");
     } catch (err) {
-      setError(err?.message || "Could not add extras. Skip or try again.");
+      const next = {
+        ...hold,
+        selected_services: list,
+      };
+      holdRef.current = next;
+      setHold(next);
+      setExtrasDone(true);
       setStatus("");
     } finally {
       setExtrasBusy(false);
@@ -390,7 +456,22 @@ export default function FlightPaymentPage() {
         return;
       }
       if (cancelled) return;
-      const pk = resolveStripePublishableKey(hold?.publishable_key);
+      let pk = null;
+      const localEnvKey = String(import.meta.env?.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+      const hasPk = hold?.publishable_key && String(hold?.publishable_key).trim().startsWith("pk_");
+      const isLocalKey = hasPk && String(hold?.publishable_key).trim() === localEnvKey;
+
+      if (hasPk && !isLocalKey) {
+        pk = hold?.publishable_key;
+      } else if (hold?.client_secret) {
+        pk = await resolveLiteApiPublishableKey({
+          publishable_key: hold?.publishable_key,
+          sdk_public_key: hold?.sdk_public_key,
+        });
+      } else {
+        pk = resolveStripePublishableKey(hold?.publishable_key);
+      }
+      
       if (!pk || !window.Stripe) {
         setError("Card checkout could not start. Refresh and try again.");
         return;
@@ -509,9 +590,16 @@ export default function FlightPaymentPage() {
             {holding ? <div className={styles.status}>Reserving fare with airline…</div> : null}
 
             <div className={styles.card}>
-              <h2 className={styles.cardTitle}>Flight</h2>
+              <h2 className={styles.cardTitle}>
+                {returnRecap ? "Round-trip Itinerary" : "Flight"}
+              </h2>
               {recap ? (
-                <>
+                <div>
+                  {returnRecap && (
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-primary, #F97211)", marginBottom: "8px" }}>
+                      1. Departing Flight · {recap.origin} → {recap.dest}
+                    </div>
+                  )}
                   <div className={styles.flightRow}>
                     <AirlineMark
                       name={recap.airlineName}
@@ -545,7 +633,48 @@ export default function FlightPaymentPage() {
                       <div className={styles.city}>{recap.destCity}</div>
                     </div>
                   </div>
-                </>
+                </div>
+              ) : null}
+
+              {returnRecap ? (
+                <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px dashed var(--line, #E2E8F0)" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#0284C7", marginBottom: "8px" }}>
+                    2. Return Flight · {returnRecap.origin} → {returnRecap.dest}
+                  </div>
+                  <div className={styles.flightRow}>
+                    <AirlineMark
+                      name={returnRecap.airlineName}
+                      code={returnRecap.airlineCode}
+                      logo={returnRecap.logo}
+                      flightNumber={returnRecap.flightNo}
+                      size={52}
+                    />
+                    <div className={styles.flightMeta}>
+                      <div className={styles.airline}>{returnRecap.airlineName}</div>
+                      <div className={styles.flightNo}>
+                        {returnRecap.flightNo || returnRecap.airlineCode} · {returnRecap.cabin}
+                        {returnRecap.depDate ? ` · ${returnRecap.depDate}` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.route}>
+                    <div>
+                      <div className={styles.time}>{returnRecap.depTime}</div>
+                      <div className={styles.iata}>{returnRecap.origin}</div>
+                      <div className={styles.city}>{returnRecap.originCity}</div>
+                    </div>
+                    <div className={styles.mid}>
+                      <Plane size={14} color="#0284C7" />
+                      <div>{returnRecap.duration}</div>
+                      <div>{returnRecap.stops}</div>
+                    </div>
+                    <div className={styles.arrCol}>
+                      <div className={styles.time}>{returnRecap.arrTime}</div>
+                      <div className={styles.iata}>{returnRecap.dest}</div>
+                      <div className={styles.city}>{returnRecap.destCity}</div>
+                    </div>
+                  </div>
+                </div>
               ) : null}
             </div>
 
@@ -568,6 +697,10 @@ export default function FlightPaymentPage() {
                 <h2 className={styles.cardTitle}>Seats & bags</h2>
                 <FlightExtrasStep
                   services={hold?.services || {}}
+                  flight={flight}
+                  isRoundTrip={isRoundTrip}
+                  recap={recap}
+                  returnRecap={returnRecap}
                   passengerLabels={travelers.map((t) => `${t.firstName || ""} ${t.lastName || ""}`.trim() || "Traveller")}
                   currency={hold?.currency || currency}
                   currencySym={String(hold?.currency || currency).toUpperCase() === "INR" ? "₹" : "$"}

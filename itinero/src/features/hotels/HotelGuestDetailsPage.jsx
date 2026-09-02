@@ -35,7 +35,7 @@ export default function HotelGuestDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { state } = useLocation();
-  const { formatMoney } = useCurrency();
+  const { currency, convert, formatMoney } = useCurrency();
 
   const hotel = state?.hotel || {};
   const room = state?.room || {};
@@ -63,6 +63,34 @@ export default function HotelGuestDetailsPage() {
     taxesTotal > 0 && roomTotal > 0 && taxesTotal < roomTotal && roomTotal - taxesTotal > 0;
   const roomBase = taxesIncluded ? Math.max(0, roomTotal - taxesTotal) : roomTotal;
 
+  const addonsList = Array.isArray(addonsSelection?.addons) ? addonsSelection.addons : [];
+  const addonsDisplayItems = useMemo(() => {
+    return addonsList.map((a) => {
+      const usdAmount = Number(a.valueUsd || a.calculatedPrice || a.priceUsd || 0);
+      const convertedAmount = convert ? (convert(usdAmount, "USD", currency) ?? usdAmount) : usdAmount;
+      let label = "Add-on";
+      if (a.type === "esim" || a.type === "esimply") {
+        label = a.name ? `eSIM data (${a.name})` : `eSIM data (${a.validityDays ? `${a.validityDays}d` : ""})`;
+      } else if (a.type === "uber") {
+        label = `Uber ride credit ($${a.valueUsd || usdAmount})`;
+      }
+      return {
+        ...a,
+        label,
+        amount: convertedAmount,
+        usdAmount,
+      };
+    });
+  }, [addonsList, convert, currency]);
+
+  const addonsTotal = useMemo(() => {
+    return addonsDisplayItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  }, [addonsDisplayItems]);
+
+  const totalPriceWithAddons = useMemo(() => {
+    return roomTotal + addonsTotal;
+  }, [roomTotal, addonsTotal]);
+
   const summaryData = useMemo(() => {
     const cin = formatDay(checkIn);
     const cout = formatDay(checkOut);
@@ -85,7 +113,9 @@ export default function HotelGuestDetailsPage() {
       roomName: room?.roomName || room?.name || "Room",
       roomsTotal: roomBase,
       taxesTotal: taxesIncluded ? taxesTotal : 0,
-      totalPrice: roomTotal,
+      addons: addonsDisplayItems,
+      addonsTotal,
+      totalPrice: totalPriceWithAddons,
       starRating: Number(hotel?.starRating || hotel?.stars || hotel?.rating || 0) || 0,
       offerId,
     };
@@ -100,7 +130,9 @@ export default function HotelGuestDetailsPage() {
     roomBase,
     taxesTotal,
     taxesIncluded,
-    roomTotal,
+    addonsDisplayItems,
+    addonsTotal,
+    totalPriceWithAddons,
     offerId,
   ]);
 

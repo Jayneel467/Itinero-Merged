@@ -71,11 +71,6 @@ async function fetchLiteApiConfig(env, attempt = 0) {
  * @returns {Promise<string>}
  */
 export async function resolveLiteApiPublishableKey(envOrHold = "sandbox") {
-  const local = readLocalStripePublishableKey(
-    typeof envOrHold === "object" ? envOrHold?.publishable_key : null
-  );
-  if (local) return local;
-
   const env = liteApiSdkEnv(envOrHold);
   if (_cache[env]) return _cache[env];
   if (_inflight[env]) return _inflight[env];

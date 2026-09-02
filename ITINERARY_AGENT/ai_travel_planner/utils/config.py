@@ -23,13 +23,24 @@ try:
     class Settings(BaseSettings):
         """Application-wide configuration loaded from environment variables."""
 
-        # ── OpenAI ────────────────────────────────────────────────────────────
-        openai_api_key: str = Field(..., alias="OPENAI_API_KEY")
+        # ── OpenAI / DeepSeek ──────────────────────────────────────────────────
+        openai_api_key: str = Field(
+            default_factory=lambda: os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or "mock-key"
+        )
+        openai_base_url: str | None = Field(
+            default_factory=lambda: os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1") if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY")) else os.getenv("OPENAI_BASE_URL")
+        )
 
         # ── Model names ───────────────────────────────────────────────────────
-        itinerary_agent_model: str = Field("gpt-4.1-mini", alias="ITINERARY_AGENT_MODEL")
-        flight_agent_model: str = Field("gpt-4o-mini", alias="FLIGHT_AGENT_MODEL")
-        hotel_agent_model: str = Field("gpt-4o-mini", alias="HOTEL_AGENT_MODEL")
+        itinerary_agent_model: str = Field(
+            default_factory=lambda: os.getenv("ITINERARY_AGENT_MODEL") or ("deepseek-chat" if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY")) else "gpt-4.1-mini")
+        )
+        flight_agent_model: str = Field(
+            default_factory=lambda: os.getenv("FLIGHT_AGENT_MODEL") or ("deepseek-chat" if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY")) else "gpt-4o-mini")
+        )
+        hotel_agent_model: str = Field(
+            default_factory=lambda: os.getenv("HOTEL_AGENT_MODEL") or ("deepseek-chat" if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY")) else "gpt-4o-mini")
+        )
 
         # ── Temperatures ──────────────────────────────────────────────────────
         itinerary_agent_temperature: float = Field(
@@ -50,21 +61,24 @@ except ImportError:
         """Fallback settings class using os.getenv directly."""
 
         def __init__(self) -> None:
-            key = os.getenv("OPENAI_API_KEY", "")
-            if not key:
-                raise ValueError(
-                    "OPENAI_API_KEY is not set. "
-                    "Copy .env.example to .env and add your key."
-                )
+            key = os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or "mock-key"
             self.openai_api_key: str = key
+            self.openai_base_url: str | None = (
+                os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+                if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY"))
+                else os.getenv("OPENAI_BASE_URL")
+            )
             self.itinerary_agent_model: str = os.getenv(
-                "ITINERARY_AGENT_MODEL", "gpt-4.1-mini"
+                "ITINERARY_AGENT_MODEL",
+                "deepseek-chat" if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY")) else "gpt-4.1-mini",
             )
             self.flight_agent_model: str = os.getenv(
-                "FLIGHT_AGENT_MODEL", "gpt-4o-mini"
+                "FLIGHT_AGENT_MODEL",
+                "deepseek-chat" if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY")) else "gpt-4o-mini",
             )
             self.hotel_agent_model: str = os.getenv(
-                "HOTEL_AGENT_MODEL", "gpt-4o-mini"
+                "HOTEL_AGENT_MODEL",
+                "deepseek-chat" if (os.getenv("DEEPSEEK_API_KEY") and not os.getenv("OPENAI_API_KEY")) else "gpt-4o-mini",
             )
             self.itinerary_agent_temperature: float = float(
                 os.getenv("ITINERARY_AGENT_TEMPERATURE", "0.3")

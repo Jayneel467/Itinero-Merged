@@ -49,7 +49,7 @@ html.dark .navbar__logo-text {
   opacity: 0.95;
 }
 
-/* Common light cards / panels that hardcode white */
+/* ── Generic card/panel/section overrides ─────────────── */
 html.dark [class*="page"],
 html.dark [class*="wrap"],
 html.dark [class*="card"],
@@ -61,10 +61,43 @@ html.dark [class*="contact"] {
   color: inherit;
 }
 
-/* Inputs on dark surfaces */
-html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-html.dark textarea,
-html.dark select {
+/* Catch all hardcoded white backgrounds in module CSS (exclude hero) */
+html.dark [class*="Card"]:not(.hero-section *),
+html.dark [class*="card"]:not(.hero-section *) {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+/* Section backgrounds (exclude hero) */
+html.dark [class*="Section"]:not(.hero-section):not([class*="hero-section"]):not(.hero-section *),
+html.dark [class*="section"]:not(.hero-section):not([class*="hero-section"]):not(.hero-section *) {
+  background-color: var(--surface-page);
+  color: var(--text-primary);
+}
+
+/* Drawer / modal / sheet */
+html.dark [class*="Drawer"],
+html.dark [class*="drawer"],
+html.dark [class*="Modal"],
+html.dark [class*="modal"],
+html.dark [class*="Sheet"],
+html.dark [class*="sheet"],
+html.dark [class*="Sidebar"]:not([class*="fl-sidebar"]):not([class*="column"]):not(aside),
+html.dark [class*="sidebar"]:not([class*="fl-sidebar"]):not([class*="column"]):not(aside) {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+html.dark [class*="FilterDrawer"],
+html.dark [class*="filterDrawer"] {
+  background-color: var(--surface-elevated) !important;
+}
+
+/* ── Inputs on dark surfaces (exclude hero) ───────────────────── */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.hero-section input),
+html.dark textarea:not(.hero-section textarea),
+html.dark select:not(.hero-section select) {
   background-color: var(--surface-muted);
   color: var(--text-primary);
   border-color: var(--border-subtle);
@@ -76,7 +109,7 @@ html.dark textarea::placeholder {
   opacity: 0.85;
 }
 
-/* Modals / sheets that stay light in dark mode become readable */
+/* ── Date picker ───────────────────────────────────────── */
 html.dark .react-datepicker {
   background: var(--surface-elevated) !important;
   border-color: var(--border-subtle) !important;
@@ -101,19 +134,24 @@ html.dark .react-datepicker__day:hover {
   background-color: var(--surface-muted) !important;
 }
 
-/* Scrollbars */
+/* ── Scrollbars ────────────────────────────────────────── */
 html.dark {
   scrollbar-color: #3a4a63 transparent;
 }
 
-/* Tailwind utility islands used on many pages */
-html.dark .bg-white {
+/* ── Tailwind utility overrides ───────────────────────── */
+html.dark .bg-white,
+html.dark .bg-\[\#ffffff\],
+html.dark .bg-\[\#FFFFFF\] {
   background-color: var(--surface-elevated) !important;
 }
 
 html.dark .bg-\[\#F2F2F2\],
 html.dark .bg-\[\#F5F7FA\],
-html.dark .bg-\[\#f2f2f2\] {
+html.dark .bg-\[\#f2f2f2\],
+html.dark .bg-\[\#f5f7fa\],
+html.dark .bg-gray-50,
+html.dark .bg-gray-100 {
   background-color: var(--surface-page) !important;
 }
 
@@ -124,15 +162,444 @@ html.dark .text-\[\#001439\] {
 }
 
 html.dark .border-gray-100,
-html.dark .border-gray-200 {
+html.dark .border-gray-200,
+html.dark .border-\[\#E7E7E7\] {
   border-color: var(--border-subtle) !important;
 }
 
-/* Home / account light sections that hardcode cream/white */
+/* ── Account / Profile pages ──────────────────────────── */
 html.dark [class*="AccountPages"],
 html.dark [class*="profilePage"],
 html.dark .profilePage,
 html.dark main {
   color: var(--text-primary);
 }
+
+/* ── Footer ───────────────────────────────────────────── */
+html.dark .footer,
+html.dark [class*="footer"],
+html.dark [class*="Footer"] {
+  background-color: #000c1e !important;
+  color: var(--text-primary) !important;
+}
+
+html.dark [class*="footer"] a,
+html.dark [class*="Footer"] a {
+  color: var(--text-secondary);
+}
+
+/* ── Search bars (Flight/Hotel/Train/Bus) outside Hero ─────────────── */
+html.dark [class*="SearchBar"]:not(.hero-section *),
+html.dark [class*="searchBar"]:not(.hero-section *),
+html.dark [class*="SearchPanel"]:not(.hero-section *),
+html.dark [class*="searchPanel"]:not(.hero-section *) {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Booking / Checkout pages ─────────────────────────── */
+html.dark [class*="BookingPage"],
+html.dark [class*="bookingPage"],
+html.dark [class*="CheckoutPage"],
+html.dark [class*="checkoutPage"],
+html.dark [class*="PassengerInfo"],
+html.dark [class*="passengerInfo"] {
+  background-color: var(--surface-page) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Price / Fare summary boxes */
+html.dark [class*="Summary"],
+html.dark [class*="summary"],
+html.dark [class*="PriceSummary"],
+html.dark [class*="priceSummary"],
+html.dark [class*="FareSummary"],
+html.dark [class*="fareSummary"] {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Result cards ─────────────────────────────────────── */
+html.dark [class*="FlightCard"],
+html.dark [class*="flightCard"],
+html.dark [class*="HotelCard"],
+html.dark [class*="hotelCard"],
+html.dark [class*="TrainCard"],
+html.dark [class*="trainCard"],
+html.dark [class*="BusCard"],
+html.dark [class*="busCard"],
+html.dark [class*="ResultCard"],
+html.dark [class*="resultCard"] {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Transits page ────────────────────────────────────── */
+html.dark [class*="Transit"],
+html.dark [class*="transit"] {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Vero chat widget ─────────────────────────────────── */
+html.dark .vero-speech-bubble,
+html.dark .vero-chat-panel,
+html.dark .vero-composer,
+html.dark .vero-message--bot,
+html.dark .vero-followup,
+html.dark .vero-page__followup,
+html.dark [class*="vero-chat"],
+html.dark [class*="VeroChat"],
+html.dark [class*="VeroChatWidget"],
+html.dark [class*="VeroFullScreen"] {
+  background-color: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+/* ── LetVeroFilter ────────────────────────────────────── */
+html.dark [class*="LetVeroFilter"],
+html.dark [class*="letVeroFilter"] {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── ActionButton ─────────────────────────────────────── */
+html.dark [class*="ActionButton"],
+html.dark [class*="actionButton"] {
+  background-color: var(--surface-muted) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Dropdown / Popup / Tooltip menus ─────────────────── */
+html.dark [class*="dropdown"],
+html.dark [class*="Dropdown"],
+html.dark [class*="popup"],
+html.dark [class*="Popup"],
+html.dark [class*="tooltip"],
+html.dark [class*="Tooltip"] {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Tables ───────────────────────────────────────────── */
+html.dark table,
+html.dark thead,
+html.dark tbody,
+html.dark tr,
+html.dark td,
+html.dark th {
+  background-color: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+html.dark tr:nth-child(even) {
+  background-color: var(--surface-muted);
+}
+
+/* ── Skeleton loaders ─────────────────────────────────── */
+html.dark [class*="skeleton"],
+html.dark [class*="Skeleton"] {
+  background-color: var(--surface-muted) !important;
+}
+
+/* ── Tags / Badges / Chips ────────────────────────────── */
+html.dark [class*="badge"]:not(.hero-section *),
+html.dark [class*="Badge"]:not(.hero-section *),
+html.dark [class*="tag"]:not(.hero-section *),
+html.dark [class*="Tag"]:not(.hero-section *),
+html.dark [class*="chip"]:not(.hero-section *),
+html.dark [class*="Chip"]:not(.hero-section *) {
+  background-color: var(--surface-muted) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Dividers ─────────────────────────────────────────── */
+html.dark hr,
+html.dark [class*="divider"],
+html.dark [class*="Divider"] {
+  border-color: var(--border-subtle) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Search Bar Dropdowns & Inputs Dark Mode System
+   ═══════════════════════════════════════════════════════ */
+
+/* Dropdown popups & modal sheets in Dark Mode */
+html.dark [data-airport-dropdown],
+html.dark .trip-type-dropdown > div,
+html.dark .special-fares-dropdown > div,
+html.dark .shared-flight-search-bar [class*="shadow-2xl"],
+html.dark .shared-flight-search-bar [class*="PANEL_SHEET"],
+html.dark .shared-flight-search-bar [class*="animate-dropdown-fade-up"] {
+  background-color: #0b1528 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Mobile dropdown headers & footers in Dark Mode */
+html.dark .shared-flight-search-bar .md\:hidden {
+  background-color: #0b1528 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .shared-flight-search-bar .md\:hidden h2,
+html.dark .shared-flight-search-bar .md\:hidden p {
+  color: #ffffff !important;
+}
+
+/* All headings, titles, labels, paragraphs in dropdowns */
+html.dark .shared-flight-search-bar [data-airport-dropdown] *,
+html.dark .shared-flight-search-bar [class*="shadow-2xl"] * {
+  color: #ffffff;
+}
+
+/* Specific text color overrides for dark mode dropdowns */
+html.dark .shared-flight-search-bar .text-gray-900,
+html.dark .shared-flight-search-bar .text-gray-800,
+html.dark .shared-flight-search-bar .text-gray-700,
+html.dark .shared-flight-search-bar .text-black {
+  color: #ffffff !important;
+}
+
+html.dark .shared-flight-search-bar .text-gray-600,
+html.dark .shared-flight-search-bar .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .shared-flight-search-bar .text-gray-400,
+html.dark .shared-flight-search-bar .text-gray-300 {
+  color: #64748b !important;
+}
+
+/* Dropdown text input boxes (e.g. Search airport / From where / Search city) */
+html.dark .shared-flight-search-bar [data-airport-dropdown] input,
+html.dark .shared-flight-search-bar input[type="text"] {
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+
+html.dark .shared-flight-search-bar [data-airport-dropdown] input::placeholder,
+html.dark .shared-flight-search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+html.dark .shared-flight-search-bar [data-airport-dropdown] [class*="border-gray-300"] {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Dropdown list items / Airport rows / City rows */
+html.dark .shared-flight-search-bar div[class*="hover:bg-gray-50"]:hover,
+html.dark .shared-flight-search-bar button[class*="hover:bg-gray-50"]:hover,
+html.dark .shared-flight-search-bar button[class*="hover:bg-gray-100"]:hover,
+html.dark .shared-flight-search-bar div[class*="hover:bg-gray-100"]:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .shared-flight-search-bar [class*="border-gray-50"],
+html.dark .shared-flight-search-bar [class*="border-gray-100"],
+html.dark .shared-flight-search-bar [class*="border-gray-200"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dropdown item icon thumbnail (Airplane / Hotel pin) */
+html.dark .shared-flight-search-bar [class*="md:bg-[#F3F4F6]"],
+html.dark .shared-flight-search-bar [class*="bg-gray-100"] {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* All icons (SVGs) in search bar inputs and dropdowns */
+html.dark .shared-flight-search-bar svg,
+html.dark .hero-section svg {
+  color: #ffffff !important;
+  stroke: currentColor;
+}
+
+html.dark .shared-flight-search-bar svg[fill="currentColor"],
+html.dark .hero-section svg[fill="currentColor"] {
+  fill: #ffffff !important;
+}
+
+/* Calendar in Dark Mode */
+html.dark .shared-flight-search-bar div[class*="rounded-full"][class*="text-gray-900"] {
+  color: #ffffff !important;
+}
+
+html.dark .shared-flight-search-bar div[class*="rounded-full"][class*="text-gray-300"] {
+  color: #475569 !important;
+}
+
+html.dark .shared-flight-search-bar div[class*="bg-gray-900"][class*="text-white"],
+html.dark .shared-flight-search-bar button[class*="bg-gray-900"][class*="text-white"] {
+  background-color: #f97211 !important;
+  color: #ffffff !important;
+}
+
+html.dark .shared-flight-search-bar div[class*="bg-gray-100"] {
+  background-color: rgba(249, 114, 17, 0.2) !important;
+  color: #ffffff !important;
+}
+
+html.dark .shared-flight-search-bar span[class*="border-gray-900"] {
+  border-color: #f97211 !important;
+  color: #ffffff !important;
+}
+
+/* Counter +/- buttons & Cabin class pills in Travelers dropdown */
+html.dark .shared-flight-search-bar button[class*="rounded-lg"][class*="border"],
+html.dark .shared-flight-search-bar button[class*="rounded-xl"][class*="border"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+html.dark .shared-flight-search-bar button[class*="border-gray-900"][class*="text-gray-900"] {
+  border-color: #f97211 !important;
+  background-color: rgba(249, 114, 17, 0.15) !important;
+  color: #f97211 !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Home Page Sections & Flight Deals Cards in Dark Mode
+   ═══════════════════════════════════════════════════════ */
+
+/* Guarantee all home section headings are white in dark mode */
+html.dark [class*="text-[#001438]"],
+html.dark [class*="text-navy"] {
+  color: #ffffff !important;
+}
+
+/* Flight Deals Today Cards in Dark Mode */
+html.dark [data-flight-deal-card] {
+  background-color: #111c2e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+html.dark [data-flight-deal-card]:hover {
+  border-color: rgba(249, 114, 17, 0.45) !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55), 0 0 20px rgba(249, 114, 17, 0.15) !important;
+}
+
+html.dark [data-flight-deal-card] .deal-city,
+html.dark [data-flight-deal-card] .deal-price {
+  color: #ffffff !important;
+}
+
+html.dark [data-flight-deal-card] .deal-route,
+html.dark [data-flight-deal-card] .deal-dest,
+html.dark [data-flight-deal-card] .deal-sub {
+  color: #94a3b8 !important;
+}
+
+html.dark [data-flight-deal-card] .deal-line {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+html.dark [data-flight-deal-card] .deal-btn {
+  background-color: rgba(249, 114, 17, 0.16) !important;
+  color: #f97211 !important;
+  border: 1px solid rgba(249, 114, 17, 0.35) !important;
+}
+
+html.dark [data-flight-deal-card] .deal-btn:hover {
+  background-color: #f97211 !important;
+  color: #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Loved by Explorers (Testimonials) Cards in Dark Mode
+   ═══════════════════════════════════════════════════════ */
+
+html.dark [data-testimonial-card] {
+  background-color: #111c2e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+html.dark [data-testimonial-card]:hover {
+  border-color: rgba(249, 114, 17, 0.4) !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55) !important;
+}
+
+html.dark [data-testimonial-card] .testimonial-avatar {
+  background-color: rgba(249, 114, 17, 0.2) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(249, 114, 17, 0.3) !important;
+}
+
+html.dark [data-testimonial-card] .testimonial-name {
+  color: #ffffff !important;
+}
+
+html.dark [data-testimonial-card] .testimonial-location {
+  color: #94a3b8 !important;
+}
+
+html.dark [data-testimonial-card] .testimonial-badge {
+  background-color: #162238 !important;
+  border-color: rgba(249, 114, 17, 0.3) !important;
+}
+
+html.dark [data-testimonial-card] .testimonial-text {
+  color: #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Start Your Travel Planning (TravelLinks) in Dark Mode
+   ═══════════════════════════════════════════════════════ */
+
+html.dark [data-travel-link-card] {
+  background-color: #111c2e !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+}
+
+html.dark [data-travel-link-card]:hover {
+  border-color: rgba(249, 114, 17, 0.35) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Preserve the light rounded background box behind the landmark icon in Dark Mode */
+html.dark [data-travel-link-icon] {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Flight Search Results Page in Dark Mode
+   ═══════════════════════════════════════════════════════ */
+
+html.dark [class*="fl-container"],
+html.dark [class*="fl-main-layout"],
+html.dark [class*="fl-results-list"],
+html.dark [class*="fl-flight-cards-container"],
+html.dark [class*="fl-row12"],
+html.dark [class*="fl-sidebar-column"],
+html.dark aside.fl-sidebar-column {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+html.dark article[id^="flight-card-"] {
+  background-color: #111c2e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark article[id^="flight-card-"] svg {
+  color: inherit;
+}
+
+
 

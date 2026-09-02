@@ -56,13 +56,37 @@ for _stream in (sys.stdout, sys.stderr):
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Path / env bootstrap
 # ---------------------------------------------------------------------------
 _SUPERVISOR_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SUPERVISOR_DIR.parent
+
+for _candidate_root in [_REPO_ROOT, _REPO_ROOT.parent, _SUPERVISOR_DIR]:
+    for _subdir in ["ITINERARY_AGENT", "general_agent", "Travel_Agent", "supervisor"]:
+        _path = _candidate_root / _subdir
+        if _path.exists() and str(_path) not in sys.path:
+            sys.path.insert(0, str(_path))
+    if str(_candidate_root) not in sys.path:
+        sys.path.insert(0, str(_candidate_root))
+
+# Compatibility patch for LangGraph JsonPlusSerializer dumps/loads mismatch
+try:
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+    if not hasattr(JsonPlusSerializer, "dumps"):
+        def _dumps(self, obj):
+            res = self.dumps_typed(obj)
+            return res[1] if isinstance(res, tuple) else res
+        def _loads(self, data):
+            if isinstance(data, tuple):
+                return self.loads_typed(data)
+            return self.loads_typed(("msgpack", data))
+        JsonPlusSerializer.dumps = _dumps
+        JsonPlusSerializer.loads = _loads
+except Exception:
+    pass
 
 load_dotenv(_SUPERVISOR_DIR / ".env")
 load_dotenv(_REPO_ROOT / "general_agent" / ".env", override=False)
@@ -466,6 +490,25 @@ class TravelerPayload(BaseModel):
     document_issue_country: str = "IN"
     passenger_type: int = 0
     middle_name: Optional[str] = None
+
+    @field_validator("passenger_type", mode="before")
+    @classmethod
+    def _coerce_passenger_type(cls, v: Any) -> int:
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in ("adult", "adults", "adt"):
+                return 0
+            if s in ("child", "children", "chd"):
+                return 1
+            if s in ("infant", "infants", "inf"):
+                return 2
+            try:
+                return int(s)
+            except ValueError:
+                return 0
+        if isinstance(v, (int, float)):
+            return int(v)
+        return 0
 
 
 class ContactPayload(BaseModel):
@@ -1833,7 +1876,7 @@ app.add_middleware(
     # Dev only: Vite on localhost or LAN IP (e.g. http://192.168.x.x:5173)
     allow_origin_regex=None
     if _is_prod
-    else r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    else r"https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -3266,6 +3309,7 @@ async def hotels_search(
     city_code: str = "",
     latitude: float | None = None,
     longitude: float | None = None,
+    sort_by: str = "recommended",
 ):
     """Manual hotel/homes search — LiteAPI live inventory (paginated, no samples).
 
@@ -3286,6 +3330,7 @@ async def hotels_search(
         city_code=city_code or None,
         latitude=latitude,
         longitude=longitude,
+        sort_by=sort_by,
     )
 
 
@@ -3666,7 +3711,7 @@ def trips_upsert(req: TripUpsertRequest, request: Request):
     from supervisor.ledger import upsert_trip
 
     if not configured():
-        raise HTTPException(status_code=503, detail="Database is not configured.")
+        return {"ok": False, "error": "db_unset"}  # graceful no-op when DB not configured
     device_id = _device_from(request)
     if not device_id:
         raise HTTPException(status_code=400, detail="Missing X-Itinero-Device header.")
@@ -3684,7 +3729,7 @@ def trips_delete(trip_id: str, request: Request):
     from supervisor.ledger import delete_trip
 
     if not configured():
-        raise HTTPException(status_code=503, detail="Database is not configured.")
+        return {"ok": False, "error": "db_unset"}  # graceful no-op
     device_id = _device_from(request)
     user = _auth_user(request)
     user_id = str(user["id"]) if user and user.get("id") else None

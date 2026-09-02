@@ -82,6 +82,22 @@
   object-fit: cover;
 }
 
+/* ---------------- Mobile Adjustments ---------------- */
+@media (max-width: 768px) {
+  .vero-floating-btn {
+    width: 48px;
+    height: 48px;
+    border-width: 2px;
+  }
+  .vero-speech-bubble {
+    display: none;
+  }
+  .vero-floating-widget {
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+  }
+}
+
 /* ---------------- Drawer Styles ---------------- */
 .vero-drawer {
   position: fixed;

@@ -46,11 +46,11 @@ export default function GuestDetailsForm({ value, onChange }) {
   };
 
   const toggleTag = (tag) => {
-    setSelectedTags((prev) => {
-      const next = prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag];
-      pushExtras(extraGuest, next, specialNote);
-      return next;
-    });
+    const next = selectedTags.includes(tag)
+      ? selectedTags.filter((t) => t !== tag)
+      : [...selectedTags, tag];
+    setSelectedTags(next);
+    pushExtras(extraGuest, next, specialNote);
   };
 
   return (
@@ -139,6 +139,22 @@ export default function GuestDetailsForm({ value, onChange }) {
               required
             />
           </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="guest-dob">
+              Date of Birth
+            </label>
+            <input
+              id="guest-dob"
+              type="date"
+              name="dob"
+              autoComplete="bday"
+              value={formData.dob || ""}
+              onChange={handleChange}
+              className={styles.input}
+              required
+            />
+          </div>
         </div>
 
         <label className={styles.checkboxLabel}>
@@ -214,6 +230,19 @@ export default function GuestDetailsForm({ value, onChange }) {
                 value={extraGuest.email}
                 onChange={(e) => {
                   const next = { ...extraGuest, email: e.target.value };
+                  setExtraGuest(next);
+                  pushExtras(next);
+                }}
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Date of Birth</label>
+              <input
+                type="date"
+                className={styles.input}
+                value={extraGuest.dob || ""}
+                onChange={(e) => {
+                  const next = { ...extraGuest, dob: e.target.value };
                   setExtraGuest(next);
                   pushExtras(next);
                 }}

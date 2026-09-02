@@ -80,14 +80,24 @@ export default function HotelAddonsPanel({
     const pkg = packages.find((p) => Number(p.package_id) === Number(next.esimPackageId));
     const addons = [];
     if (next.uberUsd > 0) {
-      addons.push({ type: "uber", valueUsd: next.uberUsd });
+      addons.push({
+        type: "uber",
+        valueUsd: Number(next.uberUsd),
+        priceUsd: Number(next.uberUsd),
+        title: `Uber ride credit ($${next.uberUsd})`,
+      });
     }
     if (next.esimPackageId && pkg) {
+      const priceVal = Number(pkg.calculated_price || pkg.price || 0);
       addons.push({
         type: "esim",
         packageId: pkg.package_id,
         destinationCode: countryCode,
-        calculatedPrice: pkg.calculated_price,
+        calculatedPrice: priceVal,
+        priceUsd: priceVal,
+        valueUsd: priceVal,
+        name: pkg.name || `${pkg.validity_days || ""} Days eSIM`,
+        validityDays: pkg.validity_days,
         startDate: esimStart,
         endDate: esimEnd,
       });

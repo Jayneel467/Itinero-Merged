@@ -8,8 +8,8 @@ function FilterAccordion({ title, children, defaultOpen = false }) {
   return (
     <div className={styles["filter-section"]}>
       <div className={styles["filter-header"]} onClick={() => setIsOpen(!isOpen)}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#001439" }}>{title}</span>
-        {isOpen ? <ChevronUp size={16} color="#888" /> : <ChevronDown size={16} color="#888" />}
+        <span className="text-[13px] font-bold text-[#001439] dark:text-white">{title}</span>
+        {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
       </div>
       {isOpen && <div style={{ marginTop: 15 }}>{children}</div>}
     </div>
@@ -69,18 +69,18 @@ export default function SidebarFilters({
 
   return (
     <div className={styles["sidebar-card"]}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: "#001439", fontWeight: 700 }}>Filters</h2>
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="m-0 text-lg text-[#001439] dark:text-white font-bold">Filters</h2>
         <span className={styles["filter-header-clear"]} onClick={handleClearAll} style={{ cursor: "pointer" }}>
           Clear All
         </span>
       </div>
 
       {maxBound > minBound ? (
-        <div className={styles["filter-section"]} style={{ borderTop: "1px solid #EBEBEB", paddingTop: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#001439" }}>Price Range</span>
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#001439" }}>
+        <div className={`${styles["filter-section"]} border-t border-gray-200 dark:border-white/10 pt-5`}>
+          <div className="flex justify-between items-center mb-3.5">
+            <span className="font-bold text-[13px] text-[#001439] dark:text-white">Price Range</span>
+            <span className="font-bold text-[13px] text-[#001439] dark:text-white">
               {fmt(minPrice)} - {fmt(maxPrice)}
             </span>
           </div>
@@ -103,7 +103,7 @@ export default function SidebarFilters({
           </div>
         </div>
       ) : (
-        <p style={{ fontSize: 12, color: "#888", marginTop: 8 }}>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
           Price filters appear after live fares load.
         </p>
       )}
@@ -119,7 +119,7 @@ export default function SidebarFilters({
           />
         </div>
         {visibleAirlines.length === 0 && (
-          <p style={{ fontSize: 12, color: "#888" }}>No airlines in current results.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">No airlines in current results.</p>
         )}
         {visibleAirlines.map((airline) => (
           <div key={airline.name} className={styles["filter-checkbox-item"]}>
@@ -216,23 +216,15 @@ export default function SidebarFilters({
 
       <FilterAccordion title="Duration">
         <div style={{ marginTop: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-            <span style={{ fontSize: 13, color: "#666", fontWeight: 600 }}>
+          <div className="flex justify-between mb-2.5">
+            <span className="text-[13px] text-gray-500 dark:text-gray-400 font-semibold">
               {duration == null ? "Any duration" : `Up to ${duration} hours`}
             </span>
             {duration != null && (
               <button
                 type="button"
                 onClick={() => emit({ maxDurationHours: null })}
-                style={{
-                  border: "none",
-                  background: "none",
-                  color: "#F97211",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  padding: 0,
-                }}
+                className="border-0 bg-transparent text-[#F97211] text-xs font-bold cursor-pointer p-0"
               >
                 Clear
               </button>
@@ -250,14 +242,15 @@ export default function SidebarFilters({
         </div>
       </FilterAccordion>
 
-      <div style={{ paddingTop: 12, borderTop: "1px solid #EBEBEB", marginTop: 12 }}>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase" }}>
+      <div className="pt-3 border-t border-gray-200 dark:border-white/10 mt-3">
+        <p className="m-0 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
           Refundable Flights
         </p>
-        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#B7BFCC" }}>
+        <p className="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
           Refund rules are confirmed with the airline at payment - not filterable from the live feed.
         </p>
       </div>
     </div>
   );
 }
+

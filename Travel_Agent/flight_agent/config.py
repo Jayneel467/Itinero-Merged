@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Environment settings for the Flight Agent."""
 
 from functools import lru_cache

@@ -447,6 +447,24 @@ def passenger_age_years(birthday: str | None, on_date: str | None) -> float | No
     return float(years)
 
 
+def _parse_passenger_type(val: Any) -> int:
+    if isinstance(val, str):
+        s = val.strip().lower()
+        if s in ("adult", "adults", "adt"):
+            return 0
+        if s in ("child", "children", "chd"):
+            return 1
+        if s in ("infant", "infants", "inf"):
+            return 2
+        try:
+            return int(s)
+        except ValueError:
+            return 0
+    if isinstance(val, (int, float)):
+        return int(val)
+    return 0
+
+
 def validate_passenger_dob_for_slot(
     draft: dict[str, Any],
     slot: dict[str, Any],
@@ -459,7 +477,7 @@ def validate_passenger_dob_for_slot(
     age = passenger_age_years(birthday, travel_date)
     if age is None:
         return "Date of birth must be YYYY-MM-DD."
-    ptype = int(slot.get("passenger_type", 0))
+    ptype = _parse_passenger_type(slot.get("passenger_type", 0))
     label = slot.get("label", "Passenger")
     if ptype == 0 and age < 12:
         return f"{label} is booked as an **adult** — age must be **12+** on travel date."
@@ -471,7 +489,7 @@ def validate_passenger_dob_for_slot(
 
 
 def _document_label_for_slot(requirements: dict[str, Any], slot: dict[str, Any]) -> str:
-    ptype = int(slot.get("passenger_type", 0))
+    ptype = _parse_passenger_type(slot.get("passenger_type", 0))
     is_domestic = requirements.get("route_type") == "domestic"
     if ptype == 2:
         if is_domestic:
@@ -487,7 +505,7 @@ def _document_label_for_slot(requirements: dict[str, Any], slot: dict[str, Any])
 
 
 def _dob_label_for_slot(slot: dict[str, Any]) -> str:
-    ptype = int(slot.get("passenger_type", 0))
+    ptype = _parse_passenger_type(slot.get("passenger_type", 0))
     if ptype == 1:
         return "date of birth (YYYY-MM-DD) — child age 2–11 on travel date"
     if ptype == 2:
@@ -497,7 +515,7 @@ def _dob_label_for_slot(slot: dict[str, Any]) -> str:
 
 def _required_fields_for_slot(requirements: dict[str, Any], slot: dict[str, Any]) -> list[dict[str, Any]]:
     """Fields to collect per passenger type — aligned with LiteAPI prebook passengers[]."""
-    ptype = int(slot.get("passenger_type", 0))
+    ptype = _parse_passenger_type(slot.get("passenger_type", 0))
     doc_label = _document_label_for_slot(requirements, slot)
     dob_label = _dob_label_for_slot(slot)
     fields: list[dict[str, Any]] = [
@@ -654,7 +672,7 @@ def next_traveler_details_prompt(session: SessionContext, default_country: str =
     lines = "\n".join(f"- **{label}**" for label in labels)
 
     contact_note = ""
-    ptype = int(slot.get("passenger_type", 0))
+    ptype = _parse_passenger_type(slot.get("passenger_type", 0))
     if ptype == 1:
         contact_note = "\n\n*Children (2–11): no email or phone needed — name, DOB, gender, and ID only.*"
     elif ptype == 2:

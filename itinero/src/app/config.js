@@ -6,23 +6,33 @@
  * Ask Vero chat → VERO_API_URL (general_agent.run - LLM orchestrator).
  */
 
+function isLocalhost(url) {
+  return /^(https?:\/\/)?(127\.0\.0\.1|localhost)(:\d+)?(\/.*)?$/i.test(url);
+}
+
 function resolveApiBaseUrl() {
   const fromEnv = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
-  // Dev: use Vite proxy (/api → :8000) to avoid CORS when port is 5174, etc.
-  if (import.meta.env.DEV) {
-    if (!fromEnv || /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(fromEnv)) {
+  if (fromEnv) {
+    if (import.meta.env.PROD && isLocalhost(fromEnv)) {
       return "";
     }
+    return fromEnv;
   }
-  if (fromEnv) return fromEnv;
-  return "http://127.0.0.1:8000";
+  return "";
 }
 
 function resolveVeroApiBaseUrl() {
   const fromEnv = (import.meta.env.VITE_VERO_API_URL || "").trim().replace(/\/$/, "");
-  if (fromEnv) return fromEnv;
-  // Default: Vero orchestrator (general_agent.run) on 8001
-  return "http://127.0.0.1:8001";
+  if (fromEnv) {
+    if (import.meta.env.PROD && isLocalhost(fromEnv)) {
+      return "";
+    }
+    return fromEnv;
+  }
+  if (import.meta.env.DEV) {
+    return "http://127.0.0.1:8001";
+  }
+  return "";
 }
 
 export const APP_CONFIG = {
@@ -35,7 +45,7 @@ export const APP_CONFIG = {
   VERO_API_BASE_URL: resolveVeroApiBaseUrl(),
 
   /** Base path for client-side routing (matches vite.config.js `base`) */
-  BASE_PATH: "/itinero",
+  BASE_PATH: (import.meta.env.VITE_BASE_PATH || "/itinero").trim().replace(/\/$/, "") || "/itinero",
 
   DEFAULT_CURRENCY: "INR",
   DEFAULT_LOCALE: "en-IN",

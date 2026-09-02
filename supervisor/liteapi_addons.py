@@ -81,7 +81,15 @@ def normalize_addons(raw: list[Any] | None) -> list[dict[str, Any]]:
             row = esim_addon(
                 package_id=int(item.get("packageId") or item.get("package_id") or 0),
                 destination_code=str(item.get("destinationCode") or item.get("destination_code") or ""),
-                calculated_price=float(item.get("calculatedPrice") or item.get("value") or 0),
+                calculated_price=float(
+                    item.get("calculatedPrice")
+                    or item.get("calculated_price")
+                    or item.get("priceUsd")
+                    or item.get("valueUsd")
+                    or item.get("value")
+                    or item.get("price")
+                    or 0
+                ),
                 start_date=str(item.get("startDate") or item.get("start_date") or ""),
                 end_date=str(item.get("endDate") or item.get("end_date") or ""),
             )

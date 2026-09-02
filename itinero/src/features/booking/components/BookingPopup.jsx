@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { X, CreditCard, CheckCircle2, ExternalLink, Download } from "lucide-react";
 import { scrubProviderCopy } from "@/utils/scrubProviderCopy";
 import {
   readLocalStripePublishableKey,
@@ -151,8 +152,15 @@ function resolveStripePublishableKey(raw) {
 
 async function withResolvedStripeKeys(pb) {
   if (!pb || typeof pb !== "object") return pb;
-  const existing = resolveStripePublishableKey(pb.publishable_key);
-  if (existing) return { ...pb, publishable_key: existing };
+  const localEnvKey = String(import.meta.env?.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+  const hasPk = pb.publishable_key && String(pb.publishable_key).trim().startsWith("pk_");
+  const isLocalKey = hasPk && String(pb.publishable_key).trim() === localEnvKey;
+
+  // If it has a key that is NOT our local env key, trust it.
+  if (hasPk && !isLocalKey) {
+    return pb;
+  }
+  // Otherwise, if it has a client secret, we must fetch the real LiteAPI key.
   if (!pb.client_secret) return pb;
   try {
     const pk = await resolveLiteApiPublishableKey(pb);
@@ -318,6 +326,15 @@ export default function BookingPopup({
   const [stripeBlocked, setStripeBlocked] = useState(false);
   const [hold, setHold] = useState(null);
   const [booking, setBooking] = useState(null);
+
+  const visibleSteps = useMemo(() => {
+    const hasExtras = step === "extras" || servicesAvailable(hold);
+    return BOOKING_STEPS.filter((s) => {
+      if (s.id === "extras") return hasExtras || step === "extras";
+      if (s.id === "done") return step === "done";
+      return s.id !== "done";
+    });
+  }, [hold, step]);
   const [pdfError, setPdfError] = useState("");
   const [selectedExtras, setSelectedExtras] = useState([]);
   const [voucherCode, setVoucherCode] = useState("");
@@ -404,12 +421,25 @@ export default function BookingPopup({
     (async () => {
       try {
         setCardReady(false);
-        const pk =
-          resolveStripePublishableKey(pkRaw) ||
-          (await resolveLiteApiPublishableKey({
-            publishable_key: pkRaw,
-            sdk_public_key: hold?.sdk_public_key,
-          }));
+        let pk = null;
+        if (hold?.client_secret) {
+          // If this is a LiteAPI hold, we MUST use LiteAPI's publishable key.
+          const localEnvKey = String(import.meta.env?.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+          const hasPk = pkRaw && String(pkRaw).trim().startsWith("pk_");
+          const isLocalKey = hasPk && String(pkRaw).trim() === localEnvKey;
+
+          if (hasPk && !isLocalKey) {
+            pk = pkRaw;
+          } else {
+            pk = await resolveLiteApiPublishableKey({
+              publishable_key: pkRaw,
+              sdk_public_key: hold?.sdk_public_key,
+            });
+          }
+        } else {
+          // Fallback for non-LiteAPI payments (e.g., local mock/test).
+          pk = resolveStripePublishableKey(pkRaw);
+        }
         if (cancelled) return;
         if (!pk) {
           setApiError("Card checkout could not load. Try again in a moment.");
@@ -432,6 +462,7 @@ export default function BookingPopup({
         // Clear stale Stripe iframe / "Too Many Requests" text from prior mounts.
         cardMountRef.current.innerHTML = "";
 
+        console.log("Loading Stripe with key:", pk, "pkRaw was:", pkRaw);
         const stripe = Stripe(pk);
         const elements = stripe.elements();
         card = elements.create("card", {
@@ -723,7 +754,7 @@ export default function BookingPopup({
       }
 
       const rawPb = prebookRes.prebook || {};
-      const pb = withResolvedStripeKeys({
+      const pb = await withResolvedStripeKeys({
         ...rawPb,
         allow_mock_payment:
           rawPb.allow_mock_payment === true ||
@@ -767,9 +798,20 @@ export default function BookingPopup({
     const list = Array.isArray(selections) ? selections : [];
     setSelectedExtras(list);
 
-    if (!list.length) {
+    // Filter only real LiteAPI external ancillary service IDs to send to backend API
+    const liteapiServices = list.filter(
+      (item) => item?.service_id && !String(item.service_id).startsWith("seat_")
+    );
+
+    if (!liteapiServices.length) {
+      // All selected extras are client-side seat preferences — save locally and proceed directly to payment
       try {
-        await openPaymentFromHold(hold, { payment_ready: true });
+        const pb = {
+          ...hold,
+          selected_services: list,
+        };
+        setHold(pb);
+        await openPaymentFromHold(pb, { payment_ready: true });
       } catch (err) {
         setApiError(softenBookingError(err?.message || "Could not open payment."));
       }
@@ -783,7 +825,7 @@ export default function BookingPopup({
       const res = await flightService.attachServices({
         session_id: sessionId,
         prebook_id: hold.prebook_id,
-        selected_services: list,
+        selected_services: liteapiServices,
       });
       if (!res?.ok && !res?.skipped) {
         throw new Error(
@@ -793,6 +835,7 @@ export default function BookingPopup({
       const pb = await withResolvedStripeKeys({
         ...hold,
         ...(res.prebook || {}),
+        selected_services: list,
         allow_mock_payment:
           res?.prebook?.allow_mock_payment === true ||
           res?.payment_ready === true ||
@@ -805,7 +848,17 @@ export default function BookingPopup({
       setStatusMsg("");
       await openPaymentFromHold(pb, res);
     } catch (err) {
-      setApiError(softenBookingError(err?.message || "Could not attach extras."));
+      // If attach services fails, don't block user — proceed with saved seats
+      try {
+        const pb = {
+          ...hold,
+          selected_services: list,
+        };
+        setHold(pb);
+        await openPaymentFromHold(pb, { payment_ready: true });
+      } catch {
+        setApiError(softenBookingError(err?.message || "Could not attach extras."));
+      }
       setStatusMsg("");
     } finally {
       setSubmitting(false);
@@ -836,6 +889,7 @@ export default function BookingPopup({
     setStatusMsg(useMockCard ? "Recording demo payment…" : "Processing card…");
     try {
       let mockPayment = false;
+      let payRef = hold.transaction_id || hold.prebook_id || `pay_${Date.now()}`;
       if (useMockCard) {
         const digits = String(mockCard.number || "").replace(/\D/g, "");
         if (digits.length < 16) {
@@ -869,6 +923,7 @@ export default function BookingPopup({
           throw new Error("Enter a 3-4 digit CVC.");
         }
         mockPayment = true;
+        payRef = `mock_${Date.now()}`;
       } else if (stripeRef.current && cardRef.current && hold.client_secret) {
         const result = await stripeRef.current.confirmCardPayment(hold.client_secret, {
           payment_method: { card: cardRef.current },
@@ -883,6 +938,7 @@ export default function BookingPopup({
           }
           throw new Error(msg);
         }
+        payRef = result.paymentIntent?.id || hold.transaction_id || hold.prebook_id || `pay_${Date.now()}`;
       } else {
         throw new Error(
           "Card form isn’t ready yet. Wait for it to load, or tap Retry card form."
@@ -904,8 +960,9 @@ export default function BookingPopup({
       }
 
       const lite = done.booking || done;
-      const payRef = hold.transaction_id || lite.booking_id || hold.prebook_id;
-      const paidAmount = Number(lite.price ?? hold.price ?? priceNum) || priceNum;
+      const paidAmount =
+        Number(lite.price ?? hold.price ?? calculatedCombinedPrice ?? priceNum) ||
+        (calculatedCombinedPrice || priceNum);
       const paidCurrency = String(lite.currency || hold.currency || currency || "INR").toUpperCase();
       const bookingRef =
         lite.airline_pnr ||
@@ -954,7 +1011,7 @@ export default function BookingPopup({
       });
 
       // Same full confirmation page as passenger checkout - not the popup step.
-      const base = String(import.meta.env.BASE_URL || "/itinero/").replace(/\/?$/, "/");
+      const base = String(import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
       window.location.assign(`${base}flights/booking-success`);
       return;
     } catch (err) {
@@ -999,12 +1056,48 @@ export default function BookingPopup({
     }
   }
 
+  const isRoundTrip = Boolean(
+    flight?.selectedReturn ||
+      flight?.returnSummary ||
+      (Array.isArray(flight?.returnSegments) && flight.returnSegments.length > 0)
+  );
+
+  const outboundFlight = flight?.selectedOutbound || flight;
+  const returnFlight =
+    flight?.selectedReturn ||
+    (flight?.returnSummary
+      ? {
+          airline: flight.airline,
+          flightNumber: flight.flightNumber,
+          cabin: flight.cabin,
+          departure: flight.returnSummary.departure,
+          arrival: flight.returnSummary.arrival,
+          duration: flight.returnSummary.duration,
+          stops: flight.returnSummary.stops,
+          price: flight.selectedReturn?.price || null,
+        }
+      : null);
+
+  const outboundPrice = Number(outboundFlight?.price || 0);
+  const returnPrice = Number(returnFlight?.price || 0);
+  const calculatedCombinedPrice =
+    isRoundTrip && returnPrice > 0 && !flight?.isRoundTripPackage
+      ? outboundPrice + returnPrice
+      : Number(flight?.price || 0);
+
   const priceNum =
-    hold?.price != null ? Number(hold.price) : Number(flight.price || 0);
+    hold?.price != null
+      ? Number(hold.price)
+      : calculatedCombinedPrice || Number(flight.price || 0);
   const currency = (hold?.currency || flight.currencyCode || "INR").toUpperCase();
   const currencySym = flight.currency || (currency === "INR" ? "₹" : `${currency} `);
   const priceLabel = `${currencySym}${priceNum.toLocaleString("en-IN")}`;
-  const baseFare = flight.price_base != null ? Number(flight.price_base) : null;
+  const baseFare =
+    flight.price_base != null
+      ? Number(flight.price_base)
+      : isRoundTrip && returnPrice > 0
+        ? calculatedCombinedPrice
+        : null;
   const taxes =
     flight.price_taxes != null || flight.price_fees != null
       ? Number(flight.price_taxes || 0) + Number(flight.price_fees || 0)
@@ -1034,7 +1127,7 @@ export default function BookingPopup({
     step === "form"
       ? "Passenger details"
       : step === "review"
-        ? "Review your booking"
+        ? isRoundTrip ? "Review round-trip itinerary" : "Review your booking"
         : step === "extras"
           ? "Seats & bags"
           : step === "payment"
@@ -1045,21 +1138,17 @@ export default function BookingPopup({
     step === "form"
       ? "Names must match the passport or ID you’ll fly with."
       : step === "review"
-        ? "Confirm the itinerary, then we’ll hold this fare."
+        ? isRoundTrip
+          ? "Confirm both departing & return flights, then we’ll hold this fare."
+          : "Confirm the itinerary, then we’ll hold this fare."
         : step === "extras"
           ? "Optional add-ons before you pay."
           : step === "payment"
-            ? "Secure checkout - fare held until you finish."
+            ? isRoundTrip
+              ? `Secure checkout for round trip · ${priceLabel}`
+              : "Secure checkout - fare held until you finish."
             : "You’re set. Keep your reference handy.";
 
-  const visibleSteps = useMemo(() => {
-    const hasExtras = step === "extras" || servicesAvailable(hold);
-    return BOOKING_STEPS.filter((s) => {
-      if (s.id === "extras") return hasExtras || step === "extras";
-      if (s.id === "done") return step === "done";
-      return s.id !== "done";
-    });
-  }, [hold, step]);
 
   const stepIndex = Math.max(
     0,
@@ -1155,6 +1244,102 @@ export default function BookingPopup({
 
           {step === "form" && (
             <>
+              {/* 1. Departing Flight Card */}
+              <div className={styles.reviewFlight}>
+                {isRoundTrip && (
+                  <div className={styles.legBadge}>
+                    <span className={styles.legBadgeNumber}>1</span>
+                    <span>Departing Flight</span>
+                    {outboundFlight.departure?.date ? (
+                      <span className={styles.legDate}>· {outboundFlight.departure.date}</span>
+                    ) : null}
+                  </div>
+                )}
+                <div className={styles.reviewAirline}>
+                  {outboundFlight.airline?.logo ? (
+                    <img src={outboundFlight.airline.logo} alt="" />
+                  ) : (
+                    <span>{(outboundFlight.airline?.name || "FL").slice(0, 2)}</span>
+                  )}
+                  <div>
+                    <strong>{outboundFlight.airline?.name || "Flight"}</strong>
+                    <em>{outboundFlight.flightNumber || ""}</em>
+                  </div>
+                  <span className={styles.cabinChip}>
+                    {outboundFlight.cabin || "Economy"}
+                  </span>
+                </div>
+                <div className={styles.reviewSchedule}>
+                  <div>
+                    <strong>{outboundFlight.departure?.time || "--:--"}</strong>
+                    <span>{outboundFlight.departure?.airport || origin || "-"}</span>
+                  </div>
+                  <div className={styles.reviewMid}>
+                    <span>{outboundFlight.duration || "-"}</span>
+                    <i />
+                    <span>{outboundFlight.stops || "Direct"}</span>
+                  </div>
+                  <div>
+                    <strong>{outboundFlight.arrival?.time || "--:--"}</strong>
+                    <span>{outboundFlight.arrival?.airport || destination || "-"}</span>
+                  </div>
+                </div>
+                <p className={styles.reviewMeta}>
+                  {outboundFlight.departure?.date || ""}
+                  {passengerPlan.length
+                    ? ` · ${passengerPlan.length} traveller${passengerPlan.length > 1 ? "s" : ""}`
+                    : ""}
+                </p>
+              </div>
+
+              {/* 2. Return Flight Card (When Round Trip) */}
+              {isRoundTrip && returnFlight && (
+                <div className={`${styles.reviewFlight} ${styles.returnReviewFlight}`}>
+                  <div className={styles.legBadge}>
+                    <span className={`${styles.legBadgeNumber} ${styles.returnLegBadgeNumber}`}>2</span>
+                    <span>Return Flight</span>
+                    {returnFlight.departure?.date ? (
+                      <span className={styles.legDate}>· {returnFlight.departure.date}</span>
+                    ) : null}
+                  </div>
+                  <div className={styles.reviewAirline}>
+                    {returnFlight.airline?.logo ? (
+                      <img src={returnFlight.airline.logo} alt="" />
+                    ) : (
+                      <span>{(returnFlight.airline?.name || "FL").slice(0, 2)}</span>
+                    )}
+                    <div>
+                      <strong>{returnFlight.airline?.name || "Flight"}</strong>
+                      <em>{returnFlight.flightNumber || ""}</em>
+                    </div>
+                    <span className={styles.cabinChip}>
+                      {returnFlight.cabin || "Economy"}
+                    </span>
+                  </div>
+                  <div className={styles.reviewSchedule}>
+                    <div>
+                      <strong>{returnFlight.departure?.time || "--:--"}</strong>
+                      <span>{returnFlight.departure?.airport || destination || "-"}</span>
+                    </div>
+                    <div className={styles.reviewMid}>
+                      <span>{returnFlight.duration || "-"}</span>
+                      <i />
+                      <span>{returnFlight.stops || "Direct"}</span>
+                    </div>
+                    <div>
+                      <strong>{returnFlight.arrival?.time || "--:--"}</strong>
+                      <span>{returnFlight.arrival?.airport || origin || "-"}</span>
+                    </div>
+                  </div>
+                  <p className={styles.reviewMeta}>
+                    {returnFlight.departure?.date || ""}
+                    {passengerPlan.length
+                      ? ` · ${passengerPlan.length} traveller${passengerPlan.length > 1 ? "s" : ""}`
+                      : ""}
+                  </p>
+                </div>
+              )}
+
               {passengers.map((p, idx) => {
                 const te = errors.travelers?.[idx] || {};
                 return (
@@ -1321,43 +1506,103 @@ export default function BookingPopup({
 
           {step === "review" && (
             <div className={styles.review}>
+              {/* Outbound Leg Card */}
               <div className={styles.reviewFlight}>
+                {isRoundTrip && (
+                  <div className={styles.legBadge}>
+                    <span className={styles.legBadgeNumber}>1</span>
+                    <span>Departing Flight</span>
+                    {outboundFlight.departure?.date ? (
+                      <span className={styles.legDate}>· {outboundFlight.departure.date}</span>
+                    ) : null}
+                  </div>
+                )}
                 <div className={styles.reviewAirline}>
-                  {flight.airline?.logo ? (
-                    <img src={flight.airline.logo} alt="" />
+                  {outboundFlight.airline?.logo ? (
+                    <img src={outboundFlight.airline.logo} alt="" />
                   ) : (
-                    <span>{(flight.airline?.name || "FL").slice(0, 2)}</span>
+                    <span>{(outboundFlight.airline?.name || "FL").slice(0, 2)}</span>
                   )}
                   <div>
-                    <strong>{flight.airline?.name || "Flight"}</strong>
-                    <em>{flight.flightNumber || ""}</em>
+                    <strong>{outboundFlight.airline?.name || "Flight"}</strong>
+                    <em>{outboundFlight.flightNumber || ""}</em>
                   </div>
                   <span className={styles.cabinChip}>
-                    {flight.cabin || "Economy"}
+                    {outboundFlight.cabin || "Economy"}
                   </span>
                 </div>
                 <div className={styles.reviewSchedule}>
                   <div>
-                    <strong>{flight.departure?.time || "--:--"}</strong>
-                    <span>{flight.departure?.airport || origin || "-"}</span>
+                    <strong>{outboundFlight.departure?.time || "--:--"}</strong>
+                    <span>{outboundFlight.departure?.airport || origin || "-"}</span>
                   </div>
                   <div className={styles.reviewMid}>
-                    <span>{flight.duration || "-"}</span>
+                    <span>{outboundFlight.duration || "-"}</span>
                     <i />
-                    <span>{flight.stops || "Direct"}</span>
+                    <span>{outboundFlight.stops || "Direct"}</span>
                   </div>
                   <div>
-                    <strong>{flight.arrival?.time || "--:--"}</strong>
-                    <span>{flight.arrival?.airport || destination || "-"}</span>
+                    <strong>{outboundFlight.arrival?.time || "--:--"}</strong>
+                    <span>{outboundFlight.arrival?.airport || destination || "-"}</span>
                   </div>
                 </div>
-                <p className={styles.reviewMeta}>
-                  {flight.departure?.date || ""}
-                  {passengerPlan.length
-                    ? ` · ${passengerPlan.length} traveller${passengerPlan.length > 1 ? "s" : ""}`
-                    : ""}
-                </p>
+                {!isRoundTrip && (
+                  <p className={styles.reviewMeta}>
+                    {outboundFlight.departure?.date || ""}
+                    {passengerPlan.length
+                      ? ` · ${passengerPlan.length} traveller${passengerPlan.length > 1 ? "s" : ""}`
+                      : ""}
+                  </p>
+                )}
               </div>
+
+              {/* Return Leg Card (When Round Trip) */}
+              {isRoundTrip && returnFlight && (
+                <div className={`${styles.reviewFlight} ${styles.returnReviewFlight}`}>
+                  <div className={styles.legBadge}>
+                    <span className={`${styles.legBadgeNumber} ${styles.returnLegBadgeNumber}`}>2</span>
+                    <span>Return Flight</span>
+                    {returnFlight.departure?.date ? (
+                      <span className={styles.legDate}>· {returnFlight.departure.date}</span>
+                    ) : null}
+                  </div>
+                  <div className={styles.reviewAirline}>
+                    {returnFlight.airline?.logo ? (
+                      <img src={returnFlight.airline.logo} alt="" />
+                    ) : (
+                      <span>{(returnFlight.airline?.name || "FL").slice(0, 2)}</span>
+                    )}
+                    <div>
+                      <strong>{returnFlight.airline?.name || "Flight"}</strong>
+                      <em>{returnFlight.flightNumber || ""}</em>
+                    </div>
+                    <span className={styles.cabinChip}>
+                      {returnFlight.cabin || "Economy"}
+                    </span>
+                  </div>
+                  <div className={styles.reviewSchedule}>
+                    <div>
+                      <strong>{returnFlight.departure?.time || "--:--"}</strong>
+                      <span>{returnFlight.departure?.airport || destination || "-"}</span>
+                    </div>
+                    <div className={styles.reviewMid}>
+                      <span>{returnFlight.duration || "-"}</span>
+                      <i />
+                      <span>{returnFlight.stops || "Direct"}</span>
+                    </div>
+                    <div>
+                      <strong>{returnFlight.arrival?.time || "--:--"}</strong>
+                      <span>{returnFlight.arrival?.airport || origin || "-"}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isRoundTrip && (
+                <div className={styles.tripMetaPill}>
+                  <span>Round trip ({passengerPlan.length} {passengerPlan.length > 1 ? "travellers" : "traveller"})</span>
+                </div>
+              )}
 
               <div className={styles.reviewBlock}>
                 <div className={styles.reviewBlockHead}>
@@ -1407,14 +1652,33 @@ export default function BookingPopup({
 
               <div className={`${styles.reviewBlock} ${styles.fareBlock}`}>
                 <h4>Fare summary</h4>
-                {baseFare != null && (
-                  <div className={styles.fareRow}>
-                    <span>Base fare</span>
-                    <span>
-                      {currencySym}
-                      {baseFare.toLocaleString("en-IN")}
-                    </span>
-                  </div>
+                {isRoundTrip && outboundPrice > 0 && returnPrice > 0 ? (
+                  <>
+                    <div className={styles.fareRow}>
+                      <span>Departing flight ({outboundFlight.airline?.name || "Outbound"})</span>
+                      <span>
+                        {currencySym}
+                        {outboundPrice.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <div className={styles.fareRow}>
+                      <span>Return flight ({returnFlight.airline?.name || "Return"})</span>
+                      <span>
+                        {currencySym}
+                        {returnPrice.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  baseFare != null && (
+                    <div className={styles.fareRow}>
+                      <span>{isRoundTrip ? "Round-trip base fare" : "Base fare"}</span>
+                      <span>
+                        {currencySym}
+                        {baseFare.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  )
                 )}
                 {taxes != null && taxes > 0 && (
                   <div className={styles.fareRow}>
@@ -1439,10 +1703,12 @@ export default function BookingPopup({
           {step === "extras" && (
             <FlightExtrasStep
               services={hold?.services || {}}
+              flight={flight}
+              isRoundTrip={isRoundTrip}
               passengerLabels={passengerPlan.map((p) => p.label)}
               currency={currency}
               currencySym={currencySym}
-              basePrice={priceNum}
+              basePrice={calculatedCombinedPrice || priceNum}
               submitting={submitting}
               onSkip={() => finishExtras([])}
               onContinue={(sels) => finishExtras(sels)}
@@ -1453,7 +1719,7 @@ export default function BookingPopup({
             <div className={styles.payment}>
               <div className={styles.payTotal}>
                 <div>
-                  <span>Total Amount</span>
+                  <span>Total Amount {isRoundTrip ? "(Round Trip)" : ""}</span>
                   <strong>{priceLabel}</strong>
                 </div>
                 <button

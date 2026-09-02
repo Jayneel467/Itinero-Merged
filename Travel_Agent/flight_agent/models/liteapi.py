@@ -1,3 +1,4 @@
+from __future__ import annotations
 """LiteAPI request models (responses are normalized as dicts in FlightService)."""
 
 from enum import Enum

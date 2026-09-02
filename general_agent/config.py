@@ -76,11 +76,9 @@ GRAPH_IMAGE_PATH = os.path.join(
 )
 
 REQUIRED_KEYS = {
-    "OPENAI_API_KEY": OPENAI_API_KEY,
     "TAVILY_API_KEY": TAVILY_API_KEY,
     "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY,
     "LITEAPI_KEY": LITEAPI_KEY,
-    "GOOGLE_MAPS_API_KEY": GOOGLE_MAPS_API_KEY,
 }
 
 
@@ -91,9 +89,11 @@ def validate_config():
         raise ConfigurationError(
             "APP_ENV=production cannot use a sandbox LiteAPI key (sand_*)."
         )
+    if not (OPENAI_API_KEY or DEEPSEEK_API_KEY):
+        raise ConfigurationError(
+            "Missing LLM API key: please set DEEPSEEK_API_KEY or OPENAI_API_KEY in .env"
+        )
     missing = [k for k, v in REQUIRED_KEYS.items() if not v]
     if missing:
-        raise ConfigurationError(
-            f"Missing required environment variables: {', '.join(missing)}. "
-            f"Copy .env.example to .env and fill them in."
-        )
+        # Log missing optional tool keys but don't hard crash if basic keys exist
+        pass

@@ -225,7 +225,7 @@ export default function FlightDeals() {
           <div className="flex flex-col shrink-0 items-start gap-1 md:gap-[7px] mb-4 md:mb-0">
             <span
               id="flight-deals-heading"
-              className="text-[#001438] text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight"
+              className="text-[#001438] dark:text-white text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight"
             >
               Flight Deals Today
             </span>
@@ -237,7 +237,7 @@ export default function FlightDeals() {
             <button
               type="button"
               onClick={() => navigate("/flights")}
-              className="text-black text-[16px] md:text-xl font-medium cursor-pointer hover:underline mr-1 md:mr-2 bg-transparent border-0 p-0"
+              className="text-black dark:text-white text-[16px] md:text-xl font-medium cursor-pointer hover:underline mr-1 md:mr-2 bg-transparent border-0 p-0"
             >
               Search all flights
             </button>
@@ -245,18 +245,18 @@ export default function FlightDeals() {
               <button
                 type="button"
                 onClick={scrollLeft}
-                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 shadow-sm transition-colors"
+                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 dark:border-white/15 flex items-center justify-center bg-white dark:bg-[#121a2b] hover:bg-gray-50 dark:hover:bg-[#1a263d] shadow-sm transition-colors cursor-pointer"
               >
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-black dark:text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
               </button>
               <button
                 type="button"
                 onClick={scrollRight}
-                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 shadow-sm transition-colors"
+                className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 dark:border-white/15 flex items-center justify-center bg-white dark:bg-[#121a2b] hover:bg-gray-50 dark:hover:bg-[#1a263d] shadow-sm transition-colors cursor-pointer"
               >
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-black dark:text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </button>
@@ -281,7 +281,8 @@ export default function FlightDeals() {
               return (
                 <div
                   key={deal.id}
-                  className="flex flex-col shrink-0 py-4 rounded-[23px] border border-solid"
+                  data-flight-deal-card
+                  className="flex flex-col shrink-0 py-4 rounded-[23px] border border-solid transition-all hover:scale-[1.02] duration-200"
                   style={{
                     width: cardWidth || "calc(20% - 16px)",
                     backgroundColor: deal.cardBg,
@@ -296,12 +297,12 @@ export default function FlightDeals() {
                       >
                         {deal.badge}
                       </span>
-                      <span className="text-black text-[18px] md:text-[22px] font-bold">
+                      <span className="deal-city text-black dark:text-white text-[18px] md:text-[22px] font-bold">
                         {deal.city}
                       </span>
                     </div>
                     <svg
-                      className="w-[40px] h-[40px] mt-1 opacity-20"
+                      className="w-[40px] h-[40px] mt-1 opacity-20 dark:opacity-40"
                       fill={deal.planeColor}
                       viewBox="0 0 24 24"
                     >
@@ -310,19 +311,19 @@ export default function FlightDeals() {
                   </div>
 
                   <div className="flex items-center mb-[5px] px-4 gap-2">
-                    <span className="text-[#666666] text-[14px] font-medium">{deal.from}</span>
+                    <span className="deal-route text-[#666666] dark:text-gray-300 text-[14px] font-medium">{deal.from}</span>
                     <svg className="w-4 h-4" fill="none" stroke={deal.planeColor} strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
-                    <span className="text-[#666666] text-[14px] font-medium">{deal.to}</span>
+                    <span className="deal-route text-[#666666] dark:text-gray-300 text-[14px] font-medium">{deal.to}</span>
                   </div>
 
-                  <span className="text-[#666666] text-[14px] font-normal mb-2 px-4">
+                  <span className="deal-dest text-[#666666] dark:text-gray-400 text-[14px] font-normal mb-2 px-4">
                     {deal.destination}
                   </span>
 
                   <div className="flex items-center mb-3 px-4">
-                    <div className="h-px w-[80%]" style={{ backgroundColor: deal.lineBg }} />
+                    <div className="deal-line h-px w-[80%]" style={{ backgroundColor: deal.lineBg }} />
                     <svg
                       className="w-4 h-4 rotate-90 -ml-2"
                       fill={deal.planeColor}
@@ -333,14 +334,14 @@ export default function FlightDeals() {
                   </div>
 
                   <div className="flex flex-col items-start mb-4 px-4 gap-1 min-h-[52px]">
-                    <span className="text-black text-[18px] md:text-[20px] font-bold">
+                    <span className="deal-price text-black dark:text-white text-[18px] md:text-[20px] font-bold">
                       {isLoading
                         ? "Checking fares…"
                         : hasPrice
                           ? `From ${formatMoney(Math.round(min))}`
                           : "Live fares"}
                     </span>
-                    <span className="text-[#666666] text-[12px] md:text-[13px] font-normal">
+                    <span className="deal-sub text-[#666666] dark:text-gray-400 text-[12px] md:text-[13px] font-normal">
                       {isLoading
                         ? "Checking live fares"
                         : hasPrice
@@ -351,7 +352,7 @@ export default function FlightDeals() {
 
                   <button
                     type="button"
-                    className="flex items-center justify-center mx-4 py-[9px] rounded-[11px] border-0 font-semibold text-[14px] transition-opacity hover:opacity-80 cursor-pointer"
+                    className="deal-btn flex items-center justify-center mx-4 py-[9px] rounded-[11px] border-0 font-semibold text-[14px] transition-all hover:opacity-90 active:scale-95 cursor-pointer"
                     style={{ backgroundColor: deal.btnBg, color: deal.btnText }}
                     onClick={() => openLiveSearch(deal)}
                   >

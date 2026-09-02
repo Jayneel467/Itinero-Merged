@@ -85,6 +85,21 @@ export default function HotelBookingSummary({
             <span className={styles.priceValue}>{formatMoney(info.taxesTotal)}</span>
           </div>
         ) : null}
+        {Array.isArray(info.addons) && info.addons.length > 0
+          ? info.addons.map((addon, i) => (
+              <div key={i} className={styles.priceRow}>
+                <span>
+                  {addon.label ||
+                    (addon.type === "esim" || addon.type === "esimply"
+                      ? "eSIM data"
+                      : "Uber ride credit")}
+                </span>
+                <span className={styles.priceValue}>
+                  {formatMoney(addon.amount != null ? addon.amount : addon.price ?? addon.valueUsd)}
+                </span>
+              </div>
+            ))
+          : null}
       </div>
 
       <div className={styles.totalRow}>

@@ -104,9 +104,18 @@ function PersistentVero() {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 export default function AppRouter() {
   return (
     <Suspense fallback={<PageLoader />}>
+      <ScrollToTop />
       <PageTransitionLoader />
       <PersistentVero />
       <Routes>

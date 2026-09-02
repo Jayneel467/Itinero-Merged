@@ -167,3 +167,56 @@
     grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   RouteCompareBar Dark Mode
+   ═══════════════════════════════════════════════════════ */
+
+:global(html.dark) .wrap {
+  background: #111c2e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+:global(html.dark) .title {
+  color: #ffffff !important;
+}
+
+:global(html.dark) .sub {
+  color: #94a3b8 !important;
+}
+
+:global(html.dark) .card {
+  background: #0b1424 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:global(html.dark) .card:hover {
+  background: #142033 !important;
+  border-color: rgba(249, 114, 17, 0.4) !important;
+}
+
+:global(html.dark) .cardActive {
+  background: rgba(249, 114, 17, 0.12) !important;
+  border-color: #f97211 !important;
+  box-shadow: 0 0 0 1px rgba(249, 114, 17, 0.4) !important;
+}
+
+:global(html.dark) .cardBest:not(.cardActive) {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+:global(html.dark) .route {
+  color: #ffffff !important;
+}
+
+:global(html.dark) .cities,
+:global(html.dark) .meta {
+  color: #94a3b8 !important;
+}
+
+:global(html.dark) .price {
+  color: #f97211 !important;
+}
+

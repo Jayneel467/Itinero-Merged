@@ -15,13 +15,13 @@ import styles from './HotelBookingPage.module.css';
 
 const CustomModalDateInput = React.forwardRef(({ value, onClick, isOpen }, ref) => (
   <div 
-    className={`w-full border rounded-lg p-3 transition-colors flex items-center justify-between ${isOpen ? 'border-[#F97211] ring-2 ring-[#F97211]/20' : 'border-gray-200 hover:border-gray-300'}`}
+    className={`w-full border rounded-full px-4 py-2.5 transition-colors flex items-center justify-between ${isOpen ? 'border-[#F97211] ring-1 ring-[#F97211]' : 'border-[#e2e8f0] hover:border-gray-300'}`}
     onClick={onClick} 
     ref={ref}
     style={{ cursor: 'pointer' }}
   >
-    <span className="text-[#001439] font-medium text-sm">{value || 'Select Date'}</span>
-    <CalendarIcon size={16} className={isOpen ? 'text-[#F97211]' : 'text-gray-400'} />
+    <span className="text-[#001438] font-semibold text-[15px]">{value || 'Select Date'}</span>
+    <CalendarIcon size={18} className="text-[#94a3b8]" />
   </div>
 ));
 
@@ -279,12 +279,16 @@ export default function HotelBookingPage() {
       <Modal
         isOpen={isConfigOpen}
         onClose={() => setIsConfigOpen(false)}
-        title={`Configure Booking: ${configuringRoom?.title || 'Room'}`}
+        title={
+          <span className="text-[#001438] font-extrabold text-[1.35rem]">
+            Configure Booking: {configuringRoom?.title || 'Room'}
+          </span>
+        }
       >
-        <div className="p-6 bg-white flex flex-col gap-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="p-6 bg-white flex flex-col gap-7">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="relative z-50">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Check In</label>
+              <label className="block text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2">Check In</label>
               <CustomDatePicker
                 selected={modalCheckIn}
                 onChange={(date) => {
@@ -299,7 +303,7 @@ export default function HotelBookingPage() {
               />
             </div>
             <div className="relative z-40">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Check Out</label>
+              <label className="block text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-2">Check Out</label>
               <CustomDatePicker
                 selected={modalCheckOut}
                 onChange={(date) => setModalCheckOut(date)}
@@ -310,47 +314,47 @@ export default function HotelBookingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <label className="text-sm">
-              Rooms
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-[14.5px] font-medium text-[#001438] mb-2">Rooms</label>
               <input
                 type="number"
                 min={1}
-                className="mt-1 w-full border rounded-lg p-2"
+                className="w-full border border-[#001438] rounded-full px-4 py-2 text-[#001438] font-semibold focus:outline-none focus:ring-1 focus:ring-[#001438]"
                 value={modalRooms}
                 onChange={(e) => setModalRooms(Number(e.target.value) || 1)}
               />
-            </label>
-            <label className="text-sm">
-              Adults
+            </div>
+            <div>
+              <label className="block text-[14.5px] font-medium text-[#001438] mb-2">Adults</label>
               <input
                 type="number"
                 min={1}
-                className="mt-1 w-full border rounded-lg p-2"
+                className="w-full border border-[#001438] rounded-full px-4 py-2 text-[#001438] font-semibold focus:outline-none focus:ring-1 focus:ring-[#001438]"
                 value={modalAdults}
                 onChange={(e) => setModalAdults(Number(e.target.value) || 1)}
               />
-            </label>
-            <label className="text-sm">
-              Children
+            </div>
+            <div>
+              <label className="block text-[14.5px] font-medium text-[#001438] mb-2">Children</label>
               <input
                 type="number"
                 min={0}
-                className="mt-1 w-full border rounded-lg p-2"
+                className="w-full border border-[#001438] rounded-full px-4 py-2 text-[#001438] font-semibold focus:outline-none focus:ring-1 focus:ring-[#001438]"
                 value={modalChildren}
                 onChange={(e) => setModalChildren(Number(e.target.value) || 0)}
               />
-            </label>
+            </div>
           </div>
 
-          <p className="text-sm text-gray-500">
+          <p className="text-[14px] font-medium text-[#64748b] mt-2">
             Preview: {formatModalDate(modalCheckIn)} → {formatModalDate(modalCheckOut)}. Confirming
             reloads live rates.
           </p>
 
           <button
             type="button"
-            className="w-full bg-[#F97211] text-white font-semibold rounded-xl py-3"
+            className="w-full bg-[#f97211] hover:bg-[#e5670f] text-white font-bold text-[15px] rounded-full py-3.5 transition-colors"
             onClick={handleConfirmConfig}
           >
             Apply & reload live rates

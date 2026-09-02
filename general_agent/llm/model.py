@@ -144,19 +144,51 @@ def reset_llm_clients() -> None:
         _planner_client = None
 
 
+def openai_configured() -> bool:
+    key = str(OPENAI_API_KEY or _env("OPENAI_API_KEY") or "").strip()
+    return bool(
+        key
+        and (
+            key.startswith("sk-proj-")
+            or key.startswith("sk-admin-")
+            or (key.startswith("sk-") and len(key) > 30 and "your_openai" not in key)
+        )
+    )
+
+
 def get_tools_llm():
-    """OpenAI — only lane allowed to bind booking/search tools. Client is reused."""
+    """Tools lane: Uses OpenAI if valid key exists; otherwise seamlessly uses DeepSeek."""
     global _tools_client
     with _llm_lock:
         if _tools_client is None:
-            _tools_client = ChatOpenAI(
-                model=MODEL_NAME or "gpt-4o-mini",
-                temperature=MODEL_TEMPERATURE,
-                api_key=OPENAI_API_KEY,
-                max_retries=2,
-                timeout=_timeout_s(),
-                http_client=_direct_http_client(),
-            )
+            if openai_configured():
+                _tools_client = ChatOpenAI(
+                    model=MODEL_NAME or "gpt-4o-mini",
+                    temperature=MODEL_TEMPERATURE,
+                    api_key=OPENAI_API_KEY,
+                    max_retries=2,
+                    timeout=_timeout_s(),
+                    http_client=_direct_http_client(),
+                )
+            elif deepseek_configured():
+                _tools_client = ChatOpenAI(
+                    model=_env("DEEPSEEK_MODEL") or "deepseek-chat",
+                    temperature=MODEL_TEMPERATURE,
+                    api_key=_env("DEEPSEEK_API_KEY"),
+                    base_url=_env("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1",
+                    max_retries=2,
+                    timeout=_timeout_s(),
+                    http_client=_direct_http_client(),
+                )
+            else:
+                _tools_client = ChatOpenAI(
+                    model=MODEL_NAME or "gpt-4o-mini",
+                    temperature=MODEL_TEMPERATURE,
+                    api_key=OPENAI_API_KEY,
+                    max_retries=2,
+                    timeout=_timeout_s(),
+                    http_client=_direct_http_client(),
+                )
         return _tools_client
 
 

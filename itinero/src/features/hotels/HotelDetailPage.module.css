@@ -101,7 +101,7 @@
   transform: translateX(-50%);
   width: 100vw;
   height: calc(100% - 80px);
-  background-image: url('/itinero/hotel_bg.png');
+  background-image: url('/hotel_bg.png');
   background-size: cover;
   background-position: center;
   z-index: -2;

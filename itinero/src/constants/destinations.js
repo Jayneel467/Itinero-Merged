@@ -197,25 +197,25 @@ export const FEATURES = [
     id: "plan-ai",
     title: "Plan with AI",
     description: "Get travel questions answered",
-    image: "/itinero/icon/image 1.svg",
+    image: "/icon/image 1.svg",
   },
   {
     id: "best-time",
     title: "Best Time to Travel",
     description: "Know when to save",
-    image: "/itinero/icon/image 2.svg",
+    image: "/icon/image 2.svg",
   },
   {
     id: "explore",
     title: "Explore",
     description: "See destinations on your budget",
-    image: "/itinero/icon/image 3.svg",
+    image: "/icon/image 3.svg",
   },
   {
     id: "trips",
     title: "Trips",
     description: "Keep all your plans in one place",
-    image: "/itinero/icon/image 4.svg",
+    image: "/icon/image 4.svg",
   },
   // Dummy data for slider
   {

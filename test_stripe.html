@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <script>
+    try {
+      const stripe = Stripe("pk_test_51Tb3hHK1hWA4wsQaGAAUckNzO7N6J7hLPwPi9vzBTLLigPxSWyhsor4iJSBVskj8AFkfuQZbj6xcX1eciXZGPUGl007OrP63m3");
+      console.log("Success!");
+      document.body.innerHTML = "Success!";
+    } catch (e) {
+      console.error(e);
+      document.body.innerHTML = e.toString();
+    }
+  </script>
+</body>
+</html>

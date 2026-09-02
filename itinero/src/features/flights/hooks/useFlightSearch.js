@@ -224,11 +224,21 @@ export default function useFlightSearch() {
   const searchGen = useRef(0);
 
   const search = useMemo(() => {
-    // Prefer `depart`; accept legacy `date` from broken resume links.
-    const depart = toIsoDate(searchParams.get("depart") || searchParams.get("date"));
-    const ret = toIsoDate(searchParams.get("return"));
+    // Prefer `depart`; accept legacy `date` or `departDate`
+    const depart = toIsoDate(
+      searchParams.get("depart") ||
+      searchParams.get("date") ||
+      searchParams.get("departDate")
+    );
+    const ret = toIsoDate(
+      searchParams.get("return") ||
+      searchParams.get("returnDate") ||
+      searchParams.get("ret") ||
+      searchParams.get("return_date")
+    );
     const cabinRaw = (searchParams.get("cabin") || "Economy").toLowerCase();
-    const tripType = normalizeTripType(searchParams.get("trip") || "Return");
+    const tripParam = searchParams.get("trip") || searchParams.get("tripType");
+    const tripType = normalizeTripType(tripParam || (ret ? "return" : "oneway"));
 
     const requestedOrigins = parseIataList(searchParams.get("from"));
     const requestedDests = parseIataList(searchParams.get("to"));
@@ -270,7 +280,7 @@ export default function useFlightSearch() {
       routePairs,
       isMultiAirport: routePairs.length > 1,
       departDate: legs[0]?.departDate || depart,
-      returnDate: tripType === "return" ? ret : "",
+      returnDate: tripType === "return" ? (ret || (depart ? addDays(depart, 7) : "")) : "",
       adults: Math.max(1, Number(searchParams.get("adults") || 1)),
       children: Math.max(0, Number(searchParams.get("children") || 0)),
       infants: Math.max(0, Number(searchParams.get("infants") || 0)),
@@ -397,8 +407,8 @@ export default function useFlightSearch() {
           .map((r) => String(r.code || r).toUpperCase())
           .filter((c) => /^[A-Z]{3}$/.test(c))
           .slice(0, 2);
-        if (oCodes.length) origins = oCodes.slice(0, 2);
-        if (dCodes.length) destinations = dCodes.slice(0, 2);
+        if (oCodes.length && oCodes.includes(o0)) origins = oCodes.slice(0, 2);
+        if (dCodes.length && dCodes.includes(d0)) destinations = dCodes.slice(0, 2);
       }
 
       const displayPairs =
@@ -620,44 +630,51 @@ export default function useFlightSearch() {
       const retOrigin = flight.routeDestination || flight.arrival?.airport || search.destination;
       const retDest = flight.routeOrigin || flight.departure?.airport || search.origin;
 
-      // Return leg = one-way search with swapped airports on the return date
-      const res = await flightService.search({
-        origin: retOrigin,
-        destination: retDest,
-        depart_date: search.returnDate,
-        return_date: undefined,
-        adults: search.adults,
-        children: search.children,
-        infants: search.infants,
-        cabin: search.cabin,
-        currency,
-        session_id: sessionId || undefined,
-      });
+      try {
+        // Return leg = one-way search with swapped airports on the return date
+        const res = await flightService.search({
+          origin: retOrigin,
+          destination: retDest,
+          depart_date: search.returnDate,
+          return_date: undefined,
+          adults: search.adults,
+          children: search.children,
+          infants: search.infants,
+          cabin: search.cabin,
+          currency,
+          session_id: sessionId || undefined,
+        });
 
-      if (gen !== searchGen.current) return null;
+        if (gen !== searchGen.current) return null;
 
-      const mapped = dedupeFlights(
-        mapList(res.flights, {
-          legLabel: "Returning",
-          routeKey: `${retOrigin}-${retDest}`,
-          routeLabel: `${retOrigin} → ${retDest}`,
-          routeOrigin: retOrigin,
-          routeDestination: retDest,
-        })
-      );
-      setFlights(mapped);
-      setTotalOffers(mapped.length);
-      setMessage(
-        mapped.length
-          ? `Choose your return to ${retDest}. Departing flight locked (${flight.routeLabel || `${retDest} → ${retOrigin}`}).`
-          : res.message || "No return flights found for this date."
-      );
-      if (res.session_id) setSessionId(res.session_id);
-      if (!mapped.length) {
-        setError(res.message || "No return flights found. Try another date or change outbound.");
+        const mapped = dedupeFlights(
+          mapList(res?.flights || [], {
+            legLabel: "Returning",
+            routeKey: `${retOrigin}-${retDest}`,
+            routeLabel: `${retOrigin} → ${retDest}`,
+            routeOrigin: retOrigin,
+            routeDestination: retDest,
+          })
+        );
+        setFlights(mapped);
+        setTotalOffers(mapped.length);
+        setMessage(
+          mapped.length
+            ? `Choose your return to ${retDest}. Departing flight locked (${flight.routeLabel || `${retDest} → ${retOrigin}`}).`
+            : res?.message || "No return flights found for this date."
+        );
+        if (res?.session_id) setSessionId(res.session_id);
+        if (!mapped.length) {
+          setError(res?.message || "No return flights found. Try another date or change outbound.");
+        }
+        return mapped;
+      } catch (err) {
+        if (gen !== searchGen.current) return null;
+        setError(err?.message || "Failed to search return flights. Please try another search.");
+        return null;
+      } finally {
+        if (gen === searchGen.current) setIsLoading(false);
       }
-      setIsLoading(false);
-      return mapped;
     },
     [search, sessionId, currency]
   );

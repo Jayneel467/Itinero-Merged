@@ -1,6 +1,8 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plane, TrendingUp, ArrowUpRight, ArrowRight } from "lucide-react";
 import { useCurrency } from "@/context/CurrencyContext";
+import { findAirportByCode } from "@/constants/airports";
 import useLiveRoutePrices, {
   routeKey,
   sampleNearTermDates,
@@ -9,38 +11,62 @@ import styles from "./PopularRoutesRail.module.css";
 
 const HOT_BY_ORIGIN = {
   BOM: [
-    { to: "DEL", city: "New Delhi" },
-    { to: "BLR", city: "Bengaluru" },
-    { to: "GOI", city: "Goa" },
-    { to: "DXB", city: "Dubai" },
-    { to: "BKK", city: "Bangkok" },
-    { to: "SIN", city: "Singapore" },
+    { to: "DEL", city: "New Delhi", country: "India" },
+    { to: "BLR", city: "Bengaluru", country: "India" },
+    { to: "GOI", city: "Goa", country: "India" },
+    { to: "DXB", city: "Dubai", country: "UAE" },
+    { to: "BKK", city: "Bangkok", country: "Thailand" },
+    { to: "SIN", city: "Singapore", country: "Singapore" },
   ],
   DEL: [
-    { to: "BOM", city: "Mumbai" },
-    { to: "BLR", city: "Bengaluru" },
-    { to: "GOI", city: "Goa" },
-    { to: "DXB", city: "Dubai" },
-    { to: "LHR", city: "London" },
-    { to: "SIN", city: "Singapore" },
+    { to: "BOM", city: "Mumbai", country: "India" },
+    { to: "BLR", city: "Bengaluru", country: "India" },
+    { to: "GOI", city: "Goa", country: "India" },
+    { to: "DXB", city: "Dubai", country: "UAE" },
+    { to: "LHR", city: "London", country: "UK" },
+    { to: "SIN", city: "Singapore", country: "Singapore" },
   ],
   BLR: [
-    { to: "BOM", city: "Mumbai" },
-    { to: "DEL", city: "New Delhi" },
-    { to: "GOI", city: "Goa" },
-    { to: "DXB", city: "Dubai" },
-    { to: "SIN", city: "Singapore" },
-    { to: "MAA", city: "Chennai" },
+    { to: "BOM", city: "Mumbai", country: "India" },
+    { to: "DEL", city: "New Delhi", country: "India" },
+    { to: "GOI", city: "Goa", country: "India" },
+    { to: "DXB", city: "Dubai", country: "UAE" },
+    { to: "SIN", city: "Singapore", country: "Singapore" },
+    { to: "MAA", city: "Chennai", country: "India" },
+  ],
+  HYD: [
+    { to: "BOM", city: "Mumbai", country: "India" },
+    { to: "DEL", city: "New Delhi", country: "India" },
+    { to: "BLR", city: "Bengaluru", country: "India" },
+    { to: "GOI", city: "Goa", country: "India" },
+    { to: "DXB", city: "Dubai", country: "UAE" },
+    { to: "SIN", city: "Singapore", country: "Singapore" },
+  ],
+  CCU: [
+    { to: "DEL", city: "New Delhi", country: "India" },
+    { to: "BOM", city: "Mumbai", country: "India" },
+    { to: "BLR", city: "Bengaluru", country: "India" },
+    { to: "BKK", city: "Bangkok", country: "Thailand" },
+    { to: "SIN", city: "Singapore", country: "Singapore" },
+    { to: "GOI", city: "Goa", country: "India" },
+  ],
+  MAA: [
+    { to: "BOM", city: "Mumbai", country: "India" },
+    { to: "DEL", city: "New Delhi", country: "India" },
+    { to: "BLR", city: "Bengaluru", country: "India" },
+    { to: "SIN", city: "Singapore", country: "Singapore" },
+    { to: "DXB", city: "Dubai", country: "UAE" },
+    { to: "KUL", city: "Kuala Lumpur", country: "Malaysia" },
   ],
 };
 
 const FALLBACK = [
-  { to: "DXB", city: "Dubai" },
-  { to: "BKK", city: "Bangkok" },
-  { to: "SIN", city: "Singapore" },
-  { to: "DEL", city: "New Delhi" },
-  { to: "BOM", city: "Mumbai" },
-  { to: "GOI", city: "Goa" },
+  { to: "DXB", city: "Dubai", country: "UAE" },
+  { to: "BKK", city: "Bangkok", country: "Thailand" },
+  { to: "SIN", city: "Singapore", country: "Singapore" },
+  { to: "DEL", city: "New Delhi", country: "India" },
+  { to: "BOM", city: "Mumbai", country: "India" },
+  { to: "GOI", city: "Goa", country: "India" },
 ];
 
 /**
@@ -50,10 +76,21 @@ export default function PopularRoutesRail({ origin = "BOM", originCity = "", ena
   const navigate = useNavigate();
   const { formatMoney } = useCurrency();
   const from = String(origin || "BOM").toUpperCase().slice(0, 3);
+  const fromAirport = findAirportByCode(from);
+  const displayOriginCity = originCity || fromAirport?.city || from;
 
   const destinations = useMemo(() => {
     const list = HOT_BY_ORIGIN[from] || FALLBACK;
-    return list.filter((d) => d.to !== from).slice(0, 6);
+    return list
+      .filter((d) => d.to !== from)
+      .map((d) => {
+        const found = findAirportByCode(d.to);
+        return {
+          ...d,
+          city: d.city || found?.city || d.to,
+        };
+      })
+      .slice(0, 6);
   }, [from]);
 
   const routes = useMemo(
@@ -77,7 +114,7 @@ export default function PopularRoutesRail({ origin = "BOM", originCity = "", ena
       to: dest.to,
       trip: "oneway",
     });
-    if (originCity) qs.set("fromCity", originCity);
+    if (displayOriginCity) qs.set("fromCity", displayOriginCity);
     if (dest.city) qs.set("toCity", dest.city);
     if (depart) qs.set("date", depart);
     navigate(`/flights?${qs.toString()}`);
@@ -86,9 +123,21 @@ export default function PopularRoutesRail({ origin = "BOM", originCity = "", ena
   return (
     <section className={styles.rail} aria-label="Popular routes">
       <div className={styles.head}>
-        <h3 className={styles.title}>Popular from {from}</h3>
-        <p className={styles.sub}>Live from-fares · tap to search</p>
+        <div className={styles.headLeft}>
+          <div className={styles.iconBadge}>
+            <TrendingUp className="w-4 h-4 text-[#F97211]" />
+          </div>
+          <div>
+            <h3 className={styles.title}>Popular from {displayOriginCity} ({from})</h3>
+            <p className={styles.sub}>Live low-fares · Tap to search instantly</p>
+          </div>
+        </div>
+        <div className={styles.originPill}>
+          <span className={styles.originDot} />
+          <span>Non-stop & Connecting Deals</span>
+        </div>
       </div>
+
       <div className={styles.track}>
         {destinations.map((dest) => {
           const key = routeKey(from, dest.to);
@@ -104,17 +153,40 @@ export default function PopularRoutesRail({ origin = "BOM", originCity = "", ena
               className={styles.card}
               onClick={() => open(dest)}
             >
-              <span className={styles.route}>
-                {from} → {dest.to}
-              </span>
-              <span className={styles.city}>{dest.city}</span>
-              <span className={styles.price}>
-                {isLoading
-                  ? "…"
-                  : hasPrice
-                    ? `From ${formatMoney(Math.round(min))}`
-                    : "Search fares"}
-              </span>
+              <div className={styles.cardTop}>
+                <div className={styles.airportBadges}>
+                  <span className={styles.codeFrom}>{from}</span>
+                  <span className={styles.routeArrow}>
+                    <Plane className={styles.planeIcon} />
+                  </span>
+                  <span className={styles.codeTo}>{dest.to}</span>
+                </div>
+                <span className={styles.arrowPill}>
+                  <ArrowUpRight className={styles.cardActionIcon} />
+                </span>
+              </div>
+
+              <div className={styles.cardBody}>
+                <span className={styles.cityName}>{dest.city}</span>
+                {dest.country ? <span className={styles.countryName}>{dest.country}</span> : null}
+              </div>
+
+              <div className={styles.cardFooter}>
+                {isLoading ? (
+                  <div className={styles.loadingSkeleton}>
+                    <span className={styles.skeletonLine} />
+                  </div>
+                ) : hasPrice ? (
+                  <div className={styles.priceContainer}>
+                    <span className={styles.priceLabel}>From</span>
+                    <span className={styles.priceValue}>{formatMoney(Math.round(min))}</span>
+                  </div>
+                ) : (
+                  <span className={styles.searchFaresLabel}>
+                    Search fares <ArrowRight className="w-3.5 h-3.5 inline ml-0.5" />
+                  </span>
+                )}
+              </div>
             </button>
           );
         })}

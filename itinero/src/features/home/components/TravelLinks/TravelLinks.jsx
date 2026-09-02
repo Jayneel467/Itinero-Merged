@@ -16,21 +16,21 @@ import {
 } from "@/features/vero/utils/pageFilterIntent";
 
 const links = [
-  { id: 1, name: "London", iata: "LHR", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/rx7ygbvv_expires_30_days.png" },
-  { id: 2, name: "Dubai", iata: "DXB", bg: "#FEF4F0", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/n2pal10j_expires_30_days.png" },
-  { id: 3, name: "Bengaluru", iata: "BLR", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/fmte7b82_expires_30_days.png" },
-  { id: 4, name: "Toronto", iata: "YYZ", bg: "#FEF4F0", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/chap8a84_expires_30_days.png" },
-  { id: 5, name: "New Delhi", iata: "DEL", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/cgwl7r4q_expires_30_days.png" },
-  { id: 6, name: "Mumbai", iata: "BOM", bg: "#FEF4F0", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/gg4yw85m_expires_30_days.png" },
-  { id: 7, name: "Melbourne", iata: "MEL", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/dpcbs9vy_expires_30_days.png" },
-  { id: 8, name: "Chicago", iata: "ORD", bg: "#FEF4F0", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/ry8gcf8x_expires_30_days.png" },
-  { id: 9, name: "Singapore", iata: "SIN", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/h1ednxo1_expires_30_days.png" },
-  { id: 10, name: "New York", iata: "JFK", bg: "#FEF4F0", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/ddfznwm9_expires_30_days.png" },
-  { id: 11, name: "Hyderabad", iata: "HYD", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/i3021hag_expires_30_days.png" },
-  { id: 12, name: "Phuket city", iata: "HKT", bg: "#FEF4F0", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/e0q9zfms_expires_30_days.png" },
-  { id: 13, name: "Dallas", iata: "DFW", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/yxuht2uu_expires_30_days.png" },
-  { id: 14, name: "Kochi", iata: "COK", bg: "#FEF4F0", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/j390rxzd_expires_30_days.png" },
-  { id: 15, name: "Chennai", iata: "MAA", bg: "#EDF2FD", img: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/r6qes585_expires_30_days.png" },
+  { id: 1, name: "London", iata: "LHR", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/london.svg` },
+  { id: 2, name: "Dubai", iata: "DXB", bg: "#FEF4F0", img: `${import.meta.env.BASE_URL}icon/Dubao.svg` },
+  { id: 3, name: "Bengaluru", iata: "BLR", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/Bengaluru.svg` },
+  { id: 4, name: "Toronto", iata: "YYZ", bg: "#FEF4F0", img: `${import.meta.env.BASE_URL}icon/Toronto.svg` },
+  { id: 5, name: "New Delhi", iata: "DEL", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/New Dehi.svg` },
+  { id: 6, name: "Mumbai", iata: "BOM", bg: "#FEF4F0", img: `${import.meta.env.BASE_URL}icon/Mumbai.svg` },
+  { id: 7, name: "Melbourne", iata: "MEL", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/Melbourne.svg` },
+  { id: 8, name: "Chicago", iata: "ORD", bg: "#FEF4F0", img: `${import.meta.env.BASE_URL}icon/chicago.svg` },
+  { id: 9, name: "Singapore", iata: "SIN", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/Singapore.svg` },
+  { id: 10, name: "New York", iata: "JFK", bg: "#FEF4F0", img: `${import.meta.env.BASE_URL}icon/New York.svg` },
+  { id: 11, name: "Hyderabad", iata: "HYD", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/Hyderabad.svg` },
+  { id: 12, name: "Phuket city", iata: "HKT", bg: "#FEF4F0", img: `${import.meta.env.BASE_URL}icon/Phuket city.svg` },
+  { id: 13, name: "Dallas", iata: "DFW", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/Dallas.svg` },
+  { id: 14, name: "Kochi", iata: "COK", bg: "#FEF4F0", img: `${import.meta.env.BASE_URL}icon/kochi.svg` },
+  { id: 15, name: "Chennai", iata: "MAA", bg: "#EDF2FD", img: `${import.meta.env.BASE_URL}icon/Chennai.svg` },
 ];
 
 function flightOriginFor(destIata, homeCode, homeCity) {
@@ -104,22 +104,24 @@ export default function TravelLinks() {
     return (
       <div
         key={link.id}
-        className={`flex flex-col bg-white rounded-[30px] p-4 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md border border-transparent hover:border-gray-100 ${
-          !isExpanded ? "hover:-translate-y-1" : "shadow-md border-gray-100"
+        data-travel-link-card
+        className={`flex flex-col bg-white dark:bg-[#111c2e] rounded-[30px] p-4 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md border border-transparent dark:border-white/10 hover:border-gray-100 dark:hover:border-white/20 ${
+          !isExpanded ? "hover:-translate-y-1" : "shadow-md border-gray-100 dark:border-white/20"
         }`}
         onClick={() => setExpandedId(isExpanded ? null : link.id)}
       >
         <div className="flex items-center w-full">
           <div
-            className="flex items-center justify-center w-[60px] h-[60px] rounded-[19px] mr-5 shrink-0 transition-colors"
+            data-travel-link-icon
+            className="flex items-center justify-center w-[60px] h-[60px] rounded-[19px] mr-5 shrink-0 transition-colors shadow-sm"
             style={{ backgroundColor: link.bg }}
           >
             <img src={link.img} className="w-[30px] h-[30px] object-contain" alt={link.name} />
           </div>
 
           <div className="flex flex-col items-start gap-1">
-            <span className="text-black text-[22px] font-bold">{link.name}</span>
-            <div className="flex items-center gap-1.5 text-[#49607E] text-[15px] font-medium tracking-wide">
+            <span className="text-black dark:text-white text-[22px] font-bold">{link.name}</span>
+            <div className="flex items-center gap-1.5 text-[#49607E] dark:text-gray-400 text-[15px] font-medium tracking-wide">
               <span className={isExpanded ? "text-[#F97211]" : ""}>FLIGHTS</span>
               <span className="text-gray-400">•</span>
               <span className={isExpanded ? "text-[#F97211]" : ""}>HOTELS</span>
@@ -129,8 +131,8 @@ export default function TravelLinks() {
           <div className="flex-1" />
 
           <svg
-            className={`w-5 h-5 text-gray-400 mr-2 shrink-0 transition-transform duration-300 ${
-              isExpanded ? "rotate-180 text-[#F97211]" : ""
+            className={`w-5 h-5 text-gray-400 dark:text-gray-300 mr-2 shrink-0 transition-transform duration-300 ${
+              isExpanded ? "rotate-180 text-[#F97211] dark:text-[#F97211]" : ""
             }`}
             fill="none"
             stroke="currentColor"
@@ -148,7 +150,7 @@ export default function TravelLinks() {
         >
           <div className="overflow-hidden">
             <div
-              className="flex flex-col mt-5 pt-4 border-t border-gray-100 px-2 pb-2 cursor-default"
+              className="flex flex-col mt-5 pt-4 border-t border-gray-100 dark:border-white/10 px-2 pb-2 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -156,49 +158,49 @@ export default function TravelLinks() {
                 className="flex items-center justify-between group bg-transparent border-0 p-0 text-left cursor-pointer"
                 onClick={() => openFlights(link)}
               >
-                <span className="text-[#666666] text-[15px] group-hover:text-black transition-colors">
+                <span className="text-[#666666] dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">
                   Flights {from?.city || "home"} - {link.name}
                 </span>
-                <span className="text-[#49607E] text-[15px] font-medium">{fare.label}</span>
+                <span className="text-[#49607E] dark:text-gray-400 text-[15px] font-medium">{fare.label}</span>
               </button>
 
-              <div className="h-px w-full bg-gray-100 my-4" />
+              <div className="h-px w-full bg-gray-100 dark:bg-white/10 my-4" />
 
               <button
                 type="button"
                 className="flex items-center justify-between group bg-transparent border-0 p-0 text-left cursor-pointer"
                 onClick={() => navigate(hotelsSearchPath({ city: link.name.replace(/ city$/i, "") }))}
               >
-                <span className="text-[#666666] text-[15px] group-hover:text-black transition-colors">
+                <span className="text-[#666666] dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">
                   Hotels in {link.name}
                 </span>
-                <span className="text-[#49607E] text-[15px] font-medium">Search stays</span>
+                <span className="text-[#49607E] dark:text-gray-400 text-[15px] font-medium">Search stays</span>
               </button>
 
-              <div className="h-px w-full bg-gray-100 my-4" />
+              <div className="h-px w-full bg-gray-100 dark:bg-white/10 my-4" />
 
               <button
                 type="button"
                 className="flex items-center justify-between group bg-transparent border-0 p-0 text-left cursor-pointer"
                 onClick={() => navigate(packagesSearchPath({ q: link.name.replace(/ city$/i, "") }))}
               >
-                <span className="text-[#666666] text-[15px] group-hover:text-black transition-colors">
+                <span className="text-[#666666] dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">
                   Packages for {link.name}
                 </span>
-                <span className="text-[#49607E] text-[15px] font-medium">View packages</span>
+                <span className="text-[#49607E] dark:text-gray-400 text-[15px] font-medium">View packages</span>
               </button>
 
-              <div className="h-px w-full bg-gray-100 my-4" />
+              <div className="h-px w-full bg-gray-100 dark:bg-white/10 my-4" />
 
               <button
                 type="button"
                 className="flex items-center justify-between group bg-transparent border-0 p-0 text-left cursor-pointer"
                 onClick={() => navigate(eventsSearchPath({ city: link.name.replace(/ city$/i, "") }))}
               >
-                <span className="text-[#666666] text-[15px] group-hover:text-black transition-colors">
+                <span className="text-[#666666] dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">
                   Events in {link.name}
                 </span>
-                <span className="text-[#49607E] text-[15px] font-medium">What’s on</span>
+                <span className="text-[#49607E] dark:text-gray-400 text-[15px] font-medium">What’s on</span>
               </button>
 
               <button
@@ -223,7 +225,7 @@ export default function TravelLinks() {
     <div className="flex flex-col items-start self-stretch max-w-[1604px] mb-16 md:mb-[120px] mx-auto px-4 md:px-[53px] w-full">
       <ScrollReveal delay={0.1}>
         <div className="flex flex-col items-start mb-6 md:mb-10 gap-1 md:gap-2.5">
-          <span className="text-[#001438] text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight">
+          <span className="text-[#001438] dark:text-white text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight">
             Start your travel planning here
           </span>
           <span className="text-[#F97211] text-[16px] md:text-xl lg:text-[18px] 2xl:text-2xl font-medium">

@@ -203,7 +203,52 @@ export function confirmationToPdfBooking(confirmation, recap) {
     c.supplierBookingId,
     c.paymentId
   );
-  const paid = Boolean(c.paymentId || c.transactionId || lite.payment_status === "completed");
+  const retRecap = recap?.returnRecap;
+  const retFlight = f.selectedReturn || f.returnSummary;
+  const isRoundTrip = Boolean(retRecap || retFlight || f.selectedReturn || f.returnSummary);
+
+  const segments_summary = [
+    {
+      from: originCode,
+      to: destCode,
+      airline: recap?.airlineName || f.airline?.name,
+      airline_code: recap?.airlineCode || f.airline?.code,
+      airline_logo: recap?.logo || f.airline?.logo || f.logo || "",
+      flight_number: recap?.flightNo || f.flightNumber,
+      departure: depTime,
+      arrival: arrTime,
+      date: travelDate,
+      duration: recap?.duration || f.duration,
+      stops: recap?.stops || f.stops,
+      cabin: recap?.cabin || f.cabin,
+      from_airport: describeAirport(originCode),
+      to_airport: describeAirport(destCode),
+      leg_label: isRoundTrip ? "Departing Flight" : undefined,
+    },
+  ];
+
+  if (isRoundTrip && (retRecap || retFlight)) {
+    const retOrigin = retRecap?.origin || retFlight?.departure?.airport || destCode;
+    const retDest = retRecap?.dest || retFlight?.arrival?.airport || originCode;
+    segments_summary.push({
+      from: retOrigin,
+      to: retDest,
+      airline: retRecap?.airlineName || retFlight?.airline?.name || f.airline?.name,
+      airline_code: retRecap?.airlineCode || retFlight?.airline?.code || f.airline?.code,
+      airline_logo: retRecap?.logo || retFlight?.airline?.logo || f.airline?.logo || "",
+      flight_number: retRecap?.flightNo || retFlight?.flightNumber || f.flightNumber,
+      departure: formatFlightClock(retRecap?.depTime || retFlight?.departure?.time),
+      arrival: formatFlightClock(retRecap?.arrTime || retFlight?.arrival?.time),
+      date: formatFlightDate(retRecap?.depDate || retFlight?.departure?.date || f.returnDate),
+      duration: retRecap?.duration || retFlight?.duration || "-",
+      stops: retRecap?.stops || retFlight?.stops || "Direct",
+      cabin: retRecap?.cabin || retFlight?.cabin || "Economy",
+      from_airport: describeAirport(retOrigin),
+      to_airport: describeAirport(retDest),
+      leg_label: "Return Flight",
+    });
+  }
+
   return {
     booking_id: displayRef,
     airline_pnr: pickDisplayBookingRef(lite.airline_pnr, lite.booking_ref, displayRef),
@@ -234,25 +279,19 @@ export function confirmationToPdfBooking(confirmation, recap) {
     passengers: travelers.map((t) => ({
       first_name: t.firstName || t.first_name,
       last_name: t.lastName || t.last_name,
-      passenger_type: t.type || "adult",
+      passenger_type: normalizePassengerType(t.type || t.passengerType || t.passenger_type),
       date_of_birth: t.dob || t.date_of_birth,
     })),
-    segments_summary: [
-      {
-        from: originCode,
-        to: destCode,
-        airline: recap?.airlineName || f.airline?.name,
-        airline_code: recap?.airlineCode || f.airline?.code,
-        airline_logo: recap?.logo || f.airline?.logo || f.logo || "",
-        flight_number: recap?.flightNo || f.flightNumber,
-        departure: depTime,
-        arrival: arrTime,
-        date: travelDate,
-        from_airport: describeAirport(originCode),
-        to_airport: describeAirport(destCode),
-      },
-    ],
+    segments_summary,
   };
+}
+
+function normalizePassengerType(type) {
+  if (typeof type === "number" && Number.isFinite(type)) return type;
+  const s = String(type || "").trim().toLowerCase();
+  if (s === "child" || s === "chd" || s === "1") return 1;
+  if (s === "infant" || s === "inf" || s === "2") return 2;
+  return 0;
 }
 
 export function bookingRefFromPayment(paymentId) {
@@ -286,7 +325,7 @@ export function travelersToLitePassengers(travelers = []) {
         .slice(0, 15),
       document_expiry: t.documentExpiry || t.document_expiry || DEFAULT_DOC_EXPIRY,
       document_issue_country: nationality,
-      passenger_type: t.type || t.passengerType || t.passenger_type || "adult",
+      passenger_type: normalizePassengerType(t.type || t.passengerType || t.passenger_type),
     };
   });
 }

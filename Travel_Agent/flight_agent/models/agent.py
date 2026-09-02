@@ -1,3 +1,4 @@
+from __future__ import annotations
 """LangGraph agent state and public I/O models."""
 
 from typing import Annotated, Any

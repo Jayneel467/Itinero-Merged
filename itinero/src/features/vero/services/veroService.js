@@ -13,37 +13,66 @@ function chatPath() {
 }
 
 function stripSlash(url) {
-  return String(url || "").replace(/\/$/, "");
+  return String(url ?? "").replace(/\/$/, "");
+}
+
+function isLocalhost(url) {
+  return /^(https?:\/\/)?(127\.0\.0\.1|localhost)(:\d+)?(\/.*)?$/i.test(url);
+}
+
+function isBrowserOnLocalhost() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
 }
 
 function veroBases() {
   const primary = stripSlash(
-    APP_CONFIG.VERO_API_BASE_URL || "http://127.0.0.1:8001"
+    APP_CONFIG.VERO_API_BASE_URL !== undefined ? APP_CONFIG.VERO_API_BASE_URL : ""
   );
-  // DEV often uses Vite proxy: API_BASE_URL === "" → fetch("/api/chat") → :8000.
-  // Never skip that fallback when Vero (:8001) is down.
   const apiConfigured = APP_CONFIG.API_BASE_URL;
-  const supervisorRel =
-    apiConfigured === "" && import.meta.env.DEV
-      ? ""
-      : stripSlash(apiConfigured || "http://127.0.0.1:8000");
+  const supervisorRel = stripSlash(apiConfigured !== undefined ? apiConfigured : "");
+
   const bases = [];
   const push = (b) => {
     if (b == null) return;
     if (!bases.includes(b)) bases.push(b);
   };
-  push(primary);
-  push(supervisorRel);
-  if (primary.includes("8001")) {
-    push("http://127.0.0.1:8000");
+
+  // If in production or visiting from an external domain, use public URLs or relative same-origin ("")
+  if (import.meta.env.PROD || !isBrowserOnLocalhost()) {
+    if (primary && !isLocalhost(primary)) {
+      push(primary);
+    }
+    if (supervisorRel && !isLocalhost(supervisorRel)) {
+      push(supervisorRel);
+    }
+    push(""); // Same-origin /api/chat via Nginx
+    return bases;
   }
-  return bases.length ? bases : ["http://127.0.0.1:8001", "http://127.0.0.1:8000"];
+
+  // Local development fallback
+  if (primary) push(primary);
+  if (supervisorRel) push(supervisorRel);
+  push("http://127.0.0.1:8001");
+  push("http://127.0.0.1:8000");
+  push("");
+
+  return bases;
 }
 
 /** Voice STT/TTS live only on Vero (:8001). Never fall back to supervisor (:8000). */
 function voiceBases() {
-  const vero = stripSlash(APP_CONFIG.VERO_API_BASE_URL || "http://127.0.0.1:8001");
-  return vero ? [vero] : ["http://127.0.0.1:8001"];
+  const primary = stripSlash(
+    APP_CONFIG.VERO_API_BASE_URL !== undefined ? APP_CONFIG.VERO_API_BASE_URL : ""
+  );
+  if (import.meta.env.PROD || !isBrowserOnLocalhost()) {
+    if (primary && !isLocalhost(primary)) {
+      return [primary];
+    }
+    return [""]; // Same-origin relative path (proxied by Nginx)
+  }
+  return [primary || "http://127.0.0.1:8001"];
 }
 
 function isUnreachable(err) {

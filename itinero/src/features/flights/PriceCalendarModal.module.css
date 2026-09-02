@@ -376,3 +376,83 @@
 		font-size: 11px;
 	}
 }
+
+/* ═══════════════════════════════════════════════════════
+   PriceCalendarModal Dark Mode
+   ═══════════════════════════════════════════════════════ */
+
+:global(html.dark) .modal-container {
+	background: #111c2e !important;
+	border: 1px solid rgba(255, 255, 255, 0.1) !important;
+	box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
+}
+
+:global(html.dark) .modal-close {
+	background: #182338 !important;
+	border-color: rgba(255, 255, 255, 0.15) !important;
+	color: #ffffff !important;
+}
+
+:global(html.dark) .header-title {
+	color: #ffffff !important;
+}
+
+:global(html.dark) .header-subtitle {
+	color: #cbd5e1 !important;
+}
+
+:global(html.dark) .month-select-btn {
+	background: #182338 !important;
+	border-color: rgba(255, 255, 255, 0.15) !important;
+	color: #ffffff !important;
+}
+
+:global(html.dark) .month-dropdown {
+	background: #0b1424 !important;
+	border-color: rgba(255, 255, 255, 0.15) !important;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+:global(html.dark) .month-option {
+	color: #ffffff !important;
+}
+
+:global(html.dark) .month-option:hover {
+	background: #182338 !important;
+}
+
+:global(html.dark) .weekday-header {
+	color: #94a3b8 !important;
+}
+
+:global(html.dark) .calendar-cell {
+	background: #0b1424 !important;
+	border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+:global(html.dark) .calendar-cell:hover:not(.disabled):not(.active) {
+	background: #182338 !important;
+	border-color: #f97211 !important;
+}
+
+:global(html.dark) .calendar-cell.active {
+	background: #f97211 !important;
+	border-color: #f97211 !important;
+}
+
+:global(html.dark) .day-number {
+	color: #ffffff !important;
+}
+
+:global(html.dark) .calendar-cell.active .day-number {
+	color: #ffffff !important;
+}
+
+:global(html.dark) .price-text {
+	color: #94a3b8 !important;
+}
+
+:global(html.dark) .legend-item {
+	color: #cbd5e1 !important;
+}
+

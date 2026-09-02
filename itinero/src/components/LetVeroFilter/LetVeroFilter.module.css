@@ -121,3 +121,42 @@
   color: #64748b;
   line-height: 1.4;
 }
+
+/* ═══════════════════════════════════════════════════════
+   LetVeroFilter Dark Mode
+   ═══════════════════════════════════════════════════════ */
+
+:global(html.dark) .card {
+  background: #111c2e !important;
+  border-color: rgba(249, 114, 17, 0.35) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+:global(html.dark) .title {
+  color: #ffffff !important;
+}
+
+:global(html.dark) .subtitle {
+  color: #94a3b8 !important;
+}
+
+:global(html.dark) .avatar {
+  background: #1e293b !important;
+}
+
+:global(html.dark) .textarea {
+  background: #0b1424 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+:global(html.dark) .clearBtn {
+  background: #182338 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #cbd5e1 !important;
+}
+
+:global(html.dark) .note {
+  color: #94a3b8 !important;
+}
+

@@ -26,10 +26,14 @@
 
 .title {
   margin: 0;
-  color: #001438;
+  color: var(--color-navy, #001438);
   font-size: clamp(28px, 3.4vw, 40px);
   font-weight: 800;
   line-height: 1.15;
+}
+
+:global(html.dark) .title {
+  color: #ffffff !important;
 }
 
 .sub {
@@ -43,11 +47,15 @@
   background: none;
   border: 0;
   padding: 0;
-  color: #001438;
+  color: var(--color-navy, #001438);
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+}
+
+:global(html.dark) .more {
+  color: #ffffff !important;
 }
 
 .more:hover {

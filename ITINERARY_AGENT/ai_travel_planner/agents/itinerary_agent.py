@@ -220,11 +220,14 @@ class ItineraryAgent:
 
     def __init__(self) -> None:
         settings = get_settings()
-        self._llm = ChatOpenAI(
-            model=settings.itinerary_agent_model,
-            temperature=settings.itinerary_agent_temperature,
-            api_key=settings.openai_api_key,
-        )
+        kwargs = {
+            "model": settings.itinerary_agent_model,
+            "temperature": settings.itinerary_agent_temperature,
+            "api_key": settings.openai_api_key,
+        }
+        if getattr(settings, "openai_base_url", None):
+            kwargs["base_url"] = settings.openai_base_url
+        self._llm = ChatOpenAI(**kwargs)
         logger.info(
             "ItineraryAgent initialised with model=%s", settings.itinerary_agent_model
         )

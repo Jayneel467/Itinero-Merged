@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Sparkles } from "lucide-react";
 import ScrollReveal from "../../../../components/ScrollReveal";
 import { useVeroUi } from "@/context/VeroUiContext";
 
@@ -24,7 +25,7 @@ export default function WhyChoose() {
   return (
     <div className="flex flex-col lg:flex-row items-center justify-between self-stretch mt-12 lg:mt-[56px] 2xl:mt-[80px] mb-12 lg:mb-[72px] 2xl:mb-[96px] mx-auto px-4 lg:px-[20px] 2xl:px-[53px] max-w-[1900px] w-full gap-8 lg:gap-4 overflow-hidden">
       <img
-        src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/vswmpdvf_expires_30_days.png"
+        src={`${import.meta.env.BASE_URL}vero.png`}
         className="w-[120px] md:w-[220px] lg:w-[150px] 2xl:w-[295px] object-contain shrink-0"
         alt=""
       />
@@ -49,10 +50,8 @@ export default function WhyChoose() {
               submitDream();
             }}
           >
-            <img
-              src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/i5htp981_expires_30_days.png"
-              className="w-6 h-6 lg:w-[24px] lg:h-[24px] 2xl:w-[30px] 2xl:h-[30px] ml-4 lg:ml-[25px] 2xl:ml-[37px] mr-3 lg:mr-[15px] 2xl:mr-[21px] object-fill shrink-0"
-              alt=""
+            <Sparkles
+              className="w-6 h-6 lg:w-[24px] lg:h-[24px] 2xl:w-[30px] 2xl:h-[30px] ml-4 lg:ml-[25px] 2xl:ml-[37px] mr-3 lg:mr-[15px] 2xl:mr-[21px] shrink-0 text-black"
             />
             <input
               type="text"
@@ -72,7 +71,7 @@ export default function WhyChoose() {
         </ScrollReveal>
       </div>
       <img
-        src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/0ci4r7t6_expires_30_days.png"
+        src={`${import.meta.env.BASE_URL}travel.png`}
         className="w-[150px] md:w-[260px] lg:w-[200px] 2xl:w-[349px] object-contain shrink-0"
         alt=""
       />

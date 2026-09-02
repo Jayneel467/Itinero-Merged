@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AIRPORTS, findAirportByCode } from '@/constants/airports';
 import useAirportSuggest from '@/features/flights/hooks/useAirportSuggest';
 import { useAnchoredPanel } from '@/hooks/useAnchoredPanel';
@@ -75,8 +75,19 @@ function upcomingMonths(count = 6) {
 
 export default function SharedHotelSearchBar({ mode = "hotels" }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isHomes = mode === "homes";
-  const [city, setCity] = useState(findAirportByCode("BOM") || AIRPORTS[0]);
+
+  const initialCityName = searchParams.get("city") || searchParams.get("cityCode") || "";
+  const [city, setCity] = useState(() => {
+    if (initialCityName) {
+      const code = searchParams.get("cityCode") || "";
+      const match = code ? findAirportByCode(code) : null;
+      if (match) return match;
+      return { city: initialCityName, state: "", code };
+    }
+    return null;
+  });
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   

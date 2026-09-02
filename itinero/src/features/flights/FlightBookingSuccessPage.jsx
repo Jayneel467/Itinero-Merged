@@ -210,6 +210,71 @@ export default function FlightBookingSuccessPage() {
     };
   }, [flight]);
 
+  const returnFlight =
+    flight?.selectedReturn ||
+    (flight?.returnSummary
+      ? {
+          airline: flight.airline,
+          flightNumber: flight.flightNumber,
+          cabin: flight.cabin,
+          departure: flight.returnSummary.departure,
+          arrival: flight.returnSummary.arrival,
+          duration: flight.returnSummary.duration,
+          stops: flight.returnSummary.stops,
+        }
+      : null);
+
+  const isRoundTrip = Boolean(
+    returnFlight ||
+      flight?.selectedReturn ||
+      flight?.returnSummary ||
+      (Array.isArray(flight?.returnSegments) && flight.returnSegments.length > 0)
+  );
+
+  const returnRecap = useMemo(() => {
+    if (!returnFlight) return null;
+    const airlineName = canonicalizeAirlineName(
+      returnFlight.airline?.name || (typeof returnFlight.airline === "string" ? returnFlight.airline : ""),
+      returnFlight.airline?.code
+    );
+    const flightNo = returnFlight.flightNumber || returnFlight.flight_number || "";
+    const origin = String(returnFlight.departure?.airport || returnFlight.origin || recap?.dest || "").toUpperCase();
+    const dest = String(returnFlight.arrival?.airport || returnFlight.destination || recap?.origin || "").toUpperCase();
+    const originMeta = findAirportByCode(origin);
+    const destMeta = findAirportByCode(dest);
+    const originInfo = describeAirport(origin);
+    const destInfo = describeAirport(dest);
+    const airlineCode = inferAirlineCode(airlineName, flightNo, returnFlight.airline?.code);
+    return {
+      airlineName,
+      airlineCode,
+      logo: returnFlight.airline?.logo || returnFlight.logo || "",
+      flightNo,
+      origin,
+      dest,
+      originCity: originMeta?.city || originInfo.city || origin,
+      destCity: destMeta?.city || destInfo.city || dest,
+      originName: originMeta?.name || originInfo.name || origin,
+      destName: destMeta?.name || destInfo.name || dest,
+      originInfo,
+      destInfo,
+      depTerm: likelyTerminal(airlineCode, origin),
+      arrTerm: likelyTerminal(airlineCode, dest),
+      depTime: formatFlightClock(
+        returnFlight.departure?.time || returnFlight.departureAt || returnFlight.departure_at
+      ),
+      arrTime: formatFlightClock(
+        returnFlight.arrival?.time || returnFlight.arrivalAt || returnFlight.arrival_at
+      ),
+      depDate: formatFlightDate(
+        returnFlight.departure?.date || returnFlight.departureAt || returnFlight.departure_at || flight?.returnDate
+      ),
+      duration: returnFlight.duration || "-",
+      stops: stopsLabel(returnFlight.stops),
+      cabin: returnFlight.cabin || returnFlight.fare_family || "Economy",
+    };
+  }, [returnFlight, recap, flight]);
+
   useEffect(() => {
     if (!recap) return undefined;
     setPageContext(
@@ -266,7 +331,9 @@ export default function FlightBookingSuccessPage() {
     setPdfError("");
     setPdfBusy(true);
     try {
-      await downloadBookingConfirmationPdf(confirmationToPdfBooking(confirmation, recap));
+      await downloadBookingConfirmationPdf(
+        confirmationToPdfBooking(confirmation, { ...recap, returnRecap })
+      );
     } catch (err) {
       setPdfError(err?.message || "Could not generate PDF.");
     } finally {
@@ -407,7 +474,9 @@ export default function FlightBookingSuccessPage() {
             <div className={styles.head}>
               <img src={logoSrc} alt="Itinero" className={styles.wordmark} />
               <div className={styles.headRight}>
-                <p className={styles.headTitle}>CONFIRMED E-TICKET</p>
+                <p className={styles.headTitle}>
+                  {isRoundTrip ? "CONFIRMED E-TICKETS (ROUND TRIP)" : "CONFIRMED E-TICKET"}
+                </p>
                 <p className={styles.headMeta}>Passenger itinerary · Show at check-in</p>
                 <p className={styles.headMeta}>Issued {issuedLabel}</p>
               </div>
@@ -416,6 +485,13 @@ export default function FlightBookingSuccessPage() {
             {!paid ? (
               <div className={styles.warn}>Payment not captured yet. Save PDF still works for this itinerary.</div>
             ) : null}
+
+            {/* 1. Ticket 1: Departing Flight */}
+            {isRoundTrip && (
+              <div className={styles.ticketHeaderRow}>
+                <span className={styles.ticketBadge}>Ticket 1 of 2 · Departing Flight</span>
+              </div>
+            )}
 
             <section className={styles.airlineCard}>
               <div className={styles.airlineBlock}>
@@ -438,7 +514,7 @@ export default function FlightBookingSuccessPage() {
 
             <div className={styles.refBar}>
               <div>
-                <div className={styles.refLabel}>Booking reference</div>
+                <div className={styles.refLabel}>Booking reference (PNR)</div>
                 <div className={styles.pnr}>{bookingRef || "-"}</div>
               </div>
               <span className={`${styles.badge} ${cancelled ? styles.badgeCancelled : paid ? "" : styles.badgePending}`}>
@@ -498,6 +574,99 @@ export default function FlightBookingSuccessPage() {
               </div>
             </div>
 
+            {/* 2. Ticket 2: Return Flight (When Round Trip) */}
+            {isRoundTrip && returnRecap && (
+              <>
+                <hr className={styles.ticketSectionDivider} />
+                <div className={styles.ticketHeaderRow}>
+                  <span className={`${styles.ticketBadge} ${styles.ticketBadgeReturn}`}>
+                    Ticket 2 of 2 · Return Flight
+                  </span>
+                </div>
+
+                <section className={styles.airlineCard}>
+                  <div className={styles.airlineBlock}>
+                    <AirlineMark
+                      name={returnRecap.airlineName}
+                      code={returnRecap.airlineCode}
+                      logo={returnRecap.logo}
+                      flightNumber={returnRecap.flightNo}
+                      size={40}
+                    />
+                    <div>
+                      <div className={styles.airlineName}>{returnRecap.airlineName}</div>
+                      <div className={styles.flightNo}>
+                        {[returnRecap.flightNo || returnRecap.airlineCode, returnRecap.cabin, returnRecap.stops].filter(Boolean).join(" | ")}
+                      </div>
+                    </div>
+                  </div>
+                  <img src={logoSrc} alt="itinero" className={styles.airlineBrand} />
+                </section>
+
+                <div className={styles.refBar}>
+                  <div>
+                    <div className={styles.refLabel}>Return reference (PNR)</div>
+                    <div className={styles.pnr}>{bookingRef ? `${bookingRef}-R` : "-"}</div>
+                  </div>
+                  <span className={`${styles.badge} ${cancelled ? styles.badgeCancelled : paid ? "" : styles.badgePending}`}>
+                    {cancelled ? "CANCELLED" : paid ? "PAID" : "PENDING"}
+                  </span>
+                  <div className={styles.refDate}>{returnRecap.depDate || issuedLabel.split(",")[0]}</div>
+                </div>
+
+                <div className={styles.route}>
+                  <div>
+                    <p className={styles.kicker}>Depart</p>
+                    <div className={styles.time}>{returnRecap.depTime}</div>
+                    <div className={styles.iata}>{returnRecap.origin || "-"}</div>
+                    <div className={styles.city}>{returnRecap.originCity}</div>
+                    <div className={styles.aptName}>{returnRecap.originName}</div>
+                  </div>
+                  <div className={styles.mid}>
+                    <div className={styles.dur}>{returnRecap.duration}</div>
+                    <div className={styles.path} aria-hidden>
+                      <span className={styles.dot} />
+                    </div>
+                    <div className={styles.stops}>{returnRecap.stops}</div>
+                  </div>
+                  <div className={styles.right}>
+                    <p className={styles.kicker}>Arrive</p>
+                    <div className={styles.time}>{returnRecap.arrTime}</div>
+                    <div className={styles.iata}>{returnRecap.dest || "-"}</div>
+                    <div className={styles.city}>{returnRecap.destCity}</div>
+                    <div className={styles.aptName}>{returnRecap.destName}</div>
+                  </div>
+                </div>
+
+                <div className={styles.grid2}>
+                  <div className={styles.airportCell}>
+                    <p className={styles.kicker}>Departure airport</p>
+                    <div className={styles.cellTitle}>{returnRecap.originInfo.fullName}</div>
+                    <div className={styles.cellSub}>{returnRecap.originInfo.location || returnRecap.originCity}</div>
+                    {returnRecap.originInfo.terminals || returnRecap.depTerm ? (
+                      <div className={styles.cellTerm}>
+                        {returnRecap.originInfo.terminals ? `Terminals: ${returnRecap.originInfo.terminals}` : `Terminal ${returnRecap.depTerm}`}
+                        {returnRecap.depTerm ? `\nUsual for this airline: ${returnRecap.depTerm}` : ""}
+                      </div>
+                    ) : null}
+                    {returnRecap.originInfo.tip ? <p className={styles.tip}>{returnRecap.originInfo.tip}</p> : null}
+                  </div>
+                  <div className={styles.airportCell}>
+                    <p className={styles.kicker}>Arrival airport</p>
+                    <div className={styles.cellTitle}>{returnRecap.destInfo.fullName}</div>
+                    <div className={styles.cellSub}>{returnRecap.destInfo.location || returnRecap.destCity}</div>
+                    {returnRecap.destInfo.terminals || returnRecap.arrTerm ? (
+                      <div className={styles.cellTerm}>
+                        {returnRecap.destInfo.terminals ? `Terminals: ${returnRecap.destInfo.terminals}` : `Terminal ${returnRecap.arrTerm}`}
+                        {returnRecap.arrTerm ? `\nUsual for this airline: ${returnRecap.arrTerm}` : ""}
+                      </div>
+                    ) : null}
+                    {returnRecap.destInfo.tip ? <p className={styles.tip}>{returnRecap.destInfo.tip}</p> : null}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className={styles.paxCard}>
               <div>
                 <p className={styles.kicker}>Passenger(s)</p>
@@ -512,7 +681,9 @@ export default function FlightBookingSuccessPage() {
 
             <div className={styles.payRow}>
               <div className={styles.paid}>
-                <div className={styles.paidLabel}>Amount paid</div>
+                <div className={styles.paidLabel}>
+                  {isRoundTrip ? "Combined amount paid (2 tickets)" : "Amount paid"}
+                </div>
                 <div className={styles.paidAmt}>{amount ? amountLabel : "-"}</div>
                 <div className={styles.paidVia}>
                   {paymentId ? `Card ${paymentId}` : paid ? "Card" : "Not captured"}

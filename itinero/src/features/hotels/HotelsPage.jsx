@@ -189,7 +189,6 @@ export default function HotelsPage({ mode = "hotels" }) {
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS });
-  const [sortBy, setSortBy] = useState("recommended");
   const {
     hotels,
     isLoading,
@@ -201,16 +200,17 @@ export default function HotelsPage({ mode = "hotels" }) {
     page,
     totalPages,
     setPage,
+    sortBy,
+    setSortBy,
     categoryLabel,
     runSearch,
   } = useHotelSearch({ category: isHomes ? "homes" : "hotels" });
   const { currency } = useCurrency();
   const { setPageContext, clearPageContext, openVero, setUiActionHandler, isOpen: veroOpen } = useVeroUi();
 
-  // Reset filters / sort when the search city/dates change
+  // Reset filters when the search city/dates change
   useEffect(() => {
     setFilters({ ...EMPTY_FILTERS });
-    setSortBy("recommended");
   }, [query.city, query.checkIn, query.checkOut]);
 
   const filtered = useMemo(() => {
@@ -448,8 +448,8 @@ export default function HotelsPage({ mode = "hotels" }) {
                     showMap ? ` ${styles.hotelCardsContainerMap}` : ""
                   }`}
                 >
-                  {filtered.map((hotel) => (
-                    <HotelCard key={hotel.id} hotel={hotel} searchQuery={query} />
+                  {filtered.map((hotel, idx) => (
+                    <HotelCard key={hotel.id} hotel={hotel} searchQuery={query} rank={idx} />
                   ))}
                 </div>
                 <div

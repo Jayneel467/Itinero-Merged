@@ -34,7 +34,8 @@ export function useAnchoredPanel(
       const panelWidth = Math.min(width, Math.max(240, window.innerWidth - margin * 2));
       const spaceBelow = window.innerHeight - r.bottom - gap;
       const spaceAbove = r.top - gap;
-      const openUp = spaceBelow < Math.min(estimatedHeight, 360) && spaceAbove > spaceBelow;
+      // Flip above when there isn't room below (e.g. hero section on initial page load)
+      const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
 
       let left;
       if (align === "right") {
@@ -43,13 +44,15 @@ export function useAnchoredPanel(
         left = Math.min(window.innerWidth - margin - panelWidth, Math.max(margin, r.left + offsetX));
       }
 
+      const availableHeight = openUp ? spaceAbove - margin : spaceBelow - margin;
+
       setStyle({
         position: "fixed",
         left,
         width: panelWidth,
         maxWidth: `calc(100vw - ${margin * 2}px)`,
         zIndex: 220,
-        maxHeight: Math.max(240, openUp ? spaceAbove : Math.max(spaceBelow, estimatedHeight)),
+        maxHeight: Math.max(200, Math.min(availableHeight, estimatedHeight + 40)),
         overflowY: "auto",
         ...(openUp
           ? { bottom: window.innerHeight - r.top + gap, top: "auto" }

@@ -99,7 +99,7 @@ const SortButton = ({ id, label, shortLabel, Icon, currentSort, onClick }) => {
       aria-pressed={isActive}
       title={label}
     >
-      <Icon size={16} color={isActive ? "#F97211" : "#888888"} />
+      <Icon size={16} color={isActive ? "#F97211" : "currentColor"} />
       <span className={`${isActive ? styles["fl-text46"] : styles["fl-text47"]} ${styles["fl-sort-full"]}`}>
         {label}
       </span>
@@ -454,15 +454,17 @@ export default function FlightsPage() {
     : `${search.destination} → ${search.origin}`;
 
   async function handleCardAction(flight) {
-    if (isReturnFlow && rtStep === "outbound") {
-      await selectOutbound(flight);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    if (isReturnFlow && rtStep === "return") {
-      const packageFlight = await selectReturn(flight);
-      setBookingFlight(packageFlight);
-      return;
+    if (isReturnFlow) {
+      if (rtStep === "outbound") {
+        await selectOutbound(flight);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      if (rtStep === "return") {
+        const packageFlight = await selectReturn(flight);
+        setBookingFlight(packageFlight || flight);
+        return;
+      }
     }
     setBookingFlight(flight);
   }
@@ -533,32 +535,14 @@ export default function FlightsPage() {
               {resumeHint ? (
                 <div
                   role="status"
-                  style={{
-                    marginBottom: 16,
-                    padding: "12px 16px",
-                    borderRadius: 12,
-                    background: "#FFF7ED",
-                    border: "1px solid #FED7AA",
-                    color: "#9A3412",
-                    fontSize: 14,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    alignItems: "flex-start",
-                  }}
+                  className="mb-4 p-3.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-500/30 text-orange-900 dark:text-orange-200 text-sm flex justify-between gap-3 items-start"
                 >
                   <span>{resumeHint}</span>
                   <button
                     type="button"
                     onClick={() => setResumeHint("")}
                     aria-label="Dismiss"
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      color: "#9A3412",
-                      fontWeight: 700,
-                    }}
+                    className="border-0 bg-transparent cursor-pointer text-orange-800 dark:text-orange-300 font-bold"
                   >
                     ✕
                   </button>
@@ -598,94 +582,68 @@ export default function FlightsPage() {
 
               {isReturnFlow && (
                 <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    gap: 12,
-                    marginBottom: 16,
-                    padding: "14px 18px",
-                    background: "#fff",
-                    borderRadius: 14,
-                    border: "1px solid #FFE4CC",
-                  }}
+                  className="flex flex-col gap-3 mb-4 p-4 md:p-5 bg-white dark:bg-[#111c2e] rounded-2xl border border-orange-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
                 >
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: "50%",
-                        background: rtStep === "outbound" ? "#F97211" : "#12B76A",
-                        color: "#fff",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: 800,
-                        fontSize: 13,
-                      }}
-                    >
-                      1
-                    </span>
-                    <span style={{ fontWeight: 700, color: "#001439", fontSize: 14 }}>
-                      Depart {departRouteLabel}
-                    </span>
-                  </div>
-                  <span style={{ color: "#D0D5DD" }}>→</span>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: "50%",
-                        background: rtStep === "return" ? "#F97211" : "#E4E7EC",
-                        color: rtStep === "return" ? "#fff" : "#667085",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: 800,
-                        fontSize: 13,
-                      }}
-                    >
-                      2
-                    </span>
-                    <span style={{ fontWeight: 700, color: "#001439", fontSize: 14 }}>
-                      Return {returnRouteLabel}
-                    </span>
-                  </div>
-                  {selectedOutbound && (
-                    <div
-                      style={{
-                        marginLeft: "auto",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span style={{ fontSize: 13, color: "#475467" }}>
-                        Departing:{" "}
-                        <strong>
-                          {selectedOutbound.airline?.name}{" "}
-                          {selectedOutbound.departure?.time}
-                        </strong>
-                      </span>
+                  <div className="flex flex-wrap items-center gap-3 justify-between">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex gap-2 items-center">
+                        <span
+                          className={`w-7 h-7 rounded-full flex items-center justify-center font-extrabold text-[13px] ${
+                            rtStep === "outbound" ? "bg-[#F97211] text-white" : "bg-[#12B76A] text-white"
+                          }`}
+                        >
+                          {rtStep === "outbound" ? "1" : "✓"}
+                        </span>
+                        <span className="font-bold text-[#001439] dark:text-white text-sm">
+                          Step 1: Depart ({departRouteLabel})
+                        </span>
+                      </div>
+                      <span className="text-gray-300 dark:text-gray-600">→</span>
+                      <div className="flex gap-2 items-center">
+                        <span
+                          className={`w-7 h-7 rounded-full flex items-center justify-center font-extrabold text-[13px] ${
+                            rtStep === "return" ? "bg-[#F97211] text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                          }`}
+                        >
+                          2
+                        </span>
+                        <span className="font-bold text-[#001439] dark:text-white text-sm">
+                          Step 2: Return ({returnRouteLabel})
+                        </span>
+                      </div>
+                    </div>
+
+                    {selectedOutbound && rtStep === "return" && (
                       <button
                         type="button"
                         onClick={changeOutbound}
-                        style={{
-                          border: "1px solid #F97211",
-                          background: "#FFF7F0",
-                          color: "#EA580C",
-                          borderRadius: 8,
-                          padding: "6px 12px",
-                          fontWeight: 700,
-                          fontSize: 13,
-                          cursor: "pointer",
-                        }}
+                        className="border border-[#F97211] bg-orange-50 dark:bg-orange-500/15 text-[#EA580C] dark:text-[#f97211] rounded-lg px-3.5 py-1.5 font-bold text-xs cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-500/25 transition-colors"
                       >
-                        Change departing
+                        Change departing flight
                       </button>
+                    )}
+                  </div>
+
+                  {selectedOutbound && rtStep === "return" ? (
+                    <div
+                      className="flex items-center justify-between flex-wrap gap-2.5 p-2.5 md:p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 rounded-xl"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">✈️</span>
+                        <span className="text-xs md:text-sm text-emerald-800 dark:text-emerald-300">
+                          <strong>Departing flight locked:</strong> {selectedOutbound.airline?.name || ""}{" "}
+                          {selectedOutbound.flightNumber || ""} · {selectedOutbound.departure?.airport} (
+                          {selectedOutbound.departure?.time}) → {selectedOutbound.arrival?.airport} (
+                          {selectedOutbound.arrival?.time})
+                        </span>
+                      </div>
+                      <span className="text-xs md:text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                        Now choose your return flight below 👇
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Choose your outbound flight first. Next, you will select your return flight.
                     </div>
                   )}
                 </div>
@@ -791,18 +749,12 @@ export default function FlightsPage() {
               {!isLoading && error && filtered.length === 0 && (
                 <div
                   role="alert"
-                  style={{
-                    padding: 32,
-                    textAlign: "center",
-                    background: "#fff",
-                    borderRadius: 16,
-                    border: "1px dashed #E4E7EC",
-                  }}
+                  className="p-8 text-center bg-white dark:bg-[#111c2e] rounded-2xl border border-dashed border-gray-200 dark:border-white/15"
                 >
-                  <p style={{ margin: 0, fontWeight: 700, color: "#001439" }}>
+                  <p className="m-0 font-bold text-[#001439] dark:text-white text-base">
                     {stolHint?.title || error}
                   </p>
-                  <p style={{ margin: "8px 0 0", fontSize: 13, color: "#667085" }}>
+                  <p className="mt-2 text-xs md:text-sm text-gray-500 dark:text-gray-400">
                     {stolHint?.copy || (message && message !== error ? message : null)}
                   </p>
                   {stolHint?.altFrom && stolHint?.altTo ? (
@@ -814,16 +766,7 @@ export default function FlightsPage() {
                         next.set("to", stolHint.altTo);
                         setSearchParams(next);
                       }}
-                      style={{
-                        marginTop: 16,
-                        border: "1px solid #F97211",
-                        background: "#FFF7F0",
-                        color: "#EA580C",
-                        borderRadius: 10,
-                        padding: "10px 18px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
+                      className="mt-4 border border-[#F97211] bg-orange-50 dark:bg-orange-500/15 text-[#EA580C] dark:text-[#f97211] rounded-xl px-4 py-2.5 font-bold cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-500/25 transition-colors"
                     >
                       {stolHint.altLabel}
                     </button>
@@ -864,16 +807,7 @@ export default function FlightsPage() {
                     <button
                       type="button"
                       onClick={changeOutbound}
-                      style={{
-                        marginTop: 16,
-                        border: "1px solid #F97211",
-                        background: "#FFF7F0",
-                        color: "#EA580C",
-                        borderRadius: 10,
-                        padding: "10px 18px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
+                      className="mt-4 border border-[#F97211] bg-orange-50 dark:bg-orange-500/15 text-[#EA580C] dark:text-[#f97211] rounded-xl px-4 py-2.5 font-bold cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-500/25 transition-colors"
                     >
                       Change departing flight
                     </button>
@@ -886,7 +820,14 @@ export default function FlightsPage() {
                   displayFlights.map((flight) => (
                     <FlightCardDesign
                       key={flight.id}
-                      flight={flight}
+                      flight={{
+                        ...flight,
+                        legLabel: isReturnFlow
+                          ? rtStep === "outbound"
+                            ? "✈️ Step 1: Departing Flight"
+                            : "🔄 Step 2: Return Flight"
+                          : flight.legLabel,
+                      }}
                       styles={styles}
                       highlighted={highlightedId === String(flight.id)}
                       highlightLabel={highlightedId === String(flight.id) ? "Vero selected" : ""}
@@ -894,8 +835,8 @@ export default function FlightsPage() {
                       ctaLabel={
                         isReturnFlow
                           ? rtStep === "outbound"
-                            ? "Select"
-                            : "Select return"
+                            ? "Select & Choose Return →"
+                            : "Select Return & Continue to Booking →"
                           : "Book Now"
                       }
                       hideReturn

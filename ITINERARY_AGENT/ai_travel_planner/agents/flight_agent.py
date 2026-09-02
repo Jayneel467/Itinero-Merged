@@ -172,11 +172,14 @@ class FlightAgent:
 
     def __init__(self) -> None:
         settings = get_settings()
-        self._llm = ChatOpenAI(
-            model=settings.flight_agent_model,
-            temperature=settings.flight_agent_temperature,
-            api_key=settings.openai_api_key,
-        )
+        kwargs = {
+            "model": settings.flight_agent_model,
+            "temperature": settings.flight_agent_temperature,
+            "api_key": settings.openai_api_key,
+        }
+        if getattr(settings, "openai_base_url", None):
+            kwargs["base_url"] = settings.openai_base_url
+        self._llm = ChatOpenAI(**kwargs)
         logger.info("FlightAgent initialised with model=%s", settings.flight_agent_model)
 
     # ── Public interface ──────────────────────────────────────────────────────

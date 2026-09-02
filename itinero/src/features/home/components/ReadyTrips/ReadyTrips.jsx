@@ -172,7 +172,7 @@ export default function ReadyTrips() {
       <ScrollReveal delay={0.1}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center self-stretch px-4 md:px-[53px]">
           <div className="flex flex-col shrink-0 items-start gap-1 mb-4 md:mb-0">
-            <span className="text-[#001438] text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight">
+            <span className="text-[#001438] dark:text-white text-[28px] md:text-[40px] lg:text-[36px] 2xl:text-[50px] font-bold leading-tight">
               Ready-made trips
             </span>
             <span className="text-[#F97211] text-[16px] md:text-xl lg:text-[18px] 2xl:text-2xl font-medium">
@@ -182,7 +182,7 @@ export default function ReadyTrips() {
           <button
             type="button"
             onClick={() => navigate("/packages")}
-            className="text-black text-[16px] md:text-xl font-medium cursor-pointer hover:underline bg-transparent border-0 p-0"
+            className="text-black dark:text-white text-[16px] md:text-xl font-medium cursor-pointer hover:underline bg-transparent border-0 p-0"
           >
             See all packages
           </button>
@@ -200,8 +200,8 @@ export default function ReadyTrips() {
                 onClick={() => setTheme(t.id)}
                 className={`min-h-[38px] px-4 rounded-full text-[14px] font-semibold border cursor-pointer transition-colors ${
                   active
-                    ? "bg-[#001438] text-white border-[#001438]"
-                    : "bg-white text-[#49607E] border-gray-200 hover:border-gray-300"
+                    ? "bg-[#001438] dark:bg-[#F97211] text-white border-[#001438] dark:border-[#F97211]"
+                    : "bg-white dark:bg-[#111c2e] text-[#49607E] dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/25"
                 }`}
               >
                 {t.label}
@@ -213,20 +213,20 @@ export default function ReadyTrips() {
             <button
               type="button"
               onClick={() => scrollBy(-1)}
-              className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 shadow-sm mr-2 md:mr-4 transition-colors"
+              className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 dark:border-white/15 flex items-center justify-center bg-white dark:bg-[#121a2b] hover:bg-gray-50 dark:hover:bg-[#1a263d] shadow-sm mr-2 md:mr-4 transition-colors cursor-pointer"
               aria-label="Previous packages"
             >
-              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-black dark:text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </button>
             <button
               type="button"
               onClick={() => scrollBy(1)}
-              className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 shadow-sm transition-colors"
+              className="w-10 h-10 md:w-[50px] md:h-[50px] rounded-full border border-gray-200 dark:border-white/15 flex items-center justify-center bg-white dark:bg-[#121a2b] hover:bg-gray-50 dark:hover:bg-[#1a263d] shadow-sm transition-colors cursor-pointer"
               aria-label="Next packages"
             >
-              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-black dark:text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </button>
