@@ -425,7 +425,24 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
             We sent a 6-digit code to <strong>{accountIdentifier}</strong>. Enter it within{' '}
             <strong>10 minutes</strong>.
           </p>
-          {import.meta.env.DEV && devOtp ? <p className={styles.devCode}>Local test code: {devOtp}</p> : null}
+          {devOtp ? (
+            <p
+              className={styles.devCode}
+              style={{
+                color: '#c2410c',
+                background: '#fff7ed',
+                border: '1px solid #fed7aa',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                textAlign: 'center',
+                margin: '12px 0',
+              }}
+            >
+              Test verification code: <strong style={{ letterSpacing: '2px', fontSize: '15px' }}>{devOtp}</strong>
+            </p>
+          ) : null}
           {otpError ? <p className={`${styles.error} ${styles.errorCenter}`}>{otpError}</p> : null}
 
           <div className={styles.otpRow}>

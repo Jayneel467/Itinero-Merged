@@ -414,7 +414,7 @@ async def request_otp(
     }
     # Local/dev: always surface the code so login works without inbox access
     # (SMTP may still deliver when configured).
-    if dev_mode():
+    if dev_mode() or delivered.get("channel") == "dev":
         out["dev_otp"] = code
         if delivered.get("channel") == "dev":
             out["message"] = f"Local test code for {label}: {code}"
