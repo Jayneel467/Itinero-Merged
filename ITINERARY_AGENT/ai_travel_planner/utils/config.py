@@ -10,11 +10,9 @@ installed (useful in minimal environments).
 from __future__ import annotations
 
 import os
-from functools import lru_cache
-
-from dotenv import load_dotenv
-
 from pathlib import Path
+from typing import Any
+
 from dotenv import load_dotenv
 
 _UTIL_DIR = Path(__file__).resolve().parent
