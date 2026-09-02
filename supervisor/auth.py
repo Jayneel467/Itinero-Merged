@@ -458,39 +458,46 @@ def verify_otp(
         return {"ok": False, "error": "invalid_code", "message": "Enter the 6-digit code."}
 
     with connection() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT id, code_hash, attempts, expires_at, consumed_at
             FROM otp_challenges
-            WHERE phone = %s
+            WHERE phone = %s AND consumed_at IS NULL
             ORDER BY created_at DESC
-            LIMIT 1
+            LIMIT 5
             """,
             (target,),
-        ).fetchone()
-        if not row:
+        ).fetchall()
+        if not rows:
             return {"ok": False, "error": "no_challenge", "message": "Request a new code first."}
-        cid, code_hash, attempts, expires_at, consumed = row
-        if consumed:
-            return {"ok": False, "error": "used", "message": "That code was already used. Request a new one."}
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-        if expires_at < _now():
-            return {"ok": False, "error": "expired", "message": "Code expired. Request a new one."}
-        if attempts >= OTP_MAX_ATTEMPTS:
-            return {"ok": False, "error": "locked", "message": "Too many tries. Request a new code."}
-        if not hmac.compare_digest(code_hash, _hash_code(target, digits)):
+
+        matching_row = None
+        for r in rows:
+            cid, code_hash, attempts, expires_at, consumed = r
+            if consumed:
+                continue
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at >= _now() and hmac.compare_digest(code_hash, _hash_code(target, digits)):
+                matching_row = r
+                break
+
+        if not matching_row:
+            latest_id = rows[0][0]
+            latest_attempts = rows[0][2]
             conn.execute(
                 "UPDATE otp_challenges SET attempts = attempts + 1 WHERE id = %s",
-                (cid,),
+                (latest_id,),
             )
             conn.commit()
-            left = OTP_MAX_ATTEMPTS - attempts - 1
+            left = OTP_MAX_ATTEMPTS - latest_attempts - 1
             return {
                 "ok": False,
                 "error": "mismatch",
                 "message": f"Wrong code. {max(0, left)} tries left.",
             }
+
+        cid = matching_row[0]
         conn.execute(
             "UPDATE otp_challenges SET consumed_at = now(), attempts = attempts + 1 WHERE id = %s",
             (cid,),
