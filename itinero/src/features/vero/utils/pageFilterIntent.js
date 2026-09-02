@@ -116,6 +116,16 @@ export function extractChildrenFromText(text) {
   return 0;
 }
 
+export function extractInfantsFromText(text) {
+  if (!text) return 0;
+  const m = String(text).match(/\b(\d+)\s*(?:infants?|infant|babies|baby)\b/i);
+  if (m) {
+    const num = parseInt(m[1], 10);
+    if (!Number.isNaN(num) && num >= 0 && num <= 9) return num;
+  }
+  return 0;
+}
+
 export function extractRoomsFromText(text) {
   if (!text) return 1;
   const m = String(text).match(/\b(\d+)\s*(?:rooms?|room|kamra|kamre)\b/i);
