@@ -5,11 +5,26 @@ from __future__ import annotations
 import asyncio
 import os
 import smtplib
-import traceback
 from email.message import EmailMessage
+from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
 from supervisor.email_copy import scrub_em_marks
+
+_SUPERVISOR_DIR = Path(__file__).resolve().parent
+_REPO_ROOT = _SUPERVISOR_DIR.parent
+
+for _env_path in [
+    _SUPERVISOR_DIR / ".env",
+    _REPO_ROOT / ".env",
+    _REPO_ROOT / "supervisor" / ".env",
+    _REPO_ROOT / "backend" / "supervisor" / ".env",
+    _REPO_ROOT / "general_agent" / ".env",
+]:
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
 
 
 def _from_addr(*, booking: bool = False) -> str:
@@ -32,7 +47,7 @@ def smtp_configured() -> bool:
     return bool(
         (os.getenv("SMTP_HOST") or "").strip()
         and (os.getenv("SMTP_USER") or "").strip()
-        and (os.getenv("SMTP_PASSWORD") or "").strip()
+        and (os.getenv("SMTP_PASSWORD") or os.getenv("SMTP_PASS") or "").strip()
     )
 
 
@@ -46,7 +61,7 @@ def smtp_ping() -> str:
         return "unset"
     host = (os.getenv("SMTP_HOST") or "").strip()
     user = (os.getenv("SMTP_USER") or "").strip()
-    password = (os.getenv("SMTP_PASSWORD") or "").strip()
+    password = (os.getenv("SMTP_PASSWORD") or os.getenv("SMTP_PASS") or "").strip()
     port = int(os.getenv("SMTP_PORT") or "587")
     timeout = min(int(os.getenv("SMTP_HEALTH_TIMEOUT") or "5"), 15)
     try:
@@ -70,7 +85,7 @@ def _smtp_send_message(msg: EmailMessage) -> None:
         msg.replace_header("Subject", scrub_em_marks(msg["Subject"]))
     host = (os.getenv("SMTP_HOST") or "").strip()
     user = (os.getenv("SMTP_USER") or "").strip()
-    password = (os.getenv("SMTP_PASSWORD") or "").strip()
+    password = (os.getenv("SMTP_PASSWORD") or os.getenv("SMTP_PASS") or "").strip()
     port = int(os.getenv("SMTP_PORT") or "587")
     if port == 465:
         with smtplib.SMTP_SSL(host, port, timeout=25) as server:
