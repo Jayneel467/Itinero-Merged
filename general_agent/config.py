@@ -5,7 +5,10 @@ Loads API keys and model settings from environment variables (.env file).
 import os
 from dotenv import load_dotenv
 
-from exceptions import ConfigurationError
+try:
+    from general_agent.exceptions import ConfigurationError
+except ImportError:
+    from exceptions import ConfigurationError
 
 # Load .env from this file's own directory explicitly, rather than relying
 # on load_dotenv()'s default working-directory search. This keeps config

@@ -27,10 +27,12 @@ from __future__ import annotations
 import logging
 import math
 import re
-from typing import Optional
-
-from exceptions import ProviderRequestError
-from providers import google_maps_provider, liteapi_provider
+try:
+    from general_agent.exceptions import ProviderRequestError
+    from general_agent.providers import google_maps_provider, liteapi_provider
+except ImportError:
+    from exceptions import ProviderRequestError
+    from providers import google_maps_provider, liteapi_provider
 
 logger = logging.getLogger(__name__)
 
