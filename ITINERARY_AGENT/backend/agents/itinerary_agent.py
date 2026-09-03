@@ -57,11 +57,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _get_llm() -> ChatOpenAI:
-    return ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.7,
-        api_key=os.getenv("OPENAI_API_KEY", ""),
-    )
+    from ai_travel_planner.utils.config import resolve_llm_config
+    cfg = resolve_llm_config()
+    kwargs = {
+        "model": cfg["model"],
+        "temperature": 0.7,
+        "api_key": cfg["api_key"],
+    }
+    if cfg.get("base_url"):
+        kwargs["base_url"] = cfg["base_url"]
+    return ChatOpenAI(**kwargs)
 
 
 # ---------------------------------------------------------------------------

@@ -31,15 +31,36 @@ for _p in [
 def resolve_llm_config() -> dict[str, Any]:
     openai_key = (os.getenv("OPENAI_API_KEY") or "").strip()
     deepseek_key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
-    if openai_key and (openai_key.startswith("sk-proj-") or (openai_key.startswith("sk-") and len(openai_key) > 30 and "your_" not in openai_key)):
+
+    # Detect if a key is formatted like a DeepSeek key (e.g. sk- + 32 hex chars = 35 chars)
+    is_ds_format = bool(
+        openai_key
+        and len(openai_key) == 35
+        and openai_key.startswith("sk-")
+        and all(c in "0123456789abcdefABCDEF" for c in openai_key[3:])
+    )
+
+    is_valid_openai = bool(
+        openai_key
+        and not is_ds_format
+        and (
+            openai_key.startswith("sk-proj-")
+            or openai_key.startswith("sk-admin-")
+            or (openai_key.startswith("sk-") and len(openai_key) > 45 and "your_" not in openai_key)
+        )
+        and openai_key != deepseek_key
+    )
+
+    if is_valid_openai:
         return {
             "api_key": openai_key,
             "base_url": os.getenv("OPENAI_BASE_URL"),
-            "model": "gpt-4o-mini",
+            "model": os.getenv("OPENAI_MODEL") or "gpt-4o-mini",
         }
-    if deepseek_key:
+    if deepseek_key or is_ds_format:
+        ds_key = deepseek_key or openai_key
         return {
-            "api_key": deepseek_key,
+            "api_key": ds_key,
             "base_url": os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1",
             "model": os.getenv("DEEPSEEK_MODEL") or "deepseek-chat",
         }

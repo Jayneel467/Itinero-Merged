@@ -136,13 +136,30 @@ def _session_hints(session: dict[str, Any]) -> str:
 
 
 def _call_llm_router(message: str, session: dict[str, Any]) -> dict[str, Any] | None:
-    if not (os.getenv("OPENAI_API_KEY") or "").strip():
+    openai_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    deepseek_key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
+
+    is_ds_format = bool(
+        openai_key
+        and len(openai_key) == 35
+        and openai_key.startswith("sk-")
+        and all(c in "0123456789abcdefABCDEF" for c in openai_key[3:])
+    )
+
+    if not openai_key and not deepseek_key:
         return None
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        model = (os.getenv("VERO_ROUTER_MODEL") or os.getenv("ITINERO_MODEL") or "gpt-4o-mini").strip()
+        if deepseek_key or is_ds_format:
+            client = OpenAI(
+                api_key=deepseek_key or openai_key,
+                base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1",
+            )
+            model = (os.getenv("DEEPSEEK_MODEL") or "deepseek-chat").strip()
+        else:
+            client = OpenAI(api_key=openai_key)
+            model = (os.getenv("VERO_ROUTER_MODEL") or os.getenv("ITINERO_MODEL") or "gpt-4o-mini").strip()
         prompt = _ROUTER_PROMPT.format(message=message.strip()[:800], hints=_session_hints(session)[:500])
         resp = client.chat.completions.create(
             model=model,
