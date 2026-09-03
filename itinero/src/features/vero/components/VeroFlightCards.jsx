@@ -13,7 +13,13 @@ const TABS = [
  * In-chat flight results panel - compact OTA-style list matching Vero booking UX.
  * Select → confirm strip → BookingPopup (passenger → review → pay via LiteAPI/Stripe).
  */
-export default function VeroFlightCards({ flights, sessionId }) {
+export default function VeroFlightCards({
+  flights,
+  sessionId,
+  adults,
+  childrenCount,
+  infants,
+}) {
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState("recommended");
   const [stopFilter, setStopFilter] = useState("any"); // any | direct | 1
@@ -291,9 +297,33 @@ export default function VeroFlightCards({ flights, sessionId }) {
         }}
         flight={bookingFlight}
         sessionId={sessionId}
-        adults={bookingFlight?.adults || sample?.adults || 1}
-        childrenCount={bookingFlight?.children || sample?.children || 0}
-        infants={bookingFlight?.infants || sample?.infants || 0}
+        adults={
+          Number(
+            bookingFlight?.adults ||
+              bookingFlight?.raw?.adults ||
+              sample?.adults ||
+              sample?.raw?.adults ||
+              adults
+          ) || 1
+        }
+        childrenCount={
+          Number(
+            bookingFlight?.children ||
+              bookingFlight?.raw?.children ||
+              sample?.children ||
+              sample?.raw?.children ||
+              childrenCount
+          ) || 0
+        }
+        infants={
+          Number(
+            bookingFlight?.infants ||
+              bookingFlight?.raw?.infants ||
+              sample?.infants ||
+              sample?.raw?.infants ||
+              infants
+          ) || 0
+        }
         origin={origin}
         destination={destination}
       />

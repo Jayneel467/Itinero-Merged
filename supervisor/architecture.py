@@ -1054,6 +1054,14 @@ async def research_dispatch(
     for b in branches:
         if b.name == "travel_agent_flights":
             flights = (b.data or {}).get("flights") or []
+            for fl in flights:
+                if isinstance(fl, dict):
+                    if "adults" not in fl or not fl.get("adults"):
+                        fl["adults"] = max(1, slots.adults)
+                    if "children" not in fl:
+                        fl["children"] = max(0, slots.children)
+                    if "infants" not in fl:
+                        fl["infants"] = max(0, slots.infants)
             if b.status in {"degraded", "timeout", "error"}:
                 mode = "degraded"
             # Overall chat mode follows the flight branch only — hotel/visa

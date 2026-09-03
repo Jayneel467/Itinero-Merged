@@ -640,7 +640,30 @@ export default function VeroPage() {
                   <VeroVisaSources cards={m.cards} />
                 ) : null}
                 {m.role === "assistant" && Array.isArray(m.flights) && m.flights.length > 0 && (
-                  <VeroFlightCards flights={m.flights} sessionId={sessionId} />
+                  <VeroFlightCards
+                    flights={m.flights}
+                    sessionId={sessionId}
+                    adults={
+                      m.adults ||
+                      m.flights[0]?.adults ||
+                      m.session_context?.trip_slots?.adults ||
+                      m.clarification?.known?.adults ||
+                      1
+                    }
+                    childrenCount={
+                      m.children ||
+                      m.flights[0]?.children ||
+                      m.session_context?.trip_slots?.children ||
+                      m.clarification?.known?.children ||
+                      0
+                    }
+                    infants={
+                      m.infants ||
+                      m.flights[0]?.infants ||
+                      m.session_context?.trip_slots?.infants ||
+                      0
+                    }
+                  />
                 )}
                 {m.role === "assistant" && Array.isArray(m.places) && m.places.length > 0 && (
                   <VeroPlaceCards places={m.places} />

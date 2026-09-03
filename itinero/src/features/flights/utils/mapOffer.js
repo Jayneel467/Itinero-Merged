@@ -355,6 +355,9 @@ export function mapOfferToCard(offer, opts = {}) {
     offer_id: offer.offer_id || offer.id,
     index: offer.index,
     raw: offer,
+    adults: Number(offer.adults || offer.travelers?.adults || offer.passengers?.adults || offer.pax_count) || 1,
+    children: Number(offer.children || offer.travelers?.children || offer.passengers?.children) || 0,
+    infants: Number(offer.infants || offer.travelers?.infants || offer.passengers?.infants) || 0,
     airline: {
       name: airlineName,
       code,
