@@ -58,12 +58,9 @@ class ItineraryPlanner:
             or session_out.awaiting_payment_confirmation
             or session_out.booking_id
         )
-        payment_ready = bool(
-            session_out.awaiting_payment_confirmation
-            or (session_out.prebook_id and not session_out.booking_id)
-        )
-        if payment_ready or session_out.booking_id:
-            path.append("payment")
+        payment_ready = bool(session_out.prebook_id and not session_out.booking_id)
+        if payment_ready:
+            path.append("checkout")
 
         return OrchestratorOutput(
             response=out.response,

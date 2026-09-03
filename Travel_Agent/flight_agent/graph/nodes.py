@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from flight_agent.graph.state import NodeDependencies
 from flight_agent.llm.booking_requirements import booking_details_prompt
-from flight_agent.llm.confirmation import booking_summary_prompt, payment_summary_prompt
+from flight_agent.llm.confirmation import booking_summary_prompt
 from flight_agent.llm.intent import classify_intent
 from flight_agent.llm.tools import build_flight_tools
 from flight_agent.llm.user_copy import (
@@ -74,7 +74,7 @@ def _prompt_for_missing_traveler(state: FlightAgentState) -> str:
 
 
 def _blocked_booking_tool(response: AIMessage, session) -> str | None:
-    """Safety: block prebook/complete until user confirms (diagram payment gate)."""
+    """Safety: block prebook until the user confirms the hold."""
     if not response.tool_calls:
         return None
     names = {call["name"] for call in response.tool_calls}
@@ -84,12 +84,6 @@ def _blocked_booking_tool(response: AIMessage, session) -> str | None:
         and not session.booking_confirmed
     ):
         return booking_summary_prompt(session)
-    if (
-        "complete_flight_booking" in names
-        and session.awaiting_payment_confirmation
-        and not session.payment_confirmed
-    ):
-        return payment_summary_prompt(session)
     return None
 
 
@@ -106,7 +100,8 @@ async def intent_node(state: FlightAgentState, deps: NodeDependencies) -> dict:
 async def general_chat_node(state: FlightAgentState, deps: NodeDependencies) -> dict:
     """Flight-only redirect — booking work belongs on LiteAPI tools, not free chat."""
     reply = (
-        "I only handle **flights** — search, book, pay, retrieve, and cancel.\n\n"
+        "I only handle **flights** — search, traveler details, and holding the fare.\n\n"
+        "Payment and the ticket are finished at checkout.\n\n"
         "Tell me **from**, **to**, and **date** "
         "(e.g. *Mumbai to Delhi on 26 July*)."
     )

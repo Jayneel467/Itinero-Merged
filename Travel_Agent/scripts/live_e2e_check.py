@@ -168,74 +168,24 @@ async def main() -> int:
                 summary_printed = True
                 return 1
 
-        # 7) Complete / payment (no real Stripe in CLI)
+        # 7) Payment / complete is backend checkout — agent stops at hold
         note(
-            "7.payment_note",
-            "CLI cannot run Stripe Elements; will attempt complete with transaction_id from prebook",
+            "7.payment_handoff",
+            "Flight agent does not complete payment; backend checkout issues the ticket",
         )
+        if session.prebook_id:
+            ok("7.hold_ready", f"prebook_id={session.prebook_id[:24]}…")
+        else:
+            fail("7.hold_ready", "missing prebook_id after hold")
+
         tools = {t.name: t for t in build_flight_tools(agent._flight_service, session)}
-        session.payment_captured = True
-        session.payment_confirmed = True
-        session.awaiting_payment_confirmation = False
-        raw = await tools["complete_flight_booking"].ainvoke({})
-        data = json.loads(raw) if isinstance(raw, str) else raw
-        if data.get("booking_id") or data.get("status") == "booked" or session.booking_id:
-            session.booking_id = data.get("booking_id") or session.booking_id
-            ok("7.complete_ticket", f"booking_id={session.booking_id}")
+        if "complete_flight_booking" in tools:
+            fail("7.no_complete_tool", "complete_flight_booking should not be on the agent")
         else:
-            fail(
-                "7.complete_ticket / payment",
-                (data.get("user_prompt") or data.get("error") or data.get("message") or str(data))[
-                    :320
-                ],
-            )
+            ok("7.no_complete_tool", "payment complete not exposed to flight agent")
 
-        bid = session.booking_id
-        tools = {t.name: t for t in build_flight_tools(agent._flight_service, session)}
-
-        if not bid:
-            raw = await tools["list_flight_bookings"].ainvoke({})
-            data = json.loads(raw) if isinstance(raw, str) else raw
-            bookings = data.get("bookings") or []
-            if bookings:
-                bid = bookings[0].get("booking_id")
-                ok("7b.list_bookings_fallback", f"{len(bookings)} found; using {bid}")
-            else:
-                fail("7b.list_bookings", "none found — cannot test retrieve/cancel")
-                _print_summary()
-                summary_printed = True
-                return 0
-
-        # 8) Retrieve
-        raw = await tools["get_flight_booking"].ainvoke({"booking_id": bid})
-        data = json.loads(raw) if isinstance(raw, str) else raw
-        status = data.get("status") or data.get("booking_status")
-        pnr = data.get("airline_pnr") or data.get("booking_ref")
-        if data.get("found") or data.get("booking_id") or status:
-            ok("8.retrieve", f"status={status} pnr={pnr} id={bid}")
-        else:
-            fail("8.retrieve", str(data)[:200])
-
-        # 9) Cancel
-        session.awaiting_cancel_confirmation = True
-        session.cancel_confirmed = True
-        session.pending_cancel_booking_id = bid
-        session.booking_id = bid
-        out = await agent.run(
-            FlightAgentInput(message="YES", session_context=session, history=[])
-        )
-        session = out.session_context
-        raw = await tools["get_flight_booking"].ainvoke({"booking_id": bid})
-        after = json.loads(raw) if isinstance(raw, str) else raw
-        live = after.get("status") or after.get("booking_status")
-        if str(live).upper() in {"CANCELLED", "CANCELED", "VOID"}:
-            ok("9.cancel", f"live_status={live}")
-        else:
-            note(
-                "9.cancel_sandbox",
-                f"API called; live status still {live} (sandbox often does not flip status)",
-            )
-            ok("9.cancel_request", f"agent handled cancel; live_status={live}")
+        note("8.retrieve_skip", "retrieve/cancel need a ticket from backend checkout")
+        note("9.cancel_skip", "skipped — no agent-issued booking_id")
 
     except Exception as exc:
         fail("exception", f"{type(exc).__name__}: {exc}")

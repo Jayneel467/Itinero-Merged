@@ -36,7 +36,7 @@ from flight_agent.llm.booking_requirements import (
 )
 from flight_agent.llm.confirmation import (
     booking_summary_prompt,
-    payment_summary_prompt,
+    hold_ready_prompt,
     reset_booking_flow,
 )
 from flight_agent.llm.user_copy import (
@@ -57,6 +57,24 @@ logger = get_logger(__name__)
 
 MAX_OFFERS_SHOWN = 12
 
+
+def _hold_ready_payload(session: SessionContext) -> dict[str, Any]:
+    """Agent stops at prebook; payment + ticket are backend checkout."""
+    session.awaiting_payment_confirmation = False
+    session.payment_confirmed = False
+    session.payment_captured = False
+    prompt = hold_ready_prompt(session)
+    return {
+        "status": "hold_ready",
+        "prebook_id": session.prebook_id,
+        "user_prompt": prompt,
+        "payment_prompt": prompt,
+        "llm_instruction": (
+            "Fare is held. Do NOT ask for card details or complete the booking. "
+            "Tell the user checkout will collect payment and issue the ticket."
+        ),
+    }
+
 TOOL_TO_INTENT: dict[str, FlightIntent] = {
     "search_flights": FlightIntent.SEARCH_FLIGHTS,
     "verify_flight_offer": FlightIntent.VERIFY_OFFER,
@@ -67,7 +85,6 @@ TOOL_TO_INTENT: dict[str, FlightIntent] = {
     "prebook_flight": FlightIntent.PREBOOK,
     "list_flight_services": FlightIntent.ATTACH_SERVICES,
     "attach_flight_services": FlightIntent.ATTACH_SERVICES,
-    "complete_flight_booking": FlightIntent.COMPLETE_BOOKING,
     "get_flight_booking": FlightIntent.GET_BOOKING,
     "list_flight_bookings": FlightIntent.LIST_BOOKINGS,
     "get_booking_status": FlightIntent.BOOKING_STATUS,
@@ -398,17 +415,9 @@ def build_flight_tools(
                 }
             )
         if resolved == "none":
-            session.awaiting_payment_confirmation = True
-            return json.dumps(
-                {
-                    "status": "ready",
-                    "preference": resolved,
-                    "user_prompt": (
-                        "No extras added. Reply **YES** when you're ready to confirm your ticket."
-                    ),
-                    "payment_prompt": payment_summary_prompt(session),
-                }
-            )
+            payload = _hold_ready_payload(session)
+            payload["preference"] = resolved
+            return json.dumps(payload)
         return json.dumps(
             {
                 "status": "ready",
@@ -769,7 +778,10 @@ def build_flight_tools(
             phone_number=str(lead["contact_phone_number"]),
         )
         try:
-            result = await service.prebook(oid, passengers, contact)
+            # Agent hold only — Payment SDK / complete is backend checkout.
+            result = await service.prebook(
+                oid, passengers, contact, use_payment_sdk=False
+            )
         except LiteAPIError as exc:
             from flight_agent.llm.booking_requirements import friendly_liteapi_prebook_error
 
@@ -816,11 +828,7 @@ def build_flight_tools(
             )
             return json.dumps(result)
         if session.service_preference == "none":
-            session.awaiting_payment_confirmation = True
-            result["status"] = "ready_for_booking"
-            result["user_prompt"] = payment_summary_prompt(session)
-            result["payment_prompt"] = payment_summary_prompt(session)
-            result["llm_instruction"] = "No extras requested. Ask user to reply YES to confirm booking."
+            result.update(_hold_ready_payload(session))
             return json.dumps(result)
         # Preference already set — show numbered add-on list immediately.
         services = session.available_services or {}
@@ -852,13 +860,7 @@ def build_flight_tools(
                 }
             )
         if session.service_preference == "none":
-            return json.dumps(
-                {
-                    "status": "skipped",
-                    "user_prompt": "No extras. Reply **YES** to confirm your booking.",
-                    "payment_prompt": payment_summary_prompt(session),
-                }
-            )
+            return json.dumps(_hold_ready_payload(session))
         if not session.prebook_id and not session.available_services:
             return json.dumps(
                 {
@@ -907,117 +909,11 @@ def build_flight_tools(
         session.payment_captured = False
         session.selected_services = selections
         session.last_prebook = {**(session.last_prebook or {}), **result}
+        result.update(_hold_ready_payload(session))
         result["status"] = "attached"
-        result["llm_instruction"] = "Add-ons added. Show updated total and ask YES to confirm booking."
-        result["user_prompt"] = payment_summary_prompt(session)
-        session.awaiting_payment_confirmation = True
-        result["payment_prompt"] = payment_summary_prompt(session)
-        return json.dumps(result)
-
-    async def complete_flight_booking(
-        prebook_id: str | None = None,
-        transaction_id: str | None = None,
-    ) -> str:
-        """Finalize a booking via LiteAPI."""
-        if session.awaiting_service_preference and not session.service_preference:
-            return json.dumps(
-                {
-                    "status": "ask_service_preference",
-                    "user_prompt": service_preference_question(session),
-                }
-            )
-        if session.awaiting_payment_confirmation and not session.payment_confirmed:
-            return json.dumps(
-                {
-                    "status": "booking_confirmation_required",
-                    "action": "ask_user",
-                    "message": "User must confirm booking first. Do NOT complete until they reply YES.",
-                    "payment_prompt": payment_summary_prompt(session),
-                    "user_prompt": payment_summary_prompt(session),
-                }
-            )
-
-        pid = prebook_id or session.prebook_id
-        if not pid:
-            raise FlightAgentError("No active prebook session.")
-        tid = transaction_id or session.transaction_id
-        try:
-            result = await service.complete_booking(pid, transaction_id=tid)
-        except LiteAPIError as exc:
-            err = str(exc).lower()
-            detail = ""
-            if isinstance(exc.details, dict):
-                detail = str(exc.details.get("description") or "")
-            combined = f"{err} {detail.lower()}"
-            if "credit" in combined or "payment method" in combined:
-                from flight_agent.config import get_settings
-
-                if get_settings().liteapi_use_payment_sdk:
-                    user_prompt = (
-                        "Your flight is **still on hold**, but the ticket could not be issued yet.\n\n"
-                        "Card payment may not have completed. Use the **payment box** above "
-                        "(test card `4242 4242 4242 4242`), then click **Issue ticket** or reply **YES** again.\n\n"
-                        f"- **Hold ID:** `{pid}`\n"
-                        f"- **Payment ref:** `{(tid or '')[:24] or '—'}`"
-                    )
-                else:
-                    user_prompt = (
-                        "Your flight is **still on hold**, but the ticket could not be issued yet.\n\n"
-                        "This sandbox LiteAPI account has **no credit line / payment method** enabled, "
-                        "so the final booking step is blocked on the provider side — not by your details.\n\n"
-                        f"- **Hold ID:** `{pid}`\n\n"
-                        "Ask your LiteAPI admin to enable **sandbox credit-line billing**, "
-                        "or turn on **Payment SDK** (`LITEAPI_USE_PAYMENT_SDK=true`) and complete payment. "
-                        "Then reply **YES** again to finish the ticket."
-                    )
-            else:
-                user_prompt = (
-                    "Sorry, I couldn't finish the booking right now. Your flight is still on hold. "
-                    "Please try again in a moment, or contact support if this keeps happening."
-                )
-            return json.dumps(
-                {
-                    "status": "booking_failed",
-                    "error": str(exc),
-                    "detail": detail[:300] if detail else None,
-                    "message": (
-                        "Booking could not be completed. Your fare hold is still saved. "
-                        "In sandbox, enable credit-line billing or Payment SDK on the LiteAPI account."
-                    ),
-                    "prebook_id": pid,
-                    "user_prompt": user_prompt,
-                    "llm_instruction": "Explain clearly using user_prompt. Keep the hold; do not restart search.",
-                }
-            )
-        session.booking_id = result.get("booking_id")
-        session.last_booking = result
-        session.awaiting_payment_confirmation = False
-        session.payment_confirmed = False
-        # Refresh full booking from LiteAPI after payment/complete.
-        if session.booking_id:
-            try:
-                refreshed = await service.get_booking(session.booking_id)
-                if refreshed.get("found"):
-                    session.last_booking = refreshed
-                    result = {**result, **refreshed}
-            except Exception as exc:
-                logger.warning("post_book_retrieve_failed", error=str(exc)[:160])
-        if result.get("found") or result.get("booking_id"):
-            pnr = result.get("airline_pnr") or result.get("booking_ref") or "—"
-            bid = result.get("booking_id") or session.booking_id or "—"
-            live_status = result.get("status") or "CONFIRMED"
-            result["booking_status"] = live_status
-            result["status"] = "booked"
-            result["user_prompt"] = (
-                f"**Your flight is booked!**\n\n"
-                f"- **Booking ID:** `{bid}`\n"
-                f"- **Airline PNR:** {pnr}\n"
-                f"- **Status:** {live_status}\n\n"
-                + post_booking_help_prompt(session)
-            )
-            result["llm_instruction"] = (
-                "Congratulate the user. Share booking ID and PNR. Mention they can retrieve or cancel later."
-            )
+        result["llm_instruction"] = (
+            "Add-ons added. Show updated total. Do not collect payment — checkout will finish the ticket."
+        )
         return json.dumps(result)
 
     async def get_flight_booking(
@@ -1161,7 +1057,6 @@ def build_flight_tools(
         set_service_preference,
         list_flight_services,
         attach_flight_services,
-        complete_flight_booking,
         get_flight_booking,
         list_flight_bookings,
         get_booking_status,

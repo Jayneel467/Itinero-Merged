@@ -47,6 +47,32 @@ def test_session_context_defaults():
     assert ctx.travelers_draft == []
 
 
+def test_hold_ready_prompt_has_no_card_ui():
+    from flight_agent.llm.confirmation import hold_ready_prompt
+    from flight_agent.models.agent import SessionContext
+
+    ctx = SessionContext(prebook_id="pb_test", last_prebook={"price": 100, "currency": "INR"})
+    text = hold_ready_prompt(ctx).lower()
+    assert "hold" in text
+    assert "4242" not in text
+    assert "payment box" not in text
+    assert "checkout" in text
+
+
+def test_flight_agent_tools_exclude_complete(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-real")
+    from unittest.mock import MagicMock
+
+    from flight_agent.config import get_settings
+    from flight_agent.llm.tools import build_flight_tools
+    from flight_agent.models.agent import SessionContext
+
+    get_settings.cache_clear()
+    names = {t.name for t in build_flight_tools(MagicMock(), SessionContext())}
+    assert "prebook_flight" in names
+    assert "complete_flight_booking" not in names
+
+
 def test_flight_agent_builds(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-real")
     from flight_agent.config import get_settings

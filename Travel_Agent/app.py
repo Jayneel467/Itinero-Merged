@@ -14,7 +14,6 @@ from flight_agent.config import get_settings
 from flight_agent.llm.user_copy import contextual_fallback_prompt, sanitize_assistant_text
 from flight_agent.logging_config import configure_logging
 from flight_agent.models.intents import FlightIntent
-from flight_agent.ui.payment import render_payment_panel, should_show_payment_panel
 from itinero import GeneralAgent, OrchestratorInput
 
 if sys.platform == "win32":
@@ -92,8 +91,7 @@ def _init() -> None:
     get_settings.cache_clear()
     settings = get_settings()
     fingerprint = (
-        f"ga:{settings.openai_model}:{settings.openai_api_key[:8]}:"
-        f"pay={settings.liteapi_use_payment_sdk}"
+        f"ga:{settings.openai_model}:{settings.openai_api_key[:8]}"
     )
     if st.session_state.get("settings_fingerprint") != fingerprint:
         st.session_state.agent = GeneralAgent()
@@ -109,7 +107,6 @@ def _init() -> None:
 def main() -> None:
     st.set_page_config(page_title="Itinero", page_icon="✈️", layout="centered")
     _init()
-    settings = get_settings()
 
     st.title("Itinero")
     st.caption("General Agent → Itinerary → Travel → Flight Booking")
@@ -120,11 +117,8 @@ def main() -> None:
     if st.session_state.booking_ready:
         st.sidebar.success("Booking path active")
     if st.session_state.payment_ready:
-        st.sidebar.success("Payment ready")
-    if settings.liteapi_use_payment_sdk:
-        st.sidebar.info("Payment: Stripe / Payment SDK")
-    else:
-        st.sidebar.info("Payment: credit line")
+        st.sidebar.info("Hold ready — payment at checkout")
+    st.sidebar.caption("Payment / ticketing: backend checkout (not this agent)")
 
     if st.sidebar.button("Start over"):
         st.session_state.turns = []
@@ -133,14 +127,13 @@ def main() -> None:
         st.session_state.last_routed_to = "general_agent"
         st.session_state.booking_ready = False
         st.session_state.payment_ready = False
-        st.session_state.pop("_issue_ticket", None)
         st.rerun()
 
     if not st.session_state.turns:
         st.markdown(
             "Ask the **General Agent** anything travel-related. "
             "Flight search/booking is fully connected:\n\n"
-            "`Start → General Agent → Itinerary Planner → Travel Agent → Flight Booking → Payment`\n\n"
+            "`Start → General Agent → Itinerary Planner → Travel Agent → Flight Booking`\n\n"
             "Example: **Mumbai to Delhi on 26 July**"
         )
 
@@ -149,15 +142,6 @@ def main() -> None:
             st.markdown(turn["content"])
             if turn["role"] == "assistant" and turn.get("route"):
                 st.caption(f"Path: {turn['route']}")
-
-    session: SessionContext = st.session_state.session_context
-    if should_show_payment_panel(session):
-        render_payment_panel(session)
-
-    if st.session_state.pop("_issue_ticket", None):
-        session.payment_captured = True
-        _handle_agent_message("YES")
-        st.rerun()
 
     prompt = st.chat_input("Ask General Agent (flights, trip help…)")
     if not prompt:

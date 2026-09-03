@@ -3,7 +3,7 @@
 Architecture slot (Itinero diagram):
 
   Start → General Agent → Itinerary Planner → Travel Agent → **Flight Booking**
-       → Payment / PDF
+       → backend checkout (payment / ticket)
 
 This package is the Flight Booking specialist only.
 Search and book requests should enter via General Agent (`itinero.GeneralAgent`).
@@ -131,31 +131,6 @@ class FlightAgent:
             needs_follow_up=True,
         )
 
-    async def _run_confirmed_complete(self, session: SessionContext) -> FlightAgentOutput | None:
-        """Issue ticket after YES — do not rely on the LLM calling complete_flight_booking."""
-        if not (
-            session.prebook_id
-            and session.awaiting_payment_confirmation
-            and session.payment_confirmed
-            and not session.booking_id
-        ):
-            return None
-        tools = {t.name: t for t in build_flight_tools(self._flight_service, session)}
-        raw = await tools["complete_flight_booking"].ainvoke({})
-        data = json.loads(raw) if isinstance(raw, str) else raw
-        text = str(
-            (data or {}).get("user_prompt")
-            or (data or {}).get("message")
-            or "Booking update ready."
-        )
-        return FlightAgentOutput(
-            response=sanitize_assistant_text(text, session),
-            intent=FlightIntent.COMPLETE_BOOKING,
-            session_context=session,
-            operation_result=data if isinstance(data, dict) else None,
-            needs_follow_up=True,
-        )
-
     async def run(self, input_data: FlightAgentInput) -> FlightAgentOutput:
         """One user turn: Intent → Flight Agent ↔ LiteAPI tools → reply."""
         session = input_data.session_context or SessionContext()
@@ -176,15 +151,6 @@ class FlightAgent:
         if prebook_out is not None:
             logger.info("agent_run_complete", intent="prebook", last_tool="prebook_flight")
             return prebook_out
-
-        complete_out = await self._run_confirmed_complete(session)
-        if complete_out is not None:
-            logger.info(
-                "agent_run_complete",
-                intent="complete_booking",
-                last_tool="complete_flight_booking",
-            )
-            return complete_out
 
         # Ensure option / passengers are saved even if the LLM only chats
         progress = await try_booking_progress(

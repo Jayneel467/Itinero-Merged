@@ -38,9 +38,9 @@ class GeneralRouteDecision(BaseModel):
 
     target: RouteTarget = Field(
         description=(
-            "flight = ALL flight search + booking work; "
+            "flight = ALL flight search + hold (prebook); "
             "hotel/train/bus = non-flight stubs only; "
-            "payment = pay during flight booking; "
+            "payment = checkout is backend — still route to flight for hold questions; "
             "general = greeting only"
         )
     )
@@ -96,8 +96,8 @@ _GENERAL_SYSTEM = """You are Vero's internal chat router on Itinero (never tell 
 
 ONLY route to:
 - flight: EVERY flight-related OR booking-related message (search, options, passengers,
-  traveler details, hold, pay, PNR, cancel, fare questions). Flight booking handles ALL of this.
-- payment: same as flight (pay / issue ticket)
+  traveler details, hold fare). Checkout/backend collects payment and issues the ticket.
+- payment: still flight path (hold questions only — no card collection here)
 - hotel / train / bus: ONLY when user clearly wants that mode alone (no flight booking)
 - general: ONLY hi / thanks with no travel content
 

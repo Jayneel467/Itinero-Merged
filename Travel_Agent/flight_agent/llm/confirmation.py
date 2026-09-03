@@ -97,9 +97,10 @@ def apply_service_preference(message: str, session: SessionContext) -> None:
     if text in {"skip", "none", "no", "no thanks", "nothing", "nope", "nah"}:
         session.service_preference = "none"
         session.awaiting_service_preference = False
-        # Before hold → ask booking YES. After hold → ask payment YES.
+        # After hold, extras skipped — checkout handles payment (not a second YES).
         if session.prebook_id:
-            session.awaiting_payment_confirmation = True
+            session.awaiting_payment_confirmation = False
+            session.payment_confirmed = False
         else:
             session.awaiting_booking_confirmation = True
             session.booking_confirmed = False
@@ -136,8 +137,7 @@ def apply_user_confirmation(message: str, session: SessionContext) -> None:
         return
     if session.awaiting_booking_confirmation:
         session.booking_confirmed = True
-    if session.awaiting_payment_confirmation and not session.awaiting_service_preference:
-        session.payment_confirmed = True
+    # Payment / complete is backend checkout — never treat YES as issue-ticket.
 
 
 def booking_summary_prompt(session: SessionContext) -> str:
@@ -204,33 +204,22 @@ def booking_summary_prompt(session: SessionContext) -> str:
     return "\n".join(lines)
 
 
-def payment_summary_prompt(session: SessionContext) -> str:
-    """Ask the user to confirm booking before completing payment."""
-    from flight_agent.config import get_settings
-
+def hold_ready_prompt(session: SessionContext) -> str:
+    """Fare is held; payment and ticketing are done by backend checkout (hotel pattern)."""
     prebook = session.last_prebook or {}
     price = prebook.get("price")
     currency = prebook.get("currency") or "INR"
     price_line = f"**{currency} {price}**" if price else "the held fare"
-    settings = get_settings()
-    if settings.liteapi_use_payment_sdk:
-        if session.payment_captured:
-            return (
-                f"Payment received for {price_line} — nice.\n\n"
-                "Reply **YES** or click **Issue ticket** and I'll get your confirmation.\n\n"
-                "Say **NO** if you want to stop here."
-            )
-        return (
-            f"Your flight is on hold. Total: {price_line}.\n\n"
-            "Pay securely with your **card** in the payment box below "
-            "(test card: `4242 4242 4242 4242`, any future expiry, any CVC).\n\n"
-            "After payment succeeds, click **Issue ticket** or reply **YES**.\n\n"
-            "Say **NO** to stop (the hold may expire)."
-        )
-
+    hold_id = session.prebook_id or prebook.get("prebook_id") or "—"
     return (
-        f"Your flight is on hold. Total: {price_line}.\n\n"
-        "Reply **YES** to issue your ticket "
-        "(sandbox: completes on the test booking balance — no card charged).\n\n"
-        "Say **NO** to stop (the hold may expire)."
+        f"Your flight is **on hold**. Total: {price_line}.\n\n"
+        f"- **Hold ID:** `{hold_id}`\n\n"
+        "I don't take card details here. Checkout will collect payment and issue the ticket.\n\n"
+        "You can still change extras with me, or wait for checkout. "
+        "Say **NO** if you want to stop (the hold may expire)."
     )
+
+
+def payment_summary_prompt(session: SessionContext) -> str:
+    """Alias kept for callers — agent never collects payment."""
+    return hold_ready_prompt(session)

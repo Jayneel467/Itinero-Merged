@@ -46,12 +46,15 @@ def next_step_hint(ctx: SessionContext) -> str:
         )
     if ctx.booking_id:
         return post_booking_help_prompt(ctx)
-    if ctx.awaiting_payment_confirmation and not ctx.payment_confirmed:
-        return "Reply **YES** when you're ready to confirm and get your ticket."
     if ctx.awaiting_service_preference and not ctx.service_preference:
         return "Tell me: **seat**, **baggage**, **both**, or **skip**."
     if ctx.prebook_id and ctx.service_preference and ctx.service_preference != "none":
         return "Pick an add-on from the list, or say **skip**."
+    if ctx.prebook_id and not ctx.booking_id:
+        return (
+            "Your fare is on hold. Checkout will collect payment and issue the ticket. "
+            "You can still pick extras here, or ask me to retrieve a booking later."
+        )
     if ctx.awaiting_booking_confirmation and not ctx.booking_confirmed:
         return "Glance at the details above, then reply **YES** to continue — or tell me what to change."
     if ctx.verified_offer_id and not all_travelers_complete(ctx):
@@ -129,10 +132,10 @@ def is_technical_error(text: str) -> bool:
 
 def contextual_fallback_prompt(session: SessionContext) -> str:
     """What the user should do next when the model reply is empty/bad."""
-    if session.awaiting_payment_confirmation and not session.payment_confirmed:
-        from flight_agent.llm.confirmation import payment_summary_prompt
+    if session.prebook_id and not session.booking_id:
+        from flight_agent.llm.confirmation import hold_ready_prompt
 
-        return payment_summary_prompt(session)
+        return hold_ready_prompt(session)
     if session.awaiting_booking_confirmation and not session.booking_confirmed:
         from flight_agent.llm.confirmation import booking_summary_prompt
 
