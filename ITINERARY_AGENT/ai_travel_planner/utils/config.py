@@ -113,16 +113,14 @@ try:
         @model_validator(mode="after")
         def _ensure_llm_credentials(self) -> "Settings":
             cfg = resolve_llm_config()
-            raw = str(self.openai_api_key or "").strip()
-            if not raw or raw == "mock-key" or not (raw.startswith("sk-proj-") or (raw.startswith("sk-") and len(raw) > 30 and "your_" not in raw)):
-                self.openai_api_key = cfg["api_key"]
-                self.openai_base_url = cfg["base_url"]
-                if not os.getenv("FLIGHT_AGENT_MODEL"):
-                    self.flight_agent_model = cfg["model"]
-                if not os.getenv("HOTEL_AGENT_MODEL"):
-                    self.hotel_agent_model = cfg["model"]
-                if not os.getenv("ITINERARY_AGENT_MODEL"):
-                    self.itinerary_agent_model = cfg["model"]
+            self.openai_api_key = cfg["api_key"]
+            self.openai_base_url = cfg["base_url"]
+            if not os.getenv("FLIGHT_AGENT_MODEL"):
+                self.flight_agent_model = cfg["model"]
+            if not os.getenv("HOTEL_AGENT_MODEL"):
+                self.hotel_agent_model = cfg["model"]
+            if not os.getenv("ITINERARY_AGENT_MODEL"):
+                self.itinerary_agent_model = cfg["model"]
             return self
 
 except ImportError:
