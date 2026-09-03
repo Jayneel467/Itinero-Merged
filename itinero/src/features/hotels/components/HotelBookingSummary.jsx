@@ -60,7 +60,11 @@ export default function HotelBookingSummary({
         <div className={styles.dateBlock}>
           <span className={styles.dateLabel}>Guests</span>
           <span className={styles.dateValue}>
-            {info.guests} {Number(info.guests) === 1 ? "guest" : "guests"}
+            {info.adults && info.children
+              ? `${info.adults} Adults, ${info.children} Children`
+              : info.adults
+                ? `${info.adults} ${Number(info.adults) === 1 ? "Adult" : "Adults"}`
+                : `${info.guests || 2} ${Number(info.guests) === 1 ? "guest" : "guests"}`}
           </span>
         </div>
 

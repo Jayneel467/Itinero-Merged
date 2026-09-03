@@ -42,7 +42,9 @@ export default function HotelGuestDetailsPage() {
   const offerId = state?.offerId || room?.offerId || "";
   const checkIn = state?.checkIn || state?.check_in || "";
   const checkOut = state?.checkOut || state?.check_out || "";
-  const guests = Number(state?.guests || state?.adults || 2) || 2;
+  const adults = Number(state?.adults || state?.guests || 2) || 2;
+  const children = Number(state?.children || 0) || 0;
+  const guests = Number(state?.guests || (adults + children) || 2) || 2;
   const roomsCount = Number(state?.rooms || 1) || 1;
 
   const [guest, setGuest] = useState({
@@ -108,6 +110,8 @@ export default function HotelGuestDetailsPage() {
       checkInIso: checkIn,
       checkOutIso: checkOut,
       guests,
+      adults,
+      children,
       rooms: roomsCount,
       nights,
       roomName: room?.roomName || room?.name || "Room",
@@ -125,6 +129,8 @@ export default function HotelGuestDetailsPage() {
     checkIn,
     checkOut,
     guests,
+    adults,
+    children,
     roomsCount,
     nights,
     roomBase,

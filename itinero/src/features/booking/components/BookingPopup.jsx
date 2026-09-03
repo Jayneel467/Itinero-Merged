@@ -28,7 +28,6 @@ import styles from "./BookingPopup.module.css";
 const BOOKING_STEPS = [
   { id: "form", label: "Passengers" },
   { id: "review", label: "Review" },
-  { id: "extras", label: "Extras" },
   { id: "payment", label: "Pay" },
   { id: "done", label: "Done" },
 ];
@@ -328,13 +327,11 @@ export default function BookingPopup({
   const [booking, setBooking] = useState(null);
 
   const visibleSteps = useMemo(() => {
-    const hasExtras = step === "extras" || servicesAvailable(hold);
     return BOOKING_STEPS.filter((s) => {
-      if (s.id === "extras") return hasExtras || step === "extras";
       if (s.id === "done") return step === "done";
       return s.id !== "done";
     });
-  }, [hold, step]);
+  }, [step]);
   const [pdfError, setPdfError] = useState("");
   const [selectedExtras, setSelectedExtras] = useState([]);
   const [voucherCode, setVoucherCode] = useState("");
@@ -778,11 +775,7 @@ export default function BookingPopup({
         currency: pb.currency || flight?.currency,
       });
 
-      if (servicesAvailable(pb)) {
-        setStep("extras");
-      } else {
-        await openPaymentFromHold(pb, prebookRes);
-      }
+      await openPaymentFromHold(pb, prebookRes);
     } catch (err) {
       setApiError(softenBookingError(err?.message || "Booking failed."));
       setStatusMsg("");
@@ -1751,21 +1744,6 @@ export default function BookingPopup({
                 </p>
               </div>
             </div>
-          )}
-
-          {step === "extras" && (
-            <FlightExtrasStep
-              services={hold?.services || {}}
-              flight={flight}
-              isRoundTrip={isRoundTrip}
-              passengerLabels={passengerPlan.map((p) => p.label)}
-              currency={currency}
-              currencySym={currencySym}
-              basePrice={calculatedCombinedPrice || priceNum}
-              submitting={submitting}
-              onSkip={() => finishExtras([])}
-              onContinue={(sels) => finishExtras(sels)}
-            />
           )}
 
           {step === "payment" && (

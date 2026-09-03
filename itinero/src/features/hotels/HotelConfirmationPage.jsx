@@ -45,6 +45,23 @@ function shortRef(value, head = 12, tail = 6) {
   return `${s.slice(0, head)}…${s.slice(-tail)}`;
 }
 
+function renderGuestsLabel(data) {
+  if (!data) return "Guests";
+  const a = Number(data.adults || 0);
+  const c = Number(data.children || 0);
+  const g = Number(data.guests || 0);
+  if (a > 0 && c > 0) {
+    return `${a} adult${a > 1 ? "s" : ""}, ${c} child${c > 1 ? "ren" : ""}`;
+  }
+  if (a > 0) {
+    return `${a} adult${a > 1 ? "s" : ""}`;
+  }
+  if (g > 0) {
+    return `${g} guest${g > 1 ? "s" : ""}`;
+  }
+  return `${data.guests || 2} guests`;
+}
+
 async function copyText(value) {
   const s = String(value || "").trim();
   if (!s) return false;
@@ -255,12 +272,19 @@ export default function HotelConfirmationPage() {
     setResendErr("");
     setResendMsg("");
     try {
+      const checkInVal = bookingData?.checkInIso || (checkIn.date !== "-" ? checkIn.date : "") || (typeof bookingData?.checkIn === "string" ? bookingData.checkIn : "");
+      const checkOutVal = bookingData?.checkOutIso || (checkOut.date !== "-" ? checkOut.date : "") || (typeof bookingData?.checkOut === "string" ? bookingData.checkOut : "");
       const res = await sendBookingEmail({
         kind: "hotel",
         payment_id: paymentId || undefined,
         email: mail,
         booking_ref: bookingRef || bookingId || undefined,
         hotel_name: bookingData?.hotelName,
+        guest_name: bookingData?.guestName,
+        room_name: bookingData?.roomName,
+        check_in: checkInVal || undefined,
+        check_out: checkOutVal || undefined,
+        guests: renderGuestsLabel(bookingData),
         amount: Number(bookingData?.totalPrice) || undefined,
         currency: bookingData?.currency || "INR",
         pending: !bookingId,
@@ -453,7 +477,7 @@ export default function HotelConfirmationPage() {
                     <Users size={17} className={styles.detailIcon} aria-hidden />
                     <div>
                       <span className={styles.detailLabel}>Guests</span>
-                      <span className={styles.detailValue}>{bookingData.guests} adults</span>
+                      <span className={styles.detailValue}>{renderGuestsLabel(bookingData)}</span>
                     </div>
                   </div>
                 </div>

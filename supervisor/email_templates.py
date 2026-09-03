@@ -386,11 +386,11 @@ def _flight_schedule_html(details: dict) -> str:
 
 
 def _hotel_stay_html(details: dict) -> str:
-    from supervisor.booking_pdf import pretty_when
+    from supervisor.booking_pdf import pretty_hotel_date
 
     hotel = html.escape(str(details.get("hotel_name") or "Your hotel"))
-    cin = html.escape(pretty_when(details.get("check_in")) or str(details.get("check_in") or "-"))
-    cout = html.escape(pretty_when(details.get("check_out")) or str(details.get("check_out") or "-"))
+    cin = html.escape(pretty_hotel_date(details.get("check_in")))
+    cout = html.escape(pretty_hotel_date(details.get("check_out")))
     room = html.escape(str(details.get("room_name") or ""))
     guest = html.escape(_title_case_name(str(details.get("guest_name") or "")))
     return f"""

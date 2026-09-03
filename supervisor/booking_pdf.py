@@ -165,6 +165,31 @@ def pretty_when(raw: Any) -> str:
     return dt.strftime("%d %b %Y, %H:%M")
 
 
+def pretty_hotel_date(raw: Any) -> str:
+    if not raw:
+        return "-"
+    if isinstance(raw, dict):
+        d = str(raw.get("date") or raw.get("formatted") or raw.get("raw") or "").strip()
+        day = str(raw.get("day") or "").strip()
+        if d and day:
+            return f"{d} ({day})"
+        if d:
+            return d
+    s = str(raw).strip()
+    if s.startswith("{") and ("date" in s or "day" in s):
+        import ast
+        try:
+            parsed = ast.literal_eval(s)
+            if isinstance(parsed, dict):
+                return pretty_hotel_date(parsed)
+        except Exception:
+            pass
+    dt = _parse_dt(raw)
+    if dt:
+        return dt.strftime("%d %b %Y (%a)")
+    return _safe_ascii(s) or "-"
+
+
 def pretty_issued(raw: Any = None) -> str:
     dt = _parse_dt(raw) or datetime.now()
     return dt.strftime("%d %b %Y, %I:%M %p").lstrip("0").replace(" 0", " ")
@@ -625,8 +650,8 @@ def _build_hotel_pdf_reportlab(details: dict[str, Any]) -> bytes:
     y -= bar_h + 16
 
     # Check-in / check-out cards
-    cin = pretty_when(details.get("check_in")) or _safe_ascii(details.get("check_in")) or "-"
-    cout = pretty_when(details.get("check_out")) or _safe_ascii(details.get("check_out")) or "-"
+    cin = pretty_hotel_date(details.get("check_in"))
+    cout = pretty_hotel_date(details.get("check_out"))
     card_w = (content_w - 12) / 2
     card_h = 64
     for i, (label, value) in enumerate((("CHECK-IN", cin), ("CHECK-OUT", cout))):
@@ -637,12 +662,13 @@ def _build_hotel_pdf_reportlab(details: dict[str, Any]) -> bytes:
         c.setFont("Helvetica-Bold", 7)
         c.drawString(x + 12, y - 16, label)
         c.setFillColorRGB(*_INK)
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(x + 12, y - 38, value[:28])
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(x + 12, y - 38, value[:45])
     y -= card_h + 14
 
     # Guest + contact
     guest = _title_case_name(str(details.get("guest_name") or ""))
+    guests_sub = _safe_ascii(details.get("guests") or "")
     email = _safe_ascii(details.get("email") or "")
     phone = _safe_ascii(details.get("phone") or "")
     pax_h = 70
@@ -656,7 +682,11 @@ def _build_hotel_pdf_reportlab(details: dict[str, Any]) -> bytes:
     c.drawString(m + content_w / 2 + 8, y - 16, "CONTACT")
     c.setFillColorRGB(*_INK)
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(m + 14, y - 38, (guest or "Guest on file")[:40])
+    c.drawString(m + 14, y - 36, (guest or "Guest on file")[:35])
+    if guests_sub:
+        c.setFillColorRGB(*_MUTED)
+        c.setFont("Helvetica", 8)
+        c.drawString(m + 14, y - 50, guests_sub[:35])
     c.setFont("Helvetica", 9)
     if email:
         c.drawString(m + content_w / 2 + 8, y - 34, email[:36])

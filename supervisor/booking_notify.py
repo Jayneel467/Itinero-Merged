@@ -172,9 +172,22 @@ def _build_details(
             else None
         ),
         "hotel_name": extra.get("hotel_name") or booking.get("hotel_name") or booking.get("name"),
-        "check_in": extra.get("check_in") or booking.get("check_in") or booking.get("checkin"),
-        "check_out": extra.get("check_out") or booking.get("check_out") or booking.get("checkout"),
+        "check_in": (
+            extra.get("check_in")
+            or extra.get("checkIn")
+            or booking.get("check_in")
+            or booking.get("checkin")
+            or booking.get("checkIn")
+        ),
+        "check_out": (
+            extra.get("check_out")
+            or extra.get("checkOut")
+            or booking.get("check_out")
+            or booking.get("checkout")
+            or booking.get("checkOut")
+        ),
         "room_name": extra.get("room_name") or booking.get("room_name") or booking.get("room_type"),
+        "guests": extra.get("guests") or booking.get("guests"),
         "amount": extra.get("amount") or booking.get("total_price") or booking.get("price"),
         "currency": extra.get("currency") or booking.get("currency") or "INR",
         "status": "pending" if pending else "confirmed",

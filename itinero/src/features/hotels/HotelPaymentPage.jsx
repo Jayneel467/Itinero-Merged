@@ -189,6 +189,7 @@ export default function HotelPaymentPage() {
     const g = guestUsed || guest;
     clearLiteApiCheckout(pb?.prebook_id || booking.prebook_id);
     const usedSummary = summaryUsed || summaryData;
+    const confirmTotalPrice = Number(usedSummary?.totalPrice ?? (booking.price ?? pb?.price ?? displayTotal));
     const confirmState = {
       paymentId: payRef || booking.payment_id,
       paymentProvider: "stripe",
@@ -197,7 +198,7 @@ export default function HotelPaymentPage() {
       hotelConfirmationCode: booking.hotel_confirmation_code,
       bookingData: {
         ...usedSummary,
-        totalPrice: Number(booking.price ?? pb?.price ?? displayTotal),
+        totalPrice: confirmTotalPrice,
         guestName: `${g.firstName || ""} ${g.lastName || ""}`.trim(),
         email: g.email,
         phone: g.phone,

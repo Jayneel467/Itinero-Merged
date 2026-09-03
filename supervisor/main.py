@@ -3170,6 +3170,11 @@ class SendBookingEmailRequest(BaseModel):
     stops: Optional[str] = None
     passengers: Optional[list[str]] = None
     phone: Optional[str] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
+    guest_name: Optional[str] = None
+    guests: Optional[str] = None
+    room_name: Optional[str] = None
 
 
 @app.post("/api/bookings/send-email")
@@ -3252,6 +3257,11 @@ async def send_booking_email(req: SendBookingEmailRequest):
             "cabin": req.cabin,
             "stops": req.stops,
             "passengers": [p for p in (req.passengers or []) if str(p or "").strip()],
+            "guest_name": req.guest_name,
+            "guests": req.guests,
+            "check_in": req.check_in,
+            "check_out": req.check_out,
+            "room_name": req.room_name,
             "email": mail,
             "phone": req.phone,
         },
@@ -3484,14 +3494,24 @@ async def hotels_book(req: HotelBookRequest, request: Request):
         intent = get_pending_by_prebook(req.prebook_id)
         payload = (intent or {}).get("payload") or {}
         pay_ref = (req.payment_id or req.transaction_id or "").strip()
+        guest_full_name = " ".join(
+            part
+            for part in (
+                str(holder.get("firstName") or holder.get("first_name") or "").strip(),
+                str(holder.get("lastName") or holder.get("last_name") or "").strip(),
+            )
+            if part
+        ) or str(holder.get("name") or "").strip()
         schedule_booking_email(
             kind="hotel",
             to_email=holder.get("email"),
             result=result,
             extras={
                 "hotel_name": payload.get("hotel_name") or holder.get("hotel_name"),
+                "guest_name": guest_full_name or payload.get("guest_name"),
                 "check_in": payload.get("check_in"),
                 "check_out": payload.get("check_out"),
+                "room_name": payload.get("room_name") or holder.get("room_name"),
                 "amount": req.expected_amount,
                 "currency": "INR",
             },
