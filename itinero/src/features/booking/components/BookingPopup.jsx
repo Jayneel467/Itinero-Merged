@@ -1101,33 +1101,34 @@ export default function BookingPopup({
     paxParts.join(", ") ||
     `${totalPassengers} Passenger${totalPassengers > 1 ? "s" : ""}`;
 
-  const rawOutboundPerPerson = Number(outboundFlight?.price || 0);
+  // Per-person base fare and taxes
+  const rawFlightPricePerPerson = Number(flight?.price || 0);
+  const rawOutboundPerPerson = Number(outboundFlight?.price || rawFlightPricePerPerson);
   const rawReturnPerPerson = Number(returnFlight?.price || 0);
-  const rawBasePerPerson = flight.price_base != null ? Number(flight.price_base) : null;
+
+  const rawBasePerPerson =
+    rawFlightPricePerPerson > 0
+      ? rawFlightPricePerPerson
+      : Number(flight?.price_base || 0);
+
   const rawTaxesPerPerson =
     flight.price_taxes != null || flight.price_fees != null
       ? Number(flight.price_taxes || 0) + Number(flight.price_fees || 0)
-      : null;
+      : 0;
 
-  const calculatedCombinedPerPerson =
+  const baseFare =
     isRoundTrip && rawReturnPerPerson > 0 && !flight?.isRoundTripPackage
-      ? rawOutboundPerPerson + rawReturnPerPerson
-      : Number(flight?.price || 0);
+      ? (rawOutboundPerPerson + rawReturnPerPerson) * totalPassengers
+      : rawBasePerPerson * totalPassengers;
+
+  const taxes = rawTaxesPerPerson * totalPassengers;
+  const outboundPrice = rawOutboundPerPerson * totalPassengers;
+  const returnPrice = rawReturnPerPerson * totalPassengers;
 
   const priceNum =
     hold?.price != null
       ? Number(hold.price)
-      : calculatedCombinedPerPerson * totalPassengers;
-
-  const outboundPrice = rawOutboundPerPerson * totalPassengers;
-  const returnPrice = rawReturnPerPerson * totalPassengers;
-  const baseFare =
-    rawBasePerPerson != null
-      ? rawBasePerPerson * totalPassengers
-      : isRoundTrip && returnPrice > 0
-        ? priceNum
-        : null;
-  const taxes = rawTaxesPerPerson != null ? rawTaxesPerPerson * totalPassengers : null;
+      : baseFare + taxes;
 
   const currency = (hold?.currency || flight.currencyCode || "INR").toUpperCase();
   const currencySym = flight.currency || (currency === "INR" ? "₹" : `${currency} `);
