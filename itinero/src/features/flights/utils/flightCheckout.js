@@ -168,7 +168,7 @@ export function confirmationFromFlightTrip(trip) {
   };
   return {
     flight,
-    travelers: [],
+    travelers: Array.isArray(trip.passengers) ? trip.passengers : (Array.isArray(trip.travelers) ? trip.travelers : (Array.isArray(leg.passengers) ? leg.passengers : [])),
     contact: trip.contact || {},
     paymentId: leg.paymentId || null,
     bookingRef: leg.pnr || leg.bookingId || null,

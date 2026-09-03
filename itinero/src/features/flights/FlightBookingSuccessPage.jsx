@@ -457,12 +457,18 @@ export default function FlightBookingSuccessPage() {
 
   const paxLine = travelers.length
     ? travelers
-        .slice(0, 2)
-        .map((t, i) =>
-          `${i + 1}. ${[t.firstName, t.lastName].filter(Boolean).join(" ") || "Passenger"} | ${t.type || "adult"}${
-            t.dob ? ` | ${t.dob}` : ""
-          }`
-        )
+        .map((t, i) => {
+          const name = [t.firstName || t.first_name, t.lastName || t.last_name].filter(Boolean).join(" ") || t.name || "Passenger";
+          let typeStr = "adult";
+          const rawType = t.type ?? t.passenger_type;
+          if (rawType === 1 || String(rawType).toLowerCase() === "child" || String(rawType).toLowerCase() === "chd") {
+            typeStr = "child";
+          } else if (rawType === 2 || String(rawType).toLowerCase() === "infant" || String(rawType).toLowerCase() === "inf") {
+            typeStr = "infant";
+          }
+          const dob = t.dob || t.date_of_birth;
+          return `${i + 1}. ${name} | ${typeStr}${dob ? ` | ${dob}` : ""}`;
+        })
         .join("\n")
     : "Lead passenger on file";
 
