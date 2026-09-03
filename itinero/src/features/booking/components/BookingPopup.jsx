@@ -1110,6 +1110,22 @@ export default function BookingPopup({
       ? Number(flight.price_taxes || 0) + Number(flight.price_fees || 0)
       : null;
 
+  const numAdults = Math.max(1, Number(adults) || 1);
+  const numChildren = Math.max(0, Number(childrenCount) || 0);
+  const numInfants = Math.max(0, Number(infants) || 0);
+  const totalPassengers =
+    passengers?.length ||
+    passengerPlan?.length ||
+    numAdults + numChildren + numInfants;
+
+  const paxParts = [];
+  if (numAdults > 0) paxParts.push(`${numAdults} Adult${numAdults > 1 ? "s" : ""}`);
+  if (numChildren > 0) paxParts.push(`${numChildren} Child${numChildren > 1 ? "ren" : ""}`);
+  if (numInfants > 0) paxParts.push(`${numInfants} Infant${numInfants > 1 ? "s" : ""}`);
+  const paxBreakdownText =
+    paxParts.join(", ") ||
+    `${totalPassengers} Passenger${totalPassengers > 1 ? "s" : ""}`;
+
   const confPassengers = Array.isArray(booking?.passengers) ? booking.passengers : [];
   const confSegments = Array.isArray(booking?.segments_summary) ? booking.segments_summary : [];
   const confLocators = Array.isArray(booking?.airline_locators) ? booking.airline_locators : [];
