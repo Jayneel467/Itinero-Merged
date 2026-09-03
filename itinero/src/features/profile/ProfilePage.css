@@ -239,6 +239,8 @@
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
 }
 
 .metric-card--clickable {
@@ -544,6 +546,8 @@
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
 }
 
 .mini-item:hover {
@@ -639,6 +643,7 @@
   background: none;
   border: none;
   cursor: pointer;
+  text-decoration: none;
 }
 
 /* =========================================
@@ -686,6 +691,8 @@
   cursor: pointer;
   text-align: left;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  color: inherit;
 }
 
 .hub-tile:hover {

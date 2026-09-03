@@ -8,6 +8,7 @@ import {
   Globe2,
   Menu,
   Mic,
+  Minimize2,
   Plane,
   Plus,
   Share2,
@@ -490,6 +491,7 @@ export default function VeroPage() {
                 type="button"
                 className="vero-page__icon-btn"
                 aria-label="Share Vero chat"
+                title="Share chat"
                 onClick={handleShare}
               >
                 <Share2 size={18} strokeWidth={2} />
@@ -497,8 +499,33 @@ export default function VeroPage() {
               <button
                 type="button"
                 className="vero-page__icon-btn"
-                aria-label="Close and go home"
-                onClick={() => navigate("/")}
+                aria-label="Minimize to widget"
+                title="Minimize / Exit full screen"
+                onClick={() => {
+                  if (veroUi?.openVero) {
+                    veroUi.openVero();
+                  }
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate("/");
+                  }
+                }}
+              >
+                <Minimize2 size={18} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                className="vero-page__icon-btn"
+                aria-label="Close"
+                title="Close"
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate("/");
+                  }
+                }}
               >
                 <X size={18} strokeWidth={2} />
               </button>

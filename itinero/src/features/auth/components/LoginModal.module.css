@@ -601,7 +601,7 @@
 .hintBox {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding: 14px;
   border-radius: 14px;
   background: var(--lm-soft);

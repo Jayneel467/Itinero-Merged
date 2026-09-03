@@ -442,9 +442,9 @@ export default function ProfilePage() {
 
             {/* Quick Metrics Bar */}
             <div className="profile-metrics-bar">
-              <div
+              <Link
+                to="/trips"
                 className="metric-card metric-card--clickable"
-                onClick={() => navigate("/trips")}
               >
                 <div className="metric-icon metric-icon--blue">
                   <Briefcase size={18} />
@@ -453,11 +453,11 @@ export default function ProfilePage() {
                   <span className="metric-val">{trips.length}</span>
                   <span className="metric-lbl">Total Trips</span>
                 </div>
-              </div>
+              </Link>
 
-              <div
+              <Link
+                to="/trips"
                 className="metric-card metric-card--clickable"
-                onClick={() => navigate("/trips")}
               >
                 <div className="metric-icon metric-icon--green">
                   <CalendarBadge size={18} />
@@ -466,11 +466,11 @@ export default function ProfilePage() {
                   <span className="metric-val">{upcoming.length}</span>
                   <span className="metric-lbl">Upcoming</span>
                 </div>
-              </div>
+              </Link>
 
-              <div
+              <Link
+                to="/saved"
                 className="metric-card metric-card--clickable"
-                onClick={() => navigate("/saved")}
               >
                 <div className="metric-icon metric-icon--indigo">
                   <Bookmark size={18} />
@@ -479,10 +479,11 @@ export default function ProfilePage() {
                   <span className="metric-val">{savedItems.length}</span>
                   <span className="metric-lbl">Saved Places</span>
                 </div>
-              </div>
+              </Link>
 
-              <div
-                className="metric-card metric-card--clickable"
+              <button
+                type="button"
+                className="metric-card metric-card--clickable text-left"
                 onClick={() => handleTabChange("travellers")}
               >
                 <div className="metric-icon metric-icon--orange">
@@ -492,7 +493,7 @@ export default function ProfilePage() {
                   <span className="metric-val">{travellersCount}</span>
                   <span className="metric-lbl">Saved Travellers</span>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -550,14 +551,13 @@ export default function ProfilePage() {
                       )}
                     </p>
                   </div>
-                  <button
-                    type="button"
+                  <Link
+                    to={`/trips/${nextTrip.id}`}
                     className="spotlight-action"
-                    onClick={() => navigate(`/trips/${nextTrip.id}`)}
                   >
                     <span>View details</span>
                     <ChevronRight size={18} />
-                  </button>
+                  </Link>
                 </div>
               ) : (
                 <div className="spotlight-card spotlight-card--empty">
@@ -584,21 +584,20 @@ export default function ProfilePage() {
                 <div className="hub-box">
                   <div className="hub-box__head">
                     <h3>Recent Trips</h3>
-                    <button
-                      type="button"
+                    <Link
+                      to="/trips"
                       className="hub-box__see-all"
-                      onClick={() => navigate("/trips")}
                     >
                       See all <ChevronRight size={14} />
-                    </button>
+                    </Link>
                   </div>
                   {recentTrips.length ? (
                     <div className="mini-item-list">
                       {recentTrips.map((t) => (
-                        <div
+                        <Link
                           key={t.id}
+                          to={`/trips/${t.id}`}
                           className="mini-item"
-                          onClick={() => navigate(`/trips/${t.id}`)}
                         >
                           <div className="mini-item__icon">
                             <Plane size={16} />
@@ -610,20 +609,19 @@ export default function ProfilePage() {
                           <span className={`status-pill status-pill--${tripStatus(t)}`}>
                             {tripStatus(t)}
                           </span>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   ) : (
                     <div className="hub-box__empty">
                       <Briefcase size={28} />
                       <p>Your bookings and itineraries will appear here.</p>
-                      <button
-                        type="button"
+                      <Link
+                        to="/flights"
                         className="btn-link"
-                        onClick={() => navigate("/flights")}
                       >
                         Search flights
-                      </button>
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -631,21 +629,20 @@ export default function ProfilePage() {
                 <div className="hub-box">
                   <div className="hub-box__head">
                     <h3>Saved Collections</h3>
-                    <button
-                      type="button"
+                    <Link
+                      to="/saved"
                       className="hub-box__see-all"
-                      onClick={() => navigate("/saved")}
                     >
                       See all <ChevronRight size={14} />
-                    </button>
+                    </Link>
                   </div>
                   {savedItems.length ? (
                     <div className="mini-item-list">
                       {savedItems.slice(0, 4).map((row) => (
-                        <div
+                        <Link
                           key={row.id}
+                          to={row.url || "/explore"}
                           className="mini-item"
-                          onClick={() => navigate(row.url || "/explore")}
                         >
                           <div className="mini-item__icon mini-item__icon--indigo">
                             <Bookmark size={16} />
@@ -655,20 +652,19 @@ export default function ProfilePage() {
                             <p className="mini-item__sub">{row.subtitle || row.type || "Saved idea"}</p>
                           </div>
                           <ChevronRight size={16} className="text-slate-400" />
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   ) : (
                     <div className="hub-box__empty">
                       <Bookmark size={28} />
                       <p>Bookmark hotels & places from Explore to save them.</p>
-                      <button
-                        type="button"
+                      <Link
+                        to="/explore"
                         className="btn-link"
-                        onClick={() => navigate("/explore")}
                       >
                         Explore places
-                      </button>
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -682,11 +678,10 @@ export default function ProfilePage() {
                 </div>
                 <div className="hub-grid">
                   {hubLinks.map(({ to, title, copy, Icon, color }) => (
-                    <button
+                    <Link
                       key={to}
-                      type="button"
+                      to={to}
                       className="hub-tile"
-                      onClick={() => navigate(to)}
                     >
                       <div className={`hub-tile__icon hub-tile__icon--${color}`}>
                         <Icon size={20} strokeWidth={2.2} />
@@ -696,7 +691,7 @@ export default function ProfilePage() {
                         <p className="hub-tile__copy">{copy}</p>
                       </div>
                       <ChevronRight size={16} className="hub-tile__chevron" />
-                    </button>
+                    </Link>
                   ))}
                 </div>
               </div>
