@@ -840,6 +840,18 @@
   word-break: break-word;
 }
 
+.paxTag {
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
 .fareBlock {
   background: linear-gradient(180deg, #fffaf5, #ffffff);
   border-color: #ffe0cc;

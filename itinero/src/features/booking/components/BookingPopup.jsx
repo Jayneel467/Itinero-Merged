@@ -1665,18 +1665,33 @@ export default function BookingPopup({
               </div>
 
               <div className={`${styles.reviewBlock} ${styles.fareBlock}`}>
-                <h4>Fare summary</h4>
+                <div className={styles.reviewBlockHead}>
+                  <h4>Fare summary</h4>
+                  <span className={styles.paxTag}>
+                    {paxBreakdownText} · Total
+                  </span>
+                </div>
                 {isRoundTrip && outboundPrice > 0 && returnPrice > 0 ? (
                   <>
                     <div className={styles.fareRow}>
-                      <span>Departing flight ({outboundFlight.airline?.name || "Outbound"})</span>
+                      <span>
+                        Departing flight ({outboundFlight.airline?.name || "Outbound"}) ·{" "}
+                        <small style={{ color: "#64748b", fontWeight: 500 }}>
+                          ({paxBreakdownText})
+                        </small>
+                      </span>
                       <span>
                         {currencySym}
                         {outboundPrice.toLocaleString("en-IN")}
                       </span>
                     </div>
                     <div className={styles.fareRow}>
-                      <span>Return flight ({returnFlight.airline?.name || "Return"})</span>
+                      <span>
+                        Return flight ({returnFlight.airline?.name || "Return"}) ·{" "}
+                        <small style={{ color: "#64748b", fontWeight: 500 }}>
+                          ({paxBreakdownText})
+                        </small>
+                      </span>
                       <span>
                         {currencySym}
                         {returnPrice.toLocaleString("en-IN")}
@@ -1686,7 +1701,12 @@ export default function BookingPopup({
                 ) : (
                   baseFare != null && (
                     <div className={styles.fareRow}>
-                      <span>{isRoundTrip ? "Round-trip base fare" : "Base fare"}</span>
+                      <span>
+                        {isRoundTrip ? "Round-trip base fare" : "Base fare"}{" "}
+                        <small style={{ color: "#64748b", fontWeight: 500 }}>
+                          ({paxBreakdownText})
+                        </small>
+                      </span>
                       <span>
                         {currencySym}
                         {baseFare.toLocaleString("en-IN")}
@@ -1696,7 +1716,12 @@ export default function BookingPopup({
                 )}
                 {taxes != null && taxes > 0 && (
                   <div className={styles.fareRow}>
-                    <span>Taxes & fees</span>
+                    <span>
+                      Taxes & fees{" "}
+                      <small style={{ color: "#64748b", fontWeight: 500 }}>
+                        ({paxBreakdownText})
+                      </small>
+                    </span>
                     <span>
                       {currencySym}
                       {taxes.toLocaleString("en-IN")}
@@ -1704,11 +1729,25 @@ export default function BookingPopup({
                   </div>
                 )}
                 <div className={`${styles.fareRow} ${styles.fareTotal}`}>
-                  <span>Total</span>
-                  <span>{priceLabel}</span>
+                  <div>
+                    <span>Total</span>
+                    {totalPassengers > 1 && (
+                      <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 500, color: "#64748b" }}>
+                        All fares & taxes for {paxBreakdownText}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span>{priceLabel}</span>
+                    {totalPassengers > 1 && priceNum > 0 && (
+                      <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#f97211" }}>
+                        ≈ {currencySym}{Math.round(priceNum / totalPassengers).toLocaleString("en-IN")} / person
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className={styles.fareNote}>
-                  Holding locks this price briefly so you can finish payment.
+                  Holding locks this total price briefly so you can finish payment for all {paxBreakdownText}.
                 </p>
               </div>
             </div>
