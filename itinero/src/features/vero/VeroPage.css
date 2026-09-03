@@ -719,6 +719,11 @@
   align-items: start;
 }
 
+.vero-drawer .vero-flights__body,
+.vero-chat-bubble .vero-flights__body {
+  grid-template-columns: 1fr;
+}
+
 .vero-flights__filters {
   display: flex;
   flex-direction: column;
@@ -727,6 +732,22 @@
   border-radius: 10px;
   background: #f8fafc;
   border: 1px solid #eef1f4;
+}
+
+.vero-drawer .vero-flights__filters,
+.vero-chat-bubble .vero-flights__filters {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.vero-drawer .vero-flights__filter-group,
+.vero-chat-bubble .vero-flights__filter-group {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .vero-flights__filter-group {
@@ -851,10 +872,9 @@
 }
 
 .vero-flight-card__row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .vero-flight-card__schedule {
@@ -863,6 +883,7 @@
   gap: 8px;
   align-items: center;
   min-width: 0;
+  width: 100%;
 }
 
 .vero-flight-card__schedule em {
@@ -889,7 +910,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  min-width: 72px;
+  min-width: 68px;
 }
 
 .vero-flight-card__mid span {
@@ -917,13 +938,19 @@
 
 .vero-flight-card__aside {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border-top: 1px solid #f0f3f6;
+  padding-top: 10px;
+  margin-top: 2px;
 }
 
 .vero-flight-card__aside strong {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
+  font-weight: 800;
   color: var(--vero-ink);
   white-space: nowrap;
 }
@@ -934,11 +961,16 @@
   background: #f97211;
   color: #fff;
   font-weight: 700;
-  font-size: 12px;
-  padding: 8px 12px;
+  font-size: 13px;
+  padding: 8px 16px;
   min-height: 36px;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.vero-flight-card__book:hover {
+  background: #ea580c;
 }
 
 .vero-flight-card.is-selected .vero-flight-card__book {
