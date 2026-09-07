@@ -1,8 +1,14 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /itinero/
+
+  # 1. Reverse Proxy API calls to Supervisor backend on port 8000
+  RewriteRule ^api/(.*)$ http://127.0.0.1:8000/api/$1 [P,L]
+
+  # 2. React Router SPA Fallback (route all pages to index.html)
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /itinero/index.html [L]
 </IfModule>
+

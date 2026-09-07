@@ -29,8 +29,9 @@ _backend: str | None = None
 def checkpoint_backend() -> str:
     raw = (os.getenv("VERO_CHECKPOINT") or "memory").strip().lower()
     if raw in {"sqlite", "sql"}:
-        return "sqlite"
+        return "memory"
     return "memory"
+
 
 
 def checkpoint_path() -> str:
