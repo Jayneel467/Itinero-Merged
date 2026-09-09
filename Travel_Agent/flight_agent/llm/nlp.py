@@ -56,6 +56,11 @@ class FlightNLP:
             raise FlightAgentError("OpenAI is not configured.")
         return self._openai
 
+    @property
+    def llm(self) -> ChatOpenAI:
+        """Alias used by General Agent routing."""
+        return self.raw_llm
+
     def bind_tools(self, tools: list) -> BaseChatModel:
         """Return GPT with flight tools bound."""
         if not self._openai:

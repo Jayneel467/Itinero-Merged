@@ -1371,6 +1371,30 @@ async def run_flights(
         ctx_data = session.get("flight_context")
         session_ctx = SessionContext.model_validate(ctx_data) if ctx_data else SessionContext()
 
+        # Seed pending route / pax from supervisor trip_slots so Flight Agent quotes match
+        trip_slots = session.get("trip_slots") or {}
+        sc = dict(session_ctx.search_context or {})
+        if trip_slots.get("origin") and not sc.get("origin"):
+            sc["origin"] = str(trip_slots["origin"]).strip().upper()
+        if trip_slots.get("destination") and not sc.get("destination"):
+            sc["destination"] = str(trip_slots["destination"]).strip().upper()
+        if trip_slots.get("depart_date") and not sc.get("departure_date"):
+            sc["departure_date"] = str(trip_slots["depart_date"]).strip()
+        if trip_slots.get("adults") is not None and sc.get("adults") is None:
+            try:
+                sc["adults"] = max(1, int(trip_slots["adults"]))
+            except (TypeError, ValueError):
+                sc["adults"] = 1
+        if trip_slots.get("children") is not None and sc.get("children") is None:
+            try:
+                sc["children"] = max(0, int(trip_slots["children"]))
+            except (TypeError, ValueError):
+                sc["children"] = 0
+        if trip_slots.get("cabin") and not sc.get("cabin"):
+            sc["cabin"] = str(trip_slots["cabin"]).strip()
+        if sc:
+            session_ctx.search_context = sc
+
         agent = GeneralAgent()
         try:
             # Hard ceiling so chat never hangs on "Vero is thinking…"
@@ -1401,6 +1425,16 @@ async def run_flights(
             )
             or None
         )
+        # Stamp searched pax on cards so BookingPopup / Vero UI match LiteAPI total
+        if flights:
+            adults_n = int(sc.get("adults") or 1)
+            children_n = int(sc.get("children") or 0)
+            infants_n = int(sc.get("infants") or 0)
+            for f in flights:
+                if isinstance(f, dict):
+                    f.setdefault("adults", adults_n)
+                    f.setdefault("children", children_n)
+                    f.setdefault("infants", infants_n)
         specialist: Specialist = "flights"
         if out.payment_ready or "payment" in (out.route_path or []):
             specialist = "payment"
@@ -2613,52 +2647,48 @@ async def chat(req: ChatRequest, request: Request):
                 or not mid_booking
             )
 
-            # ── FAST PATH: missing date/airport → ui_prompts immediately ──
-            # Never call LiteAPI / research_dispatch / Travel_Agent LLM first.
-            # Also interrupts when mid_booking leftovers exist but the user
-            # started a new incomplete route ask (e.g. "mumbai to delhi flights").
+            # Incomplete flight ask (e.g. "Mumbai to Delhi") → General Agent →
+            # Flight Agent asks for date / passengers in conversation.
+            # Keep UI date/airport widgets as helpers alongside the agent reply.
             if specialist == "flights" and not slots.ready_for_travel_search():
                 new_route_ask = bool(
                     slots.origin or slots.destination or _ROUTE.search(req.message)
                 )
-                if new_route_ask:
+                pending_flight = bool(
+                    (session.get("flight_context") or {}).get("search_context")
+                    or (session.get("trip_slots") or {}).get("origin")
+                )
+                if new_route_ask or pending_flight or session.get("active_specialist") == "flights":
+                    resp = await run_flights(req.message, session, history)
                     ui_prompts = build_ui_prompts(slots)
-                    return attach_suggestions(
-                        ChatResponse(
-                            response=missing_field_interrupt(slots),
-                            session_id=session_id,
-                            route_path=[
-                                "start",
-                                "supervisor",
-                                "trip_detail_collection",
-                                "missing_field_checker",
-                                "interrupt",
-                            ],
-                            routed_to="trip_detail_collection",
-                            active_specialist="flights",
-                            intent="trip_detail_collection",
-                            architecture_stage="trip_detail_collection",
-                            mode="live",
-                            ui_prompts=ui_prompts,
-                            clarification={
-                                "missing": slots.missing_for_travel_search(),
-                                "known": {
-                                    "origin": slots.origin,
-                                    "destination": slots.destination,
-                                    "depart_date": slots.depart_date,
-                                    "adults": slots.adults,
-                                    "children": slots.children,
-                                    "cabin": slots.cabin,
-                                },
-                            },
-                            session_context={
-                                **(prefs_ctx or {}),
-                                "trip_slots": session.get("trip_slots"),
-                            },
-                        ),
-                        req.message,
-                        session,
-                    )
+                    if ui_prompts:
+                        resp.ui_prompts = ui_prompts
+                    path = list(resp.route_path or [])
+                    if "supervisor" not in path[:2]:
+                        path = ["start", "supervisor"] + path
+                    if "trip_detail_collection" not in path:
+                        path = path + ["trip_detail_collection"]
+                    resp.route_path = path
+                    resp.architecture_stage = "trip_detail_collection"
+                    resp.active_specialist = "flights"
+                    merged = dict(resp.session_context or {})
+                    if session.get("dietary_preference"):
+                        merged["dietary_preference"] = session["dietary_preference"]
+                    if session.get("trip_slots"):
+                        merged["trip_slots"] = session["trip_slots"]
+                    resp.session_context = merged or None
+                    resp.clarification = {
+                        "missing": slots.missing_for_travel_search(),
+                        "known": {
+                            "origin": slots.origin,
+                            "destination": slots.destination,
+                            "depart_date": slots.depart_date,
+                            "adults": slots.adults,
+                            "children": slots.children,
+                            "cabin": slots.cabin,
+                        },
+                    }
+                    return attach_suggestions(resp, req.message, session)
 
             # New travel_search with complete slots → parallel research_dispatch
             if (

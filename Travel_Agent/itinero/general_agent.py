@@ -1,7 +1,20 @@
-"""General Agent — architecture entry (Start → General Agent).
+"""General Agent — first stop for every user message (router only).
 
-Policy: anything **flight / flight-booking** related is handed only to the Flight Agent
-(LiteAPI + LLM). Hotel / train / bus are stubs and never steal an active flight booking.
+Does **not** search flights or hotels itself.
+
+Talks to:
+  • Itinerary Agent  → trip plans (Itinerary then calls Hotel / Flight)
+  • Itinerary Agent  → flights   (Itinerary → Travel → Flight Agent)
+  • Itinerary Agent  → hotels    (Itinerary → Hotel Agent)
+
+Conversation handoff for flights:
+  User: "Mumbai to Delhi"
+    → General → Itinerary → Flight Agent asks date
+  User: "26 July"
+    → Flight Agent searches and lists options
+  User: "option 1"
+    → Flight Agent asks passenger count
+  Then traveler details → extras → fare hold (payment = backend checkout)
 """
 
 from __future__ import annotations
@@ -18,7 +31,7 @@ from flight_agent.logging_config import get_logger
 from flight_agent.models.agent import SessionContext
 from flight_agent.models.intents import FlightIntent
 
-from itinero.itinerary_planner import ItineraryPlanner
+from itinero.itinerary_agent import ItineraryAgent
 from itinero.models import OrchestratorInput, OrchestratorOutput
 
 logger = get_logger(__name__)
@@ -26,6 +39,7 @@ logger = get_logger(__name__)
 RouteTarget = Literal[
     "flight",
     "hotel",
+    "itinerary",
     "train",
     "bus",
     "general",
@@ -38,16 +52,18 @@ class GeneralRouteDecision(BaseModel):
 
     target: RouteTarget = Field(
         description=(
-            "flight = ALL flight search + hold (prebook); "
-            "hotel/train/bus = non-flight stubs only; "
-            "payment = checkout is backend — still route to flight for hold questions; "
+            "flight = flight search + hold via Itinerary → Flight Agent; "
+            "hotel = stays via Itinerary → Hotel Agent; "
+            "itinerary = full trip plan via Itinerary Agent; "
+            "train/bus = not live yet; "
+            "payment = still flight path (checkout is backend); "
             "general = greeting only"
         )
     )
     reason: str = Field(default="")
 
 
-# --- Flight / booking domain (Flight Agent only) ---
+# --- Flight / booking domain ---
 _FLIGHT_HINT = re.compile(
     r"\b(flight|flights|fly|flying|airport|airline|airlines|pnr|boarding|"
     r"mumbai|delhi|hyderabad|bangalore|bengaluru|chennai|kolkata|"
@@ -86,54 +102,65 @@ _FLIGHT_BOOK_HINT = re.compile(
     r"\b(book\s+(a\s+)?flight|flight\s+book|air\s*ticket|airfare|flight\s+ticket)\b",
     re.I,
 )
+_ITINERARY_HINT = re.compile(
+    r"\b("
+    r"itinerary|trip\s+plan|plan\s+(?:a\s+|my\s+|the\s+)?trip|"
+    r"full\s+trip|vacation\s+plan|day[- ]?by[- ]?day|"
+    r"(?:make|build|create|plan)\s+(?:me\s+)?(?:a\s+|an\s+|my\s+)?(?:trip|itinerary)"
+    r")\b",
+    re.I,
+)
 
-# --- Non-flight (stubs only; never during active flight booking) ---
-_HOTEL_HINT = re.compile(r"\b(hotel|hotels|resort|check[- ]?in)\b", re.I)
+# --- Non-flight ---
+_HOTEL_HINT = re.compile(r"\b(hotel|hotels|resort|check[- ]?in|stay|accommodation)\b", re.I)
 _TRAIN_HINT = re.compile(r"\b(train|trains|railway|irctc)\b", re.I)
 _BUS_HINT = re.compile(r"\b(bus|buses|volvo|redbus)\b", re.I)
 
 _GENERAL_SYSTEM = """You are Vero's internal chat router on Itinero (never tell the user this).
 
 ONLY route to:
-- flight: EVERY flight-related OR booking-related message (search, options, passengers,
-  traveler details, hold fare). Checkout/backend collects payment and issues the ticket.
-- payment: still flight path (hold questions only — no card collection here)
-- hotel / train / bus: ONLY when user clearly wants that mode alone (no flight booking)
+- flight: flight search / booking (Itinerary → Flight Agent)
+- hotel: hotel / stay (Itinerary → Hotel Agent)
+- itinerary: full trip plan (Itinerary Agent, which may call Hotel + Flight)
+- payment: still flight path (checkout is backend)
+- train / bus: only when user clearly wants that mode alone
 - general: ONLY hi / thanks with no travel content
 
-HARD RULE: booking = flight path. Never send booking steps to hotel/train/bus.
-When unsure → flight.
+HARD RULE: active flight booking stays on flight. When unsure → flight.
 """
 
 
 class GeneralAgent:
     """
-    Architecture hub:
+    Architecture hub (readable handoffs only):
 
       Start → General Agent
-                ↓  (flight / booking only)
-            Itinerary Planner → Travel Agent → Flight Booking → Payment
+                ├─ flight     → Itinerary Agent → Flight Agent
+                ├─ hotel      → Itinerary Agent → Hotel Agent
+                ├─ itinerary  → Itinerary Agent → (Hotel + Flight as needed)
+                └─ general    → short greeting
     """
 
     def __init__(
         self,
         *,
-        planner: ItineraryPlanner | None = None,
+        planner: ItineraryAgent | None = None,
         nlp: FlightNLP | None = None,
     ) -> None:
         self._settings = get_settings()
         self._nlp = nlp or FlightNLP(self._settings)
-        self._planner = planner or ItineraryPlanner()
+        self._planner = planner or ItineraryAgent()
 
     @property
-    def planner(self) -> ItineraryPlanner:
+    def planner(self) -> ItineraryAgent:
+        """Itinerary Agent (coordinates Flight + Hotel)."""
         return self._planner
 
     async def aclose(self) -> None:
         await self._planner.aclose()
 
     def _session_active_flight(self, session: SessionContext) -> bool:
-        """Any in-progress flight search/book/pay/cancel stays on Flight Agent."""
+        """Any in-progress flight search/book stays on Flight Agent."""
         return bool(
             session.last_search_results
             or session.verified_offer_id
@@ -162,23 +189,25 @@ class GeneralAgent:
     def _heuristic_route(self, message: str, session: SessionContext) -> RouteTarget | None:
         text = message.strip()
 
-        # Food / restaurants are not flights — never treat "where to eat" as a route
         if _FOOD_HINT.search(text) and not _FLIGHT_HINT.search(text) and not _IATA_HINT.search(text):
             return "general"
 
-        # 1) Active flight booking session → Flight Agent only (ignore hotel/train drift)
+        # Active flight booking → stay on Flight Agent path
         if self._session_active_flight(session):
             return "flight"
 
-        # 2) Explicit non-flight modes (only when not an active flight booking)
         if _TRAIN_HINT.search(text) and not re.search(r"\bflights?\b", text, re.I):
             return "train"
         if _BUS_HINT.search(text) and not re.search(r"\bflights?\b", text, re.I):
             return "bus"
+
+        # Trip plan before bare hotel/flight so "plan a trip with hotel" → itinerary
+        if _ITINERARY_HINT.search(text):
+            return "itinerary"
+
         if _HOTEL_HINT.search(text) and not re.search(r"\bflights?\b", text, re.I):
             return "hotel"
 
-        # 3) Any flight / booking language → Flight Agent
         if self._is_flight_or_booking(text):
             return "flight"
 
@@ -186,7 +215,6 @@ class GeneralAgent:
         if lower in {"hi", "hello", "hey", "hii", "thanks", "thank you"}:
             return "general"
 
-        # 4) Default → Flight Agent (asks for route/date via LiteAPI flow)
         if len(text.split()) >= 2:
             return "flight"
         return None
@@ -209,7 +237,7 @@ class GeneralAgent:
                 if isinstance(result, GeneralRouteDecision)
                 else GeneralRouteDecision.model_validate(result)
             )
-            if decision.target in {"general", "hotel", "train", "bus"} and self._is_flight_or_booking(
+            if decision.target in {"general", "hotel", "train", "bus", "itinerary"} and self._is_flight_or_booking(
                 message
             ):
                 return GeneralRouteDecision(target="flight", reason="force_flight_booking")
@@ -224,31 +252,24 @@ class GeneralAgent:
         return (
             "Hey — I'm **Vero**. For **flights**, try something like: "
             "**Mumbai to Delhi on 26 July**.\n\n"
-            "Or ask me about weather, food, or a full trip plan — "
-            "I'm here for all of it."
+            "Or ask for a **trip plan** or **hotels** — I'll route you to the right specialist."
         )
 
     def _non_flight_stub(self, mode: str) -> str:
-        labels = {
-            "hotel": "Hotels",
-            "train": "Trains",
-            "bus": "Buses",
-        }
+        labels = {"train": "Trains", "bus": "Buses"}
         label = labels.get(mode, mode.title())
         return (
             f"**{label}** aren't live in this chat yet — sorry about that.\n\n"
             "I *can* help with **flights** right now. "
-            "Example: **Hyderabad to Mumbai on 15 July**\n\n"
-            "Or switch to **Manual booking** on the site for hotel search."
+            "Example: **Hyderabad to Mumbai on 15 July**"
         )
 
     async def run(self, input_data: OrchestratorInput) -> OrchestratorOutput:
-        """Flight/booking → Flight Agent only; other modes are short stubs."""
+        """Route to Itinerary / Flight / Hotel specialists — do not search here."""
         session = input_data.session_context or SessionContext()
         path = ["start", "general_agent"]
 
         decision = await self._classify(input_data.message, session)
-        # Collapse payment into flight path (same Flight Agent)
         target = "flight" if decision.target == "payment" else decision.target
 
         logger.info(
@@ -258,6 +279,7 @@ class GeneralAgent:
             active_flight=self._session_active_flight(session),
         )
 
+        # Flight → Itinerary Agent → Flight Agent
         if target == "flight":
             out = await self._planner.plan_flight(
                 message=input_data.message,
@@ -267,27 +289,37 @@ class GeneralAgent:
                 path_prefix=path,
             )
             logger.info(
-                "flight_agent_only_handoff",
+                "general_to_flight",
                 routed_to=out.routed_to,
                 booking_ready=out.booking_ready,
-                payment_ready=out.payment_ready,
                 has_offers=len(out.session_context.last_search_results or []),
-                intent=out.intent.value if out.intent else None,
             )
             return out
 
+        # Hotel → Itinerary Agent → Hotel Agent
         if target == "hotel":
-            path.extend(["itinerary_planner", "hotel_agent"])
-            return OrchestratorOutput(
-                response=self._non_flight_stub("hotel"),
-                intent=FlightIntent.GENERAL,
-                session_context=session,
-                route_path=path,
-                routed_to="hotel_agent",
+            out = await self._planner.plan_hotel(
+                message=input_data.message,
+                session=session,
+                path_prefix=path,
             )
+            logger.info("general_to_hotel", routed_to=out.routed_to)
+            return out
+
+        # Trip plan → Itinerary Agent (may call Hotel + Flight)
+        if target == "itinerary":
+            out = await self._planner.plan_trip(
+                message=input_data.message,
+                session=session,
+                history=input_data.history,
+                session_id=input_data.session_id,
+                path_prefix=path,
+            )
+            logger.info("general_to_itinerary", routed_to=out.routed_to)
+            return out
 
         if target in {"train", "bus"}:
-            path.extend(["itinerary_planner", "travel_agent", f"{target}_booking"])
+            path.extend(["itinerary_agent", "travel_agent", f"{target}_booking"])
             return OrchestratorOutput(
                 response=self._non_flight_stub(target),
                 intent=FlightIntent.GENERAL,

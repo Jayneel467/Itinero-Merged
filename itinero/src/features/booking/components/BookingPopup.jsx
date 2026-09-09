@@ -790,27 +790,21 @@ export default function BookingPopup({
       return;
     }
 
-    const list = Array.isArray(selections) ? selections : [];
+    const list = (Array.isArray(selections) ? selections : []).filter((item) => {
+      const sid = String(item?.service_id || "").trim();
+      return sid && !sid.startsWith("seat_") && !sid.startsWith("fake_") && !sid.startsWith("mock_");
+    });
     setSelectedExtras(list);
 
-    const extrasTotal = list.reduce(
-      (sum, item) => sum + (Number(item?.price) || 0),
-      0
-    );
     const base = Number(hold.base_prebook_price || hold.price || flight?.price || 0);
 
-    // Filter only real LiteAPI external ancillary service IDs to send to backend API
-    const liteapiServices = list.filter(
-      (item) => item?.service_id && !String(item.service_id).startsWith("seat_")
-    );
-
-    if (!liteapiServices.length) {
-      // All selected extras are client-side seat preferences — save locally and proceed directly to payment
+    // No real LiteAPI extras — keep hold price unchanged (never invent seat fees)
+    if (!list.length) {
       try {
         const pb = {
           ...hold,
-          price: base + extrasTotal,
-          selected_services: list,
+          price: base,
+          selected_services: [],
         };
         setHold(pb);
         await openPaymentFromHold(pb, { payment_ready: true });
@@ -827,20 +821,23 @@ export default function BookingPopup({
       const res = await flightService.attachServices({
         session_id: sessionId,
         prebook_id: hold.prebook_id,
-        selected_services: liteapiServices,
+        selected_services: list,
       });
       if (!res?.ok && !res?.skipped) {
         throw new Error(
           res?.error || res?.message || "Could not add those extras. Try again or skip."
         );
       }
-      const serverPrice = res?.prebook?.price != null ? Number(res.prebook.price) : null;
-      const effectivePrice = serverPrice && serverPrice > base ? serverPrice : base + extrasTotal;
+      // Payable amount = LiteAPI hold price after attach (never client-side extras sum)
+      const serverPrice =
+        res?.prebook?.price != null
+          ? Number(res.prebook.price)
+          : base;
 
       const pb = await withResolvedStripeKeys({
         ...hold,
         ...(res.prebook || {}),
-        price: effectivePrice,
+        price: Number.isFinite(serverPrice) ? serverPrice : base,
         selected_services: list,
         allow_mock_payment:
           res?.prebook?.allow_mock_payment === true ||
@@ -854,12 +851,12 @@ export default function BookingPopup({
       setStatusMsg("");
       await openPaymentFromHold(pb, res);
     } catch (err) {
-      // If attach services fails, don't block user — proceed with saved seats
+      // Attach failed — do not invent extras into the charge; keep base hold price
       try {
         const pb = {
           ...hold,
-          price: base + extrasTotal,
-          selected_services: list,
+          price: base,
+          selected_services: [],
         };
         setHold(pb);
         await openPaymentFromHold(pb, { payment_ready: true });

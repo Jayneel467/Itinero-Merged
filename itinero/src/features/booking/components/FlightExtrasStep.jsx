@@ -40,160 +40,24 @@ function optionKey(opt, group) {
   return `${opt.service_id}|${opt.segment_key || group?.segment_key || ""}|${opt.passenger_index ?? 0}`;
 }
 
-/** Deterministic hash so ~30% of seats are realistically occupied/unavailable on that specific flight */
-function isSeatOccupied(segmentKey, row, col, flightSeed = "") {
-  // Keep common preferred defaults available
-  if ((row === 14 && col === "A") || (row === 12 && col === "F") || (row === 7 && col === "C")) {
+/** Only LiteAPI / airline service IDs — never client-invented seat_* maps. */
+function isRealServiceId(id) {
+  const sid = String(id || "").trim();
+  if (!sid) return false;
+  if (sid.startsWith("seat_") || sid.startsWith("fake_") || sid.startsWith("mock_")) {
     return false;
   }
-  const str = `${segmentKey || "seg"}-${row}-${col}-${flightSeed || "seed"}`;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const val = Math.abs(hash) % 100;
-  // Occupy approx 32% of seats
-  return val < 32;
+  return true;
 }
 
-/** Generate realistic seat grid based on the actual flight's booked Cabin Class */
-function generateRealisticSeats(segmentKey, flightSeed = "", currency = "INR", cabin = "ECONOMY") {
-  const options = [];
-  const normCabin = String(cabin || "ECONOMY").toUpperCase();
-  const isBusiness = normCabin === "BUSINESS" || normCabin === "FIRST";
-  const isPremEco = normCabin === "PREMIUM_ECONOMY" || normCabin === "PREMIUM";
-
-  if (isBusiness) {
-    // Business Class: 2x2 spacious recliner / lie-flat layout (Rows 1 to 4, Cols A, C, D, F)
-    const rows = [1, 2, 3, 4];
-    const cols = ["A", "C", "D", "F"];
-    for (const row of rows) {
-      for (const col of cols) {
-        const isWindow = col === "A" || col === "F";
-        const position = isWindow ? "window" : "aisle";
-        const occupied = isSeatOccupied(segmentKey, row, col, flightSeed);
-        options.push({
-          service_id: `seat_${segmentKey}_${row}${col}`,
-          segment_key: segmentKey,
-          name: `Seat ${row}${col}`,
-          price: 0, // Included in Business Class fare
-          currency,
-          available: !occupied,
-          seat: {
-            seatRow: row,
-            seatColumn: col,
-            seatNumber: `${row}${col}`,
-            position,
-            category: "business",
-            featureLabel: `${isWindow ? "Window" : "Aisle"} · Lie-Flat Business Suite`,
-            isOccupied: occupied,
-            isExtraLegroom: true,
-            cabin: "Business Class",
-          },
-        });
-      }
-    }
-    return options;
-  }
-
-  if (isPremEco) {
-    // Premium Economy: Rows 1 to 6 (Cols A, B, C, D, E, F)
-    const rows = [1, 2, 3, 4, 5, 6];
-    const cols = ["A", "B", "C", "D", "E", "F"];
-    for (const row of rows) {
-      for (const col of cols) {
-        const isWindow = col === "A" || col === "F";
-        const isAisle = col === "C" || col === "D";
-        const position = isWindow ? "window" : isAisle ? "aisle" : "middle";
-        const occupied = isSeatOccupied(segmentKey, row, col, flightSeed);
-        options.push({
-          service_id: `seat_${segmentKey}_${row}${col}`,
-          segment_key: segmentKey,
-          name: `Seat ${row}${col}`,
-          price: row <= 2 ? 350 : 0,
-          currency,
-          available: !occupied,
-          seat: {
-            seatRow: row,
-            seatColumn: col,
-            seatNumber: `${row}${col}`,
-            position,
-            category: "premium",
-            featureLabel: "Premium Economy · 38\" Legroom",
-            isOccupied: occupied,
-            isExtraLegroom: true,
-            cabin: "Premium Economy",
-          },
-        });
-      }
-    }
-    return options;
-  }
-
-  // Economy Class: Rows 1 to 20, 3x3 layout (A B C | D E F)
-  const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20];
-  const cols = ["A", "B", "C", "D", "E", "F"];
-
-  for (const row of rows) {
-    for (const col of cols) {
-      const isExit = row === 11 || row === 12;
-      const isFront = row <= 3;
-      const isWindow = col === "A" || col === "F";
-      const isAisle = col === "C" || col === "D";
-      const position = isWindow ? "window" : isAisle ? "aisle" : "middle";
-      const occupied = isSeatOccupied(segmentKey, row, col, flightSeed);
-
-      let price = 250;
-      let category = "standard";
-      let featureLabel = "";
-
-      if (isFront) {
-        price = 650;
-        category = "premium";
-        featureLabel = "Front Row · Extra Legroom";
-      } else if (isExit) {
-        price = 450;
-        category = "exit";
-        featureLabel = "Emergency Exit · Extra Legroom";
-      } else if (isWindow || isAisle) {
-        price = 250;
-        category = isWindow ? "window" : "aisle";
-        featureLabel = isWindow ? "Window Seat" : "Aisle Seat";
-      } else {
-        price = 100;
-        category = "middle";
-        featureLabel = "Standard Middle";
-      }
-
-      options.push({
-        service_id: `seat_${segmentKey}_${row}${col}`,
-        segment_key: segmentKey,
-        name: `Seat ${row}${col}`,
-        price,
-        currency,
-        available: !occupied,
-        seat: {
-          seatRow: row,
-          seatColumn: col,
-          seatNumber: `${row}${col}`,
-          position,
-          category,
-          featureLabel,
-          isOccupied: occupied,
-          isExtraLegroom: isFront || isExit,
-          cabin: "Economy",
-        },
-      });
-    }
-  }
-
-  return options;
+function realOptions(group) {
+  const opts = Array.isArray(group?.options) ? group.options : [];
+  return opts.filter((o) => isRealServiceId(o?.service_id || o?.serviceId));
 }
 
 /**
- * Post-hold extras picker: seats, bags, and any other LiteAPI ancillaries.
- * Shows real flight metadata, real cabin class configuration, and separate Departing & Return seat maps.
+ * Post-hold extras: seats, bags, and other LiteAPI ancillaries only.
+ * No generated seat maps or invented prices.
  */
 export default function FlightExtrasStep({
   services,
@@ -228,7 +92,7 @@ export default function FlightExtrasStep({
     const depCabin = flight?.cabin || recap?.cabin || "Economy";
     const depFareFamily = flight?.fare_family || recap?.fareFamily || "";
     const depSeatsRemaining = flight?.seats_remaining ?? null;
-    const depAircraft = flight?.aircraft || "Airbus A320 Neo";
+    const depAircraft = flight?.aircraft || "";
 
     const list = [
       {
@@ -284,38 +148,67 @@ export default function FlightExtrasStep({
 
   const activeSegment = segments[activeSegmentIndex] || segments[0];
 
-  // Prepare seat groups per segment (merge live GDS groups with real cabin class layout)
+  // Real LiteAPI seat groups only — never invent a map when the airline returns none
   const segmentSeatGroups = useMemo(() => {
     const map = {};
-    segments.forEach((seg) => {
-      const existingSeatGroup = rawGroups.find(
-        (g) => isSeatGroup(g) && (g.segment_key === seg.key || g.segment_key === seg.id)
-      );
+    const seatGroups = rawGroups
+      .filter((g) => isSeatGroup(g))
+      .map((g) => ({
+        ...g,
+        options: realOptions(g).map((o) => ({
+          ...o,
+          service_id: o.service_id || o.serviceId,
+        })),
+      }))
+      .filter((g) => g.options.length > 0);
 
-      if (existingSeatGroup && existingSeatGroup.options?.length > 0) {
-        map[seg.key] = existingSeatGroup;
-      } else {
-        const generated = generateRealisticSeats(
-          seg.key,
-          `${seg.airline}-${seg.flightNo}-${seg.date}`,
-          currency,
-          seg.cabin
-        );
+    segments.forEach((seg) => {
+      const match =
+        seatGroups.find(
+          (g) => g.segment_key === seg.key || g.segment_key === seg.id
+        ) ||
+        (seatGroups.length === 1 && segments.length === 1 ? seatGroups[0] : null) ||
+        seatGroups.find((g) => !g.segment_key) ||
+        null;
+      if (match) {
         map[seg.key] = {
-          type: "SEATS",
-          name: `Seat selection (${seg.label})`,
-          segment_key: seg.key,
-          options: generated,
+          ...match,
+          segment_key: match.segment_key || seg.key,
+          options: match.options.map((o) => ({
+            ...o,
+            segment_key: o.segment_key || match.segment_key || seg.key,
+          })),
         };
       }
     });
-    return map;
-  }, [segments, rawGroups, currency]);
 
-  // Non-seat groups (Baggage, Meals, Insurance, etc.)
+    if (!Object.keys(map).length && seatGroups.length) {
+      const g = seatGroups[0];
+      const segKey = segments[0]?.key || "outbound";
+      map[segKey] = {
+        ...g,
+        segment_key: segKey,
+        options: g.options.map((o) => ({
+          ...o,
+          segment_key: o.segment_key || segKey,
+        })),
+      };
+    }
+    return map;
+  }, [segments, rawGroups]);
+
+  // Non-seat groups (Baggage, Meals, Insurance, etc.) — real options only
   const otherGroups = useMemo(() => {
-    return rawGroups.filter((g) => !isSeatGroup(g));
+    return rawGroups
+      .filter((g) => !isSeatGroup(g))
+      .map((g) => ({ ...g, options: realOptions(g) }))
+      .filter((g) => g.options.length > 0);
   }, [rawGroups]);
+
+  const hasAnyRealSeats = Object.values(segmentSeatGroups).some(
+    (g) => Array.isArray(g?.options) && g.options.length > 0
+  );
+  const hasAnyExtras = hasAnyRealSeats || otherGroups.length > 0;
 
   const [autoSwitchHint, setAutoSwitchHint] = useState("");
 
@@ -331,7 +224,7 @@ export default function FlightExtrasStep({
   const estimatedTotal = Number(basePrice || 0) + extrasTotal;
 
   function toggleOption(opt, group, { exclusive = false } = {}) {
-    if (!opt?.service_id) return;
+    if (!opt?.service_id || !isRealServiceId(opt.service_id)) return;
     if (opt.available === false || opt.seat?.isOccupied) return;
 
     const key = optionKey(opt, group);
@@ -411,7 +304,9 @@ export default function FlightExtrasStep({
   }
 
   function buildPayload() {
-    return Array.from(selected.values()).map((item) => ({
+    return Array.from(selected.values())
+      .filter((item) => isRealServiceId(item.service_id))
+      .map((item) => ({
       service_id: item.service_id,
       segment_key: item.segment_key,
       passenger_index: item.passenger_index ?? 0,
@@ -456,6 +351,32 @@ export default function FlightExtrasStep({
 
   const effectivePaxLabels = passengerLabels.length > 0 ? passengerLabels : ["Traveller 1 (Adult)"];
 
+  if (!hasAnyExtras) {
+    return (
+      <div className={styles.wrap}>
+        <div className={styles.introBox}>
+          <p className={styles.introTitle}>No paid extras on this fare</p>
+          <p className={styles.introSubtitle}>
+            The airline did not return seat or baggage add-ons for this hold.
+            Continue with the base fare — nothing is invented here.
+          </p>
+        </div>
+        <div className={styles.actions}>
+          <div className={styles.stickyButtons}>
+            <button
+              type="button"
+              className={styles.primary}
+              disabled={submitting}
+              onClick={() => onSkip?.()}
+            >
+              Continue to Pay →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.wrap}>
       {/* 1. Real Flight Information Banner */}
@@ -463,10 +384,24 @@ export default function FlightExtrasStep({
         <div className={styles.flightMetaRow}>
           <div>
             <p className={styles.introTitle}>
-              ✈️ Real Flight Seat Selection · {activeSegment.airline} ({activeSegment.flightNo || "Scheduled"})
+              Airline add-ons · {activeSegment.airline} ({activeSegment.flightNo || "Scheduled"})
             </p>
             <p className={styles.introSubtitle}>
-              Class: <strong>{activeSegment.cabin}</strong> {activeSegment.fareFamily ? `(${activeSegment.fareFamily})` : ""} · Aircraft: <strong>{activeSegment.aircraft}</strong> · Date: <strong>{activeSegment.date}</strong>
+              Class: <strong>{activeSegment.cabin}</strong> {activeSegment.fareFamily ? `(${activeSegment.fareFamily})` : ""}
+              {activeSegment.aircraft ? (
+                <>
+                  {" "}
+                  · Aircraft: <strong>{activeSegment.aircraft}</strong>
+                </>
+              ) : null}
+              {activeSegment.date ? (
+                <>
+                  {" "}
+                  · Date: <strong>{activeSegment.date}</strong>
+                </>
+              ) : null}
+              {" "}
+              · Live hold prices only (no fake seats)
             </p>
           </div>
           {activeSegment.seatsRemaining != null && (
@@ -564,7 +499,8 @@ export default function FlightExtrasStep({
         </div>
       )}
 
-      {/* 4. Active Leg Seat Selection Header */}
+      {/* 4. Active Leg Seat Selection — only when airline returned seats */}
+      {hasAnyRealSeats ? (
       <section className={styles.section}>
         <header className={styles.seatHeader}>
           <div className={styles.seatHeaderTitle}>
@@ -602,11 +538,11 @@ export default function FlightExtrasStep({
         <div className={styles.legend}>
           <div className={styles.legendItem}>
             <span className={`${styles.legendBox} ${styles.legendAvail}`} />
-            <span>Available ({isBusinessCabin ? "Included" : "₹100–₹250"})</span>
+            <span>Available (live price)</span>
           </div>
           <div className={styles.legendItem}>
             <span className={`${styles.legendBox} ${styles.legendLegroom}`} />
-            <span>{isBusinessCabin ? "Business Suite" : "Extra Legroom / Front (₹450–₹650)"}</span>
+            <span>{isBusinessCabin ? "Business / premium" : "Extra legroom / premium"}</span>
           </div>
           <div className={styles.legendItem}>
             <span className={`${styles.legendBox} ${styles.legendSelected}`} />
@@ -614,7 +550,7 @@ export default function FlightExtrasStep({
           </div>
           <div className={styles.legendItem}>
             <span className={`${styles.legendBox} ${styles.legendOccupied}`} />
-            <span>Occupied / Booked</span>
+            <span>Unavailable</span>
           </div>
         </div>
 
@@ -643,6 +579,37 @@ export default function FlightExtrasStep({
             </div>
 
             {/* Seat Rows */}
+            {sortedRows.length === 0 && allSeatOptions.length > 0 ? (
+              <ul className={styles.optList}>
+                {filteredSeats.map((opt) => {
+                  const keyed = {
+                    ...opt,
+                    passenger_index: activePax,
+                    segment_key: opt.segment_key || activeSegment.key,
+                  };
+                  const key = optionKey(keyed, activeSeatGroup);
+                  const isOn = selected.has(key);
+                  const isOccupied = opt.available === false || opt.seat?.isOccupied;
+                  return (
+                    <li key={key}>
+                      <button
+                        type="button"
+                        className={`${styles.optBtn} ${isOn ? styles.optBtnOn : ""}`}
+                        disabled={isOccupied || submitting}
+                        onClick={() =>
+                          toggleOption(keyed, activeSeatGroup, { exclusive: true })
+                        }
+                      >
+                        <span>
+                          <strong>{opt.name || opt.seat?.seatNumber || "Seat"}</strong>
+                        </span>
+                        <span>{money(opt.price, opt.currency || currency, currencySym)}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
             {sortedRows.map((rowNum) => {
               const rowMap = rowsMap.get(rowNum) || new Map();
               const isExitRow = rowNum === 11 || rowNum === 12;
@@ -778,12 +745,20 @@ export default function FlightExtrasStep({
           </div>
         </div>
       </section>
+      ) : (
+        <div className={styles.introBox}>
+          <p className={styles.introSubtitle}>
+            No seat map on this hold from the airline. Baggage or other add-ons below (if any) are still live.
+          </p>
+        </div>
+      )}
 
       {/* 7. Other Ancillaries (Baggage / Meals if available) */}
       {otherGroups.map((group, gi) => {
         const gtype = groupType(group);
         const label = TYPE_LABELS[gtype] || group.name || gtype;
         const options = (group.options || []).filter((o) => {
+          if (!isRealServiceId(o?.service_id || o?.serviceId)) return false;
           if (passengerLabels.length > 1 && o.passenger_index != null) {
             if (Number(o.passenger_index) !== activePax && Number(o.passenger_index) !== 0) {
               return false;

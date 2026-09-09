@@ -59,6 +59,94 @@ def test_hold_ready_prompt_has_no_card_ui():
     assert "checkout" in text
 
 
+def test_parse_route_only_mumbai_delhi():
+    from flight_agent.llm.booking_progress import parse_route_only, parse_search_trip
+
+    route = parse_route_only("Mumbai to Delhi")
+    assert route == {"origin": "BOM", "destination": "DEL"}
+    assert parse_search_trip("Mumbai to Delhi") is None  # date still required for search
+
+
+def test_general_agent_routes_flight_talk_to_flight():
+    from flight_agent.models.agent import SessionContext
+    from itinero.general_agent import GeneralAgent
+
+    ga = GeneralAgent.__new__(GeneralAgent)
+    assert ga._heuristic_route("Mumbai to Delhi", SessionContext()) == "flight"
+    active = SessionContext(search_context={"origin": "BOM", "destination": "DEL"})
+    assert ga._session_active_flight(active) is True
+    assert ga._heuristic_route("26 July", active) == "flight"
+    assert ga._heuristic_route("2 adults", active) == "flight"
+
+
+def test_general_agent_routes_hotel_and_itinerary():
+    from flight_agent.models.agent import SessionContext
+    from itinero.general_agent import GeneralAgent
+
+    ga = GeneralAgent.__new__(GeneralAgent)
+    assert ga._heuristic_route("find hotels in Goa", SessionContext()) == "hotel"
+    assert ga._heuristic_route("plan a trip to Goa", SessionContext()) == "itinerary"
+
+
+def test_itinerary_agent_calls_hotel():
+    import asyncio
+
+    from flight_agent.models.agent import SessionContext
+    from itinero.itinerary_agent import ItineraryAgent
+
+    async def _run():
+        agent = ItineraryAgent()
+        out = await agent.plan_hotel(
+            message="hotels in Mumbai",
+            session=SessionContext(),
+            path_prefix=["start", "general_agent"],
+        )
+        assert out.routed_to == "hotel_agent"
+        assert "itinerary_agent" in out.route_path
+        assert "hotel_agent" in out.route_path
+        await agent.aclose()
+
+    asyncio.run(_run())
+
+
+def test_booking_progress_asks_date_then_passengers():
+    import asyncio
+    from unittest.mock import MagicMock
+
+    from flight_agent.llm.booking_progress import try_booking_progress
+    from flight_agent.models.agent import SessionContext
+
+    async def _run():
+        session = SessionContext()
+        svc = MagicMock()
+        out = await try_booking_progress(
+            flight_service=svc, session=session, message="Mumbai to Delhi"
+        )
+        assert out is not None
+        assert "date" in out.response.lower()
+        assert session.search_context["origin"] == "BOM"
+        assert session.search_context["destination"] == "DEL"
+
+        session.last_search_results = [
+            {
+                "index": 1,
+                "offer_id": "off_1",
+                "total_price": 5000,
+                "currency": "INR",
+                "stops": 0,
+            }
+        ]
+        svc.select_offer_from_index = MagicMock(return_value="off_1")
+        out2 = await try_booking_progress(
+            flight_service=svc, session=session, message="option 1"
+        )
+        assert out2 is not None
+        assert "passenger" in out2.response.lower() or "adult" in out2.response.lower()
+        assert session.selected_offer_index == 1
+
+    asyncio.run(_run())
+
+
 def test_flight_agent_tools_exclude_complete(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-real")
     from unittest.mock import MagicMock

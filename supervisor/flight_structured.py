@@ -929,9 +929,13 @@ async def structured_attach_services(
         liteapi_services: list[dict[str, Any]] = []
         for row in normalized:
             sid = str(row.get("serviceId") or "")
-            if known_service_ids and sid in known_service_ids:
-                liteapi_services.append(row)
-            elif not sid.startswith("seat_") and not known_service_ids:
+            # Never accept client-invented seat_* / fake_* IDs
+            if sid.startswith(("seat_", "fake_", "mock_")):
+                continue
+            if known_service_ids:
+                if sid in known_service_ids:
+                    liteapi_services.append(row)
+            else:
                 liteapi_services.append(row)
 
         result: dict[str, Any] = {}

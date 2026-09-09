@@ -73,16 +73,34 @@ def _parse_date(message: str) -> str | None:
     return dt.isoformat()
 
 
-def parse_search_trip(message: str) -> dict[str, str] | None:
+def parse_route_only(message: str) -> dict[str, str] | None:
+    """Extract origin/destination without requiring a date (e.g. Mumbai to Delhi)."""
     route = _ROUTE_RE.search(message)
-    date = _parse_date(message)
-    if not route or not date:
+    if not route:
         return None
     origin = _resolve_city(route.group(1))
     dest = _resolve_city(route.group(2))
     if not origin or not dest or origin == dest:
         return None
-    return {"origin": origin, "destination": dest, "departure_date": date}
+    return {"origin": origin, "destination": dest}
+
+
+def parse_search_trip(message: str) -> dict[str, str] | None:
+    date = _parse_date(message)
+    if not date:
+        return None
+    route = parse_route_only(message)
+    if not route:
+        return None
+    return {**route, "departure_date": date}
+
+
+def date_question_prompt(origin: str, destination: str) -> str:
+    return (
+        f"Got it — **{origin} → {destination}**.\n\n"
+        "Which **date** should I search?\n\n"
+        "Example: *26 July* or *2026-07-26*"
+    )
 
 
 def parse_option_index(message: str, max_options: int) -> int | None:
@@ -136,6 +154,64 @@ def _tool_prompt(data: Any, fallback: str) -> str:
     return fallback
 
 
+async def _run_search_and_list(
+    *,
+    tools: dict[str, Any],
+    session: SessionContext,
+    trip: dict[str, str],
+) -> FlightAgentOutput:
+    logger.info("booking_progress_search", **trip)
+    raw = await tools["search_flights"].ainvoke(trip)
+    data = json.loads(raw) if isinstance(raw, str) else raw
+    offers = session.last_search_results or (data or {}).get("offers") or []
+    if not offers:
+        return FlightAgentOutput(
+            response=_tool_prompt(data, "No flights found. Try another date."),
+            intent=FlightIntent.SEARCH_FLIGHTS,
+            session_context=session,
+            operation_result=data if isinstance(data, dict) else None,
+            needs_follow_up=True,
+            error=(
+                str((data or {}).get("error"))
+                if isinstance(data, dict) and data.get("status") == "search_failed"
+                else None
+            ),
+        )
+    lines = [
+        f"Here are flights **{trip['origin']} → {trip['destination']}** "
+        f"on **{trip['departure_date']}**:",
+        "",
+    ]
+    for offer in offers[:5]:
+        idx = offer.get("index")
+        segs = offer.get("segments_summary") or []
+        airline = "Airline"
+        dep = ""
+        if segs:
+            airline = segs[0].get("airline") or airline
+            dep = segs[0].get("departure_time") or segs[0].get("depart") or ""
+        price = offer.get("total_price")
+        currency = offer.get("currency") or "INR"
+        stops = offer.get("stops")
+        stop_label = "Non-stop" if stops in (0, "0", None) else f"{stops} stop(s)"
+        price_bit = f"{currency} {price}" if price is not None else "price on request"
+        lines.append(f"**Option {idx}:** {airline} · {dep} · {stop_label} · {price_bit}")
+    lines.extend(
+        [
+            "",
+            "Reply with **option 1**, **option 2**, … "
+            "Then I'll ask how many passengers.",
+        ]
+    )
+    return FlightAgentOutput(
+        response="\n".join(lines),
+        intent=FlightIntent.SEARCH_FLIGHTS,
+        session_context=session,
+        operation_result=data if isinstance(data, dict) else None,
+        needs_follow_up=True,
+    )
+
+
 async def try_booking_progress(
     *,
     flight_service: FlightService,
@@ -143,67 +219,63 @@ async def try_booking_progress(
     message: str,
 ) -> FlightAgentOutput | None:
     """
-    Keep LiteAPI booking moving:
-    search (route+date) → select option → passengers → verify.
+    Keep LiteAPI booking moving via General Agent → Flight Agent:
+    route → ask date → search → select option → ask passengers → verify.
     """
     tools = {t.name: t for t in build_flight_tools(flight_service, session)}
 
-    # 0) Auto-search when user gives from/to/date and no results yet
+    # 0) Collect route / date, then search — before any offers exist
     if not session.last_search_results:
         trip = parse_search_trip(message)
         if trip:
-            logger.info("booking_progress_search", **trip)
-            raw = await tools["search_flights"].ainvoke(trip)
-            data = json.loads(raw) if isinstance(raw, str) else raw
-            offers = session.last_search_results or (data or {}).get("offers") or []
-            if not offers:
-                return FlightAgentOutput(
-                    response=_tool_prompt(data, "No flights found. Try another date."),
-                    intent=FlightIntent.SEARCH_FLIGHTS,
-                    session_context=session,
-                    operation_result=data if isinstance(data, dict) else None,
-                    needs_follow_up=True,
-                    error=(
-                        str((data or {}).get("error"))
-                        if isinstance(data, dict) and data.get("status") == "search_failed"
-                        else None
-                    ),
-                )
-            # Build a short option list for the user
-            lines = [
-                f"Here are flights **{trip['origin']} → {trip['destination']}** "
-                f"on **{trip['departure_date']}**:",
-                "",
-            ]
-            for offer in offers[:5]:
-                idx = offer.get("index")
-                segs = offer.get("segments_summary") or []
-                airline = "Airline"
-                dep = ""
-                if segs:
-                    airline = segs[0].get("airline") or airline
-                    dep = segs[0].get("departure_time") or segs[0].get("depart") or ""
-                price = offer.get("total_price")
-                currency = offer.get("currency") or "INR"
-                stops = offer.get("stops")
-                stop_label = "Non-stop" if stops in (0, "0", None) else f"{stops} stop(s)"
-                price_bit = f"{currency} {price}" if price is not None else "price on request"
-                lines.append(
-                    f"**Option {idx}:** {airline} · {dep} · {stop_label} · {price_bit}"
-                )
-            lines.extend(
-                [
-                    "",
-                    "Reply with **option 1**, **option 2**, … then tell me how many passengers.",
-                ]
+            return await _run_search_and_list(tools=tools, session=session, trip=trip)
+
+        pending = session.search_context or {}
+        pending_origin = str(pending.get("origin") or "").strip()
+        pending_dest = str(pending.get("destination") or "").strip()
+        date_only = _parse_date(message)
+        # Date follow-up after "Mumbai to Delhi" (or seeded trip_slots)
+        if pending_origin and pending_dest and date_only:
+            return await _run_search_and_list(
+                tools=tools,
+                session=session,
+                trip={
+                    "origin": pending_origin,
+                    "destination": pending_dest,
+                    "departure_date": date_only,
+                },
             )
+
+        route_only = parse_route_only(message)
+        if route_only:
+            # New route — clear any previous date so Flight Agent asks again
+            kept = {
+                k: v
+                for k, v in pending.items()
+                if k not in {"origin", "destination", "departure_date", "return_date"}
+            }
+            session.search_context = {
+                **kept,
+                "origin": route_only["origin"],
+                "destination": route_only["destination"],
+            }
+            logger.info("booking_progress_ask_date", **route_only)
             return FlightAgentOutput(
-                response="\n".join(lines),
+                response=date_question_prompt(route_only["origin"], route_only["destination"]),
                 intent=FlightIntent.SEARCH_FLIGHTS,
                 session_context=session,
-                operation_result=data if isinstance(data, dict) else None,
                 needs_follow_up=True,
             )
+
+        if pending_origin and pending_dest and not pending.get("departure_date"):
+            # User is mid-flight chat but still no date — Flight Agent keeps asking
+            if date_only is None and len(message.strip().split()) <= 12:
+                return FlightAgentOutput(
+                    response=date_question_prompt(pending_origin, pending_dest),
+                    intent=FlightIntent.SEARCH_FLIGHTS,
+                    session_context=session,
+                    needs_follow_up=True,
+                )
         return None
 
     if session.verified_offer_id:

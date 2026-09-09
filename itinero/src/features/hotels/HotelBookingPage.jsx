@@ -165,12 +165,19 @@ export default function HotelBookingPage() {
         guests: adults + children,
         rooms: roomsCount,
         nights,
-        roomsTotal: (selectedRoom.price || 0) * nights * roomsCount,
-        taxesTotal: (selectedRoom.taxes || 0) * roomsCount,
+        // LiteAPI stay total already covers nights × rooms for this offer — do not remultiply.
+        roomsTotal:
+          selectedRoom.totalPrice != null
+            ? Math.max(
+                0,
+                Number(selectedRoom.totalPrice) - Number(selectedRoom.taxes || 0)
+              )
+            : (selectedRoom.price || 0) * nights,
+        taxesTotal: Number(selectedRoom.taxes || 0),
         totalPrice:
           selectedRoom.totalPrice != null
-            ? Number(selectedRoom.totalPrice) * roomsCount
-            : (selectedRoom.price || 0) * nights * roomsCount + (selectedRoom.taxes || 0) * roomsCount,
+            ? Number(selectedRoom.totalPrice)
+            : (selectedRoom.price || 0) * nights + Number(selectedRoom.taxes || 0),
       }
     : {
         hotelName: hotelMeta?.name || 'Hotel',

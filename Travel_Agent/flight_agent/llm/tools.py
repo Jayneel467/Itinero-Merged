@@ -317,13 +317,23 @@ def build_flight_tools(
         infants: int = 0,
         cabin_class: str | None = None,
     ) -> str:
-        """Save passenger counts BEFORE verify. Call when user says option 1/2/3 AND how many adults/children/infants."""
+        """Save passenger counts BEFORE verify. Re-search if pax changed after a prior search."""
         search = dict(session.search_context or {})
+        old_pax = (
+            int(search.get("adults") or 1),
+            int(search.get("children") or 0),
+            int(search.get("infants") or 0),
+        )
+        new_adults = max(1, adults)
+        new_children = max(0, children)
+        new_infants = max(0, infants)
+        new_pax = (new_adults, new_children, new_infants)
+
         search.update(
             {
-                "adults": max(1, adults),
-                "children": max(0, children),
-                "infants": max(0, infants),
+                "adults": new_adults,
+                "children": new_children,
+                "infants": new_infants,
             }
         )
         if cabin_class:
@@ -367,6 +377,57 @@ def build_flight_tools(
                 + (f", **{search['infants']} infant(s)**" if search["infants"] else "")
                 + f" ({total} passenger(s) total)."
             )
+
+        # Fare was for old pax — re-search so LiteAPI total matches passenger count
+        can_research = bool(
+            search.get("origin")
+            and search.get("destination")
+            and search.get("departure_date")
+        )
+        pax_changed = old_pax != new_pax
+        if can_research and pax_changed and session.last_search_results:
+            logger.info(
+                "set_passengers_research",
+                old_pax=old_pax,
+                new_pax=new_pax,
+            )
+            session.selected_offer_index = None
+            session.selected_offer_id = None
+            session.verified_offer_id = None
+            session.last_verified_offer = None
+            raw = await search_flights(
+                origin=str(search["origin"]),
+                destination=str(search["destination"]),
+                departure_date=str(search["departure_date"]),
+                return_date=search.get("return_date"),
+                adults=new_adults,
+                children=new_children,
+                infants=new_infants,
+                cabin_class=search.get("cabin_class"),
+            )
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(data, dict) and data.get("status") in {"search_failed", "no_flights"}:
+                return json.dumps(data)
+            offers = session.last_search_results or []
+            session.passengers_confirmed = True
+            return json.dumps(
+                {
+                    "status": "researched_for_pax",
+                    "passengers": search,
+                    "total_offers": len(offers),
+                    "user_prompt": (
+                        pax_saved
+                        + "\n\nI refreshed fares for this passenger count. "
+                        "Pick an **option** again (e.g. *option 1*) — prices below match your group."
+                    ),
+                    "llm_instruction": (
+                        "Confirm pax, show that fares were refreshed, ask user to pick an option again. "
+                        "Do not verify the old option index."
+                    ),
+                    "offers": (data or {}).get("offers") if isinstance(data, dict) else None,
+                }
+            )
+
         return json.dumps(
             {
                 "status": "ready",

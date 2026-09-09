@@ -1,8 +1,9 @@
 """Itinero multi-agent orchestration — matches architecture diagram.
 
-Path for flights:
-  Start → General Agent → Itinerary Planner → Travel Agent → Flight Booking
-       → Payment (when booking ready)
+  Start → General Agent
+            ├─ flight     → Itinerary Agent → Travel Agent → Flight Agent
+            ├─ hotel      → Itinerary Agent → Hotel Agent
+            └─ itinerary  → Itinerary Agent → (Hotel + Flight as needed)
 """
 
 from __future__ import annotations
