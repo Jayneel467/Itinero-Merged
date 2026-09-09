@@ -1082,31 +1082,6 @@ export default function BookingPopup({
         }
       : null);
 
-  const outboundPrice = Number(outboundFlight?.price || 0);
-  const returnPrice = Number(returnFlight?.price || 0);
-  const calculatedCombinedPrice =
-    isRoundTrip && returnPrice > 0 && !flight?.isRoundTripPackage
-      ? outboundPrice + returnPrice
-      : Number(flight?.price || 0);
-
-  const priceNum =
-    hold?.price != null
-      ? Number(hold.price)
-      : calculatedCombinedPrice || Number(flight.price || 0);
-  const currency = (hold?.currency || flight.currencyCode || "INR").toUpperCase();
-  const currencySym = flight.currency || (currency === "INR" ? "₹" : `${currency} `);
-  const priceLabel = `${currencySym}${priceNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const baseFare =
-    flight.price_base != null
-      ? Number(flight.price_base)
-      : isRoundTrip && returnPrice > 0
-        ? calculatedCombinedPrice
-        : null;
-  const taxes =
-    flight.price_taxes != null || flight.price_fees != null
-      ? Number(flight.price_taxes || 0) + Number(flight.price_fees || 0)
-      : null;
-
   const numAdults = Math.max(1, Number(adults) || 1);
   const numChildren = Math.max(0, Number(childrenCount) || 0);
   const numInfants = Math.max(0, Number(infants) || 0);
@@ -1122,6 +1097,52 @@ export default function BookingPopup({
   const paxBreakdownText =
     paxParts.join(", ") ||
     `${totalPassengers} Passenger${totalPassengers > 1 ? "s" : ""}`;
+
+  // Per-person prices from the flight offer
+  const rawOutboundPerPerson = Number(outboundFlight?.price || flight?.price || 0);
+  const rawReturnPerPerson = Number(returnFlight?.price || 0);
+
+  const combinedPerPerson =
+    isRoundTrip && rawReturnPerPerson > 0 && !flight?.isRoundTripPackage
+      ? rawOutboundPerPerson + rawReturnPerPerson
+      : Number(flight?.price || 0);
+
+  // Total price: either held price from LiteAPI prebook or (perPerson * totalPassengers)
+  const priceNum =
+    hold?.price != null
+      ? Number(hold.price)
+      : combinedPerPerson * totalPassengers;
+
+  const outboundPrice = rawOutboundPerPerson * totalPassengers;
+  const returnPrice = rawReturnPerPerson * totalPassengers;
+
+  const rawTaxesPerPerson =
+    flight?.price_taxes != null || flight?.price_fees != null
+      ? Number(flight.price_taxes || 0) + Number(flight.price_fees || 0)
+      : 0;
+
+  const taxes =
+    rawTaxesPerPerson > 0
+      ? rawTaxesPerPerson * totalPassengers
+      : null;
+
+  const rawBasePerPerson =
+    flight?.price_base != null
+      ? Number(flight.price_base)
+      : rawTaxesPerPerson > 0 && combinedPerPerson > rawTaxesPerPerson
+        ? combinedPerPerson - rawTaxesPerPerson
+        : null;
+
+  const baseFare =
+    rawBasePerPerson != null
+      ? rawBasePerPerson * totalPassengers
+      : taxes != null && priceNum > taxes
+        ? priceNum - taxes
+        : priceNum;
+
+  const currency = (hold?.currency || flight.currencyCode || "INR").toUpperCase();
+  const currencySym = flight.currency || (currency === "INR" ? "₹" : `${currency} `);
+  const priceLabel = `${currencySym}${priceNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const confPassengers = Array.isArray(booking?.passengers) ? booking.passengers : [];
   const confSegments = Array.isArray(booking?.segments_summary) ? booking.segments_summary : [];

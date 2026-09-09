@@ -891,6 +891,18 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
   const t = String(text || "").trim();
   if (!t) return null;
 
+  // 1. Post-booking or on confirmed booking screen: Never yank user into a new flight/hotel search!
+  const isPostBookingQuery =
+    pageContext?.screen === "booking_success" ||
+    pageContext?.screen === "flight_confirmation" ||
+    pageContext?.screen === "hotel_confirmation" ||
+    pageContext?.screen === "package_confirmation" ||
+    /\b(i booked|already booked|booked flight|booked ticket|my booking|my pnr|my ticket|what(?:'s| is) my (?:pnr|gate)|can i cancel|cancel (?:this|my) (?:flight|booking|ticket)|e-?ticket|pnr\s*[:#-]?\s*[A-Z0-9]{4,12})\b/i.test(t);
+
+  if (isPostBookingQuery && !/\b(search (?:new|another|different)|find (?:new|another|different)|book (?:another|new|different) (?:flight|hotel|ticket))\b/i.test(t)) {
+    return null;
+  }
+
   // Saved / vibe advice - let Vero answer; don't yank the left page to flights.
   if (isDestinationAdviceIntent(t) && !FLIGHT_ASK_RE.test(t)) {
     return null;

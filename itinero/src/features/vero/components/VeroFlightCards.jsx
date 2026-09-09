@@ -86,6 +86,7 @@ export default function VeroFlightCards({
 
   function selectFlight(flight) {
     setSelected(flight);
+    setBookingFlight(flight);
   }
 
   function openPassengerDetails() {
@@ -232,10 +233,10 @@ export default function VeroFlightCards({
                       </strong>
                       <button
                         type="button"
-                        className="vero-flight-card__book"
+                        className={`vero-flight-card__book${isSel ? " is-selected" : ""}`}
                         onClick={() => selectFlight(flight)}
                       >
-                        {isSel ? "Selected" : "Book Now"}
+                        {isSel ? "Selected · Continue" : "Book Now"}
                       </button>
                     </div>
                   </div>
@@ -251,13 +252,13 @@ export default function VeroFlightCards({
             className="vero-flights__more"
             onClick={() => setExpanded((v) => !v)}
           >
-            {expanded ? "Show less" : "View More"}
+            {expanded ? "Show less" : `View More (${filtered.length - PREVIEW_COUNT} more flights)`}
           </button>
         )}
       </div>
 
       {selected && !bookingFlight && (
-        <div className="vero-flight-confirm">
+        <div className="vero-flight-confirm" role="region" aria-label="Selected flight summary">
           <div className="vero-flight-confirm__info">
             {selected.airline?.logo ? (
               <img src={selected.airline.logo} alt="" />
@@ -284,7 +285,7 @@ export default function VeroFlightCards({
             className="vero-flight-confirm__cta"
             onClick={openPassengerDetails}
           >
-            Continue to Passenger Details
+            Continue to Passenger Details →
           </button>
         </div>
       )}

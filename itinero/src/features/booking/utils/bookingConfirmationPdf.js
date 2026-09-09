@@ -140,7 +140,9 @@ function blobToDataUrl(blob) {
 async function loadPublicImage(fileName) {
   try {
     const base = String(import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
-    const res = await fetch(`${base}${fileName}`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch(`${base}${fileName}`, { signal: controller.signal }).finally(() => clearTimeout(timer));
     if (!res.ok) return null;
     const blob = await res.blob();
     if (!blob.type.startsWith("image/")) return null;
@@ -152,7 +154,9 @@ async function loadPublicImage(fileName) {
 
 async function loadRemoteImage(url) {
   try {
-    const res = await fetch(url, { mode: "cors" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch(url, { mode: "cors", signal: controller.signal }).finally(() => clearTimeout(timer));
     if (!res.ok) return null;
     const blob = await res.blob();
     if (!blob.type.startsWith("image/")) return null;
@@ -164,7 +168,7 @@ async function loadRemoteImage(url) {
 
 async function loadAirlineLogo(code, stored) {
   const urls = airlineLogoFallbacks(code, stored);
-  for (const url of urls) {
+  for (const url of urls.slice(0, 2)) {
     const img = await loadRemoteImage(url);
     if (img) return img;
   }
@@ -494,37 +498,45 @@ export function buildBookingConfirmationPdf(booking, opts = {}) {
     /* ----- Passenger + contact ----- */
     const passengers = Array.isArray(b.passengers) ? b.passengers : [];
     const contact = b.contact && typeof b.contact === "object" ? b.contact : {};
-    const paxH = 78;
+    const paxCount = Math.max(1, passengers.length);
+    const paxH = Math.max(76, 32 + paxCount * 16);
     doc.setFillColor(...C.white);
     doc.setDrawColor(...C.line);
     doc.setLineWidth(0.9);
     doc.roundedRect(m, y, contentW, paxH, 10, 10, "FD");
     text(doc, "PASSENGER(S)", m + 16, y + 18, { size: 8, style: "bold", color: C.orange });
     if (passengers.length) {
-      passengers.slice(0, 2).forEach((p, i) => {
-        const extra = [p.passenger_type || p.type, p.date_of_birth || p.dob].filter(Boolean).map(pdfSafe);
+      passengers.forEach((p, i) => {
+        let typeStr = "Adult";
+        const rawType = p.passenger_type ?? p.type;
+        if (rawType === 1 || String(rawType).toLowerCase() === "child" || String(rawType).toLowerCase() === "chd") {
+          typeStr = "Child";
+        } else if (rawType === 2 || String(rawType).toLowerCase() === "infant" || String(rawType).toLowerCase() === "inf") {
+          typeStr = "Infant";
+        }
+        const extra = [typeStr, p.date_of_birth || p.dob].filter(Boolean).map(pdfSafe);
         text(
           doc,
           `${i + 1}. ${paxName(p) || "Passenger"}${extra.length ? `  |  ${extra.join("  |  ")}` : ""}`,
           m + 16,
-          y + 38 + i * 16,
-          { size: 10, color: C.ink, maxW: contentW / 2 - 28 }
+          y + 36 + i * 15,
+          { size: 9.5, color: C.ink, maxW: contentW / 2 - 24 }
         );
       });
     } else {
-      text(doc, "Lead passenger on file", m + 16, y + 38, { size: 10, color: C.muted });
+      text(doc, "Lead passenger on file", m + 16, y + 36, { size: 10, color: C.muted });
     }
     text(doc, "CONTACT", m + contentW / 2 + 12, y + 18, { size: 8, style: "bold", color: C.orange });
     if (hasValue(contact.email)) {
-      text(doc, contact.email, m + contentW / 2 + 12, y + 38, {
-        size: 10,
+      text(doc, contact.email, m + contentW / 2 + 12, y + 36, {
+        size: 9.5,
         color: C.ink,
-        maxW: contentW / 2 - 28,
+        maxW: contentW / 2 - 24,
       });
     }
     if (hasValue(contact.phone)) {
       const cc = contact.phone_country_code ? `+${pdfSafe(contact.phone_country_code)} ` : "+91 ";
-      text(doc, `${cc}${pdfSafe(contact.phone)}`, m + contentW / 2 + 12, y + 56, { size: 10, color: C.ink });
+      text(doc, `${cc}${pdfSafe(contact.phone)}`, m + contentW / 2 + 12, y + 52, { size: 9, color: C.ink });
     }
     y += paxH + 12;
 

@@ -245,7 +245,7 @@ export default function VeroChatWidget({ isOpen, onClose, onOpen }) {
         knownRoute = lastFlightRef.current;
       }
       let localNav = pageNavActionFromMessage(msgText, pageCtx, knownRoute);
-      if (!localNav && lastFlightRef.current?.origin && lastFlightRef.current?.destination) {
+      if (!localNav && pageCtx?.screen !== "booking_success" && pageCtx?.screen !== "flight_confirmation" && lastFlightRef.current?.origin && lastFlightRef.current?.destination) {
         if (isDateOnlyMessage(msgText)) {
           localNav = {
             type: 'search_flights',

@@ -1115,7 +1115,14 @@ def classify_intent(message: str, session: dict[str, Any]) -> Specialist:
 
 
 def missing_keys(*names: str) -> list[str]:
-    return [n for n in names if not os.getenv(n)]
+    res = []
+    for n in names:
+        if n == "OPENAI_API_KEY":
+            if not ((os.getenv("OPENAI_API_KEY") or "").strip() or (os.getenv("DEEPSEEK_API_KEY") or "").strip()):
+                res.append(n)
+        elif not (os.getenv(n) or "").strip():
+            res.append(n)
+    return res
 
 
 # ---------------------------------------------------------------------------
