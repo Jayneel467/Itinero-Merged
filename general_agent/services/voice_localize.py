@@ -106,7 +106,18 @@ def maybe_localize_voice_reply(
         from langchain_core.messages import HumanMessage, SystemMessage
         from general_agent.config import MODEL_NAME, OPENAI_API_KEY
 
-        llm = ChatOpenAI(model=MODEL_NAME or "gpt-4o-mini", temperature=0.3, api_key=OPENAI_API_KEY)
+        ds_key = os.getenv("DEEPSEEK_API_KEY")
+        if OPENAI_API_KEY:
+            llm = ChatOpenAI(model=MODEL_NAME or "gpt-4o-mini", temperature=0.3, api_key=OPENAI_API_KEY)
+        elif ds_key:
+            llm = ChatOpenAI(
+                model=os.getenv("DEEPSEEK_MODEL") or "deepseek-chat",
+                temperature=0.3,
+                api_key=ds_key,
+                base_url=os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1",
+            )
+        else:
+            return text
         respect = (respect_instruction or "").strip()
         if voice_mode:
             instruction = (
