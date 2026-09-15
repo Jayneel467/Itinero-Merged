@@ -57,7 +57,7 @@ class GeneralRouteDecision(BaseModel):
             "itinerary = full trip plan via Itinerary Agent; "
             "train/bus = not live yet; "
             "payment = still flight path (checkout is backend); "
-            "general = greeting only"
+            "general = greeting / food / non-booking chat"
         )
     )
     reason: str = Field(default="")
@@ -110,6 +110,11 @@ _ITINERARY_HINT = re.compile(
     r")\b",
     re.I,
 )
+_GREETING = re.compile(
+    r"^\s*(hi|hello|hey|hii|hola|namaste|thanks|thank\s+you|thx|ok|okay|bye)\s*[!.]*\s*$",
+    re.I,
+)
+_HELP_HINT = re.compile(r"\b(help|what\s+can\s+you\s+do|how\s+do\s+you\s+work)\b", re.I)
 
 # --- Non-flight ---
 _HOTEL_HINT = re.compile(r"\b(hotel|hotels|resort|check[- ]?in|stay|accommodation)\b", re.I)
@@ -124,9 +129,10 @@ ONLY route to:
 - itinerary: full trip plan (Itinerary Agent, which may call Hotel + Flight)
 - payment: still flight path (checkout is backend)
 - train / bus: only when user clearly wants that mode alone
-- general: ONLY hi / thanks with no travel content
+- general: hi / thanks / food / help with no booking action
 
-HARD RULE: active flight booking stays on flight. When unsure → flight.
+HARD RULE: deep flight booking (selected offer, travelers, prebook) stays on flight.
+When unsure between flight and general for a short travel phrase → flight.
 """
 
 
@@ -138,7 +144,7 @@ class GeneralAgent:
                 ├─ flight     → Itinerary Agent → Flight Agent
                 ├─ hotel      → Itinerary Agent → Hotel Agent
                 ├─ itinerary  → Itinerary Agent → (Hotel + Flight as needed)
-                └─ general    → short greeting
+                └─ general    → short helpful reply
     """
 
     def __init__(
@@ -159,8 +165,8 @@ class GeneralAgent:
     async def aclose(self) -> None:
         await self._planner.aclose()
 
-    def _session_active_flight(self, session: SessionContext) -> bool:
-        """Any in-progress flight search/book stays on Flight Agent."""
+    def _session_deep_flight(self, session: SessionContext) -> bool:
+        """Mid booking — do not interrupt with hotel/itinerary."""
         return bool(
             session.last_search_results
             or session.verified_offer_id
@@ -174,8 +180,11 @@ class GeneralAgent:
             or session.awaiting_service_preference
             or session.travelers_draft
             or session.passengers_confirmed
-            or session.search_context
         )
+
+    def _session_active_flight(self, session: SessionContext) -> bool:
+        """Soft sticky: route/date draft OR deep booking."""
+        return self._session_deep_flight(session) or bool(session.search_context)
 
     def _is_flight_or_booking(self, text: str) -> bool:
         return bool(
@@ -189,34 +198,42 @@ class GeneralAgent:
     def _heuristic_route(self, message: str, session: SessionContext) -> RouteTarget | None:
         text = message.strip()
 
+        # Deep flight booking always stays on Flight Agent
+        if self._session_deep_flight(session):
+            return "flight"
+
         if _FOOD_HINT.search(text) and not _FLIGHT_HINT.search(text) and not _IATA_HINT.search(text):
             return "general"
-
-        # Active flight booking → stay on Flight Agent path
-        if self._session_active_flight(session):
-            return "flight"
 
         if _TRAIN_HINT.search(text) and not re.search(r"\bflights?\b", text, re.I):
             return "train"
         if _BUS_HINT.search(text) and not re.search(r"\bflights?\b", text, re.I):
             return "bus"
 
-        # Trip plan before bare hotel/flight so "plan a trip with hotel" → itinerary
+        # Soft search_context only — hotel / trip plan may interrupt
         if _ITINERARY_HINT.search(text):
             return "itinerary"
 
         if _HOTEL_HINT.search(text) and not re.search(r"\bflights?\b", text, re.I):
             return "hotel"
 
+        if _GREETING.search(text) or _HELP_HINT.search(text):
+            return "general"
+
+        # Soft sticky: continue flight (date / passengers after "Mumbai to Delhi")
+        if self._session_active_flight(session):
+            return "flight"
+
         if self._is_flight_or_booking(text):
             return "flight"
 
-        lower = text.lower()
-        if lower in {"hi", "hello", "hey", "hii", "thanks", "thank you"}:
-            return "general"
+        # Short unclear multi-word → prefer flight (route phrases)
+        if len(text.split()) >= 2 and _ROUTE_DATE.search(text):
+            return "flight"
 
         if len(text.split()) >= 2:
-            return "flight"
+            return "general"
+
         return None
 
     async def _classify(self, message: str, session: SessionContext) -> GeneralRouteDecision:
@@ -248,11 +265,27 @@ class GeneralAgent:
             logger.warning("general_agent_classify_failed", error=str(exc))
             return GeneralRouteDecision(target="flight", reason="fallback_flight")
 
-    def _general_reply(self) -> str:
+    def _general_reply(self, message: str = "") -> str:
+        text = (message or "").strip()
+        if _FOOD_HINT.search(text):
+            return (
+                "I don't book restaurants yet — but I can help with **flights**, **hotels**, "
+                "or a **trip plan**.\n\n"
+                "Try: *Mumbai to Delhi on 26 July*, *hotels in Goa*, or *plan a trip to Goa*."
+            )
+        if _HELP_HINT.search(text):
+            return (
+                "I'm **Vero**. I can:\n\n"
+                "- **Flights** — e.g. *Mumbai to Delhi on 26 July*\n"
+                "- **Hotels** — e.g. *hotels in Goa from 12 Aug to 15 Aug*\n"
+                "- **Trip plans** — e.g. *plan a trip to Goa*\n\n"
+                "What would you like to do?"
+            )
+        if re.search(r"\b(thanks|thank\s+you|thx)\b", text, re.I):
+            return "You're welcome! Ping me anytime for flights, hotels, or a trip plan."
         return (
-            "Hey — I'm **Vero**. For **flights**, try something like: "
-            "**Mumbai to Delhi on 26 July**.\n\n"
-            "Or ask for a **trip plan** or **hotels** — I'll route you to the right specialist."
+            "Hey — I'm **Vero**. For **flights**, try: **Mumbai to Delhi on 26 July**.\n\n"
+            "Or ask for a **trip plan** or **hotels** — I'll hand you to the right specialist."
         )
 
     def _non_flight_stub(self, mode: str) -> str:
@@ -260,7 +293,7 @@ class GeneralAgent:
         label = labels.get(mode, mode.title())
         return (
             f"**{label}** aren't live in this chat yet — sorry about that.\n\n"
-            "I *can* help with **flights** right now. "
+            "I *can* help with **flights**, **hotels**, or a **trip plan**. "
             "Example: **Hyderabad to Mumbai on 15 July**"
         )
 
@@ -276,6 +309,7 @@ class GeneralAgent:
             "general_agent_route",
             target=target,
             reason=decision.reason,
+            deep_flight=self._session_deep_flight(session),
             active_flight=self._session_active_flight(session),
         )
 
@@ -302,6 +336,7 @@ class GeneralAgent:
                 message=input_data.message,
                 session=session,
                 path_prefix=path,
+                history=input_data.history,
             )
             logger.info("general_to_hotel", routed_to=out.routed_to)
             return out
@@ -329,7 +364,7 @@ class GeneralAgent:
             )
 
         return OrchestratorOutput(
-            response=self._general_reply(),
+            response=self._general_reply(input_data.message),
             intent=FlightIntent.GENERAL,
             session_context=session,
             route_path=path,

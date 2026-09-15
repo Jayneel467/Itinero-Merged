@@ -44,6 +44,8 @@ class SessionContext(BaseModel):
     awaiting_cancel_confirmation: bool = False
     cancel_confirmed: bool = False
     pending_cancel_booking_id: str | None = None
+    # Hotel specialist draft (Itinerary → Hotel Agent); does not affect FE/BE APIs
+    hotel_context: dict[str, Any] = Field(default_factory=dict)
 
 
 class FlightAgentInput(BaseModel):

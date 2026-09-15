@@ -77,6 +77,11 @@ def test_general_agent_routes_flight_talk_to_flight():
     assert ga._session_active_flight(active) is True
     assert ga._heuristic_route("26 July", active) == "flight"
     assert ga._heuristic_route("2 adults", active) == "flight"
+    # Soft sticky: hotel can interrupt before offers are shown
+    assert ga._heuristic_route("hotels in Goa", active) == "hotel"
+    deep = SessionContext(last_search_results=[{"offer_id": "x"}])
+    assert ga._session_deep_flight(deep) is True
+    assert ga._heuristic_route("hotels in Goa", deep) == "flight"
 
 
 def test_general_agent_routes_hotel_and_itinerary():
@@ -86,6 +91,8 @@ def test_general_agent_routes_hotel_and_itinerary():
     ga = GeneralAgent.__new__(GeneralAgent)
     assert ga._heuristic_route("find hotels in Goa", SessionContext()) == "hotel"
     assert ga._heuristic_route("plan a trip to Goa", SessionContext()) == "itinerary"
+    assert ga._heuristic_route("hi", SessionContext()) == "general"
+    assert ga._heuristic_route("what can you do", SessionContext()) == "general"
 
 
 def test_itinerary_agent_calls_hotel():
@@ -104,10 +111,53 @@ def test_itinerary_agent_calls_hotel():
         assert out.routed_to == "hotel_agent"
         assert "itinerary_agent" in out.route_path
         assert "hotel_agent" in out.route_path
+        assert "Mumbai" in out.response
+        assert out.session_context.hotel_context.get("city") == "Mumbai"
         await agent.aclose()
 
     asyncio.run(_run())
 
+
+def test_itinerary_plan_trip_calls_hotel_for_destination():
+    import asyncio
+
+    from flight_agent.models.agent import SessionContext
+    from itinero.itinerary_agent import ItineraryAgent
+
+    async def _run():
+        agent = ItineraryAgent()
+        out = await agent.plan_trip(
+            message="plan a trip to Goa",
+            session=SessionContext(),
+            path_prefix=["start", "general_agent"],
+        )
+        assert "hotel_agent" in (out.route_path or [])
+        assert "Goa" in out.response
+        assert "flight" in out.response.lower()
+        await agent.aclose()
+
+    asyncio.run(_run())
+
+
+def test_hotel_agent_collects_dates():
+    import asyncio
+
+    from flight_agent.models.agent import SessionContext
+    from itinero.hotel_agent import HotelAgent
+
+    async def _run():
+        agent = HotelAgent()
+        session = SessionContext()
+        out1 = await agent.run(message="hotels in Goa", session=session)
+        assert session.hotel_context.get("city") == "Goa"
+        assert "check-in" in out1.response.lower()
+        out2 = await agent.run(message="12 August to 15 August", session=session)
+        assert session.hotel_context.get("check_in")
+        assert session.hotel_context.get("check_out")
+        assert "check-in" in out2.response.lower() or "Goa" in out2.response
+        await agent.aclose()
+
+    asyncio.run(_run())
 
 def test_booking_progress_asks_date_then_passengers():
     import asyncio
