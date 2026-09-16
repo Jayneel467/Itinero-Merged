@@ -205,8 +205,10 @@ export default function PassengerInfoPage() {
       alert("No live fare on this booking. Go back and pick a flight again.");
       return;
     }
+    const perAdult = checkoutAmount(flight);
+    const totalPrice = Math.round(perAdult * (travelers.length || 1) * 100) / 100;
     saveFlightCheckout({
-      flight,
+      flight: { ...flight, totalPrice },
       sessionId: readFlightSessionId() || undefined,
       travelers,
       contact: { email: contactEmail.trim(), phone: contactPhone.trim() },

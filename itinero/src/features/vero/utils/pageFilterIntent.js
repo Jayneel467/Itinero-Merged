@@ -331,7 +331,7 @@ export function extractAirlinePick(text) {
 export function isProceedIntent(text) {
   const t = String(text || "").trim();
   if (!t || t.length > 90) return false;
-  return /\b(proceed|continue|checkout|check\s*out|passenger|guest\s*detail|go\s+ahead|next\s+step|book\s*(it|this|now)?|log\s+(that|this|it)|save\s+(that|this|it)|lock\s+(that|this|it)|take\s+(that|this|it))\b/i.test(
+  return /\b(proceed|continue|checkout|check\s*out|passenger|guest\s*detail|go\s+ahead|next\s+step|book\s+(it|this|now)|log\s+(that|this|it)|save\s+(that|this|it)|lock\s+(that|this|it)|take\s+(that|this|it))\b/i.test(
     t
   );
 }
@@ -908,7 +908,8 @@ export function pageNavActionFromMessage(text, pageContext, knownRoute = null) {
     return null;
   }
 
-  if (isProceedIntent(t) && pageContext?.screen !== "passenger_info") {
+  // Guard: don't treat a flight-search message ("book a flight from X") as a proceed/checkout intent.
+  if (isProceedIntent(t) && !FLIGHT_ASK_RE.test(t) && pageContext?.screen !== "passenger_info") {
     return { type: "open_passenger_details" };
   }
 

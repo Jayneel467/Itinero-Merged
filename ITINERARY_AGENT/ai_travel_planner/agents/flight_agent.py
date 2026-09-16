@@ -23,7 +23,6 @@ import re
 import sys
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
 
 # ── Resolve general_agent package so we can reach the real LiteAPI provider ──
 # ITINERARY_AGENT lives at: <root>/ITINERARY_AGENT/
@@ -46,7 +45,6 @@ from ai_travel_planner.state.models import (
     FlightPrebook,
     FlightPrebookResponse,
     FlightSearchParams,
-    TripType,
 )
 from ai_travel_planner.utils.config import get_settings
 from ai_travel_planner.utils.logger import get_logger
@@ -345,7 +343,7 @@ class FlightAgent:
             )
 
         try:
-            from general_agent.providers import liteapi_provider
+            from general_agent.providers import liteapi_provider  # type: ignore
             body = liteapi_provider.verify_flight_offer({"offerId": offer_id})
             data = body.get("data") if isinstance(body, dict) else {}
             if not isinstance(data, dict):
@@ -417,18 +415,17 @@ class FlightAgent:
         Returns an empty list on any failure so the caller can fall back.
         """
         try:
-            from general_agent.services.travel_service import _parse_journey
+            from general_agent.services.travel_service import _parse_journey  # type: ignore
         except ImportError as exc:
             logger.warning("FlightAgent: could not import _parse_journey: %s", exc)
             return []
 
         try:
-            from general_agent.providers import liteapi_provider
-            from general_agent.exceptions import ProviderRequestError
+            from general_agent.providers import liteapi_provider  # type: ignore
             try:
-                from general_agent.services import location_resolver
+                from general_agent.services import location_resolver  # type: ignore
             except ImportError:
-                from services import location_resolver
+                from services import location_resolver  # type: ignore
 
             origin = str(params.origin or "").strip().upper()
             destination = str(params.destination or "").strip().upper()
@@ -700,6 +697,8 @@ class FlightAgent:
         self,
         raw_json: str,
         original_instruction: str,
+        adults: int = 1,
+        children: int = 0,
     ) -> FlightAgentResponse:
         """Parse raw LLM JSON into a validated FlightAgentResponse."""
         try:
@@ -723,10 +722,14 @@ class FlightAgent:
         for raw_flight in data.get("flights", []):
             try:
                 flight = FlightOption(**raw_flight)
-                # Ensure total_price is set
+                # Ensure total_price is set — fall back to per-adult × passengers
                 if not flight.total_price:
+                    fallback_total = (
+                        flight.price_per_adult * adults
+                        + flight.price_per_child * children
+                    )
                     flight = flight.model_copy(
-                        update={"total_price": flight.price_per_adult}
+                        update={"total_price": round(fallback_total, 2)}
                     )
                 flights.append(flight)
                 if flight.flight_id == recommended_id:

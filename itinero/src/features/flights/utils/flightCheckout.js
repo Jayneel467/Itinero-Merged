@@ -108,6 +108,10 @@ export function readFlightConfirmation() {
 }
 
 export function checkoutAmount(flight) {
+  // Prefer pre-calculated totalPrice (set in PassengerInfoPage for multi-pax bookings).
+  // Falls back to the per-adult price for single-pax or legacy callers.
+  const total = Number(flight?.totalPrice);
+  if (Number.isFinite(total) && total > 0) return Math.round(total * 100) / 100;
   const n = Number(flight?.price);
   if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.round(n * 100) / 100;
