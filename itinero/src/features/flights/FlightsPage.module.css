@@ -1476,6 +1476,15 @@
 	display: inline;
 }
 
+.fc-price-total-sub {
+	font-size: 11px;
+	font-weight: 600;
+	color: #64748B;
+	margin-top: -2px;
+	margin-bottom: 2px;
+	white-space: nowrap;
+}
+
 .fc-btn-book {
 	background: #F97211;
 	color: white;

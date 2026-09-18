@@ -977,6 +977,37 @@ def build_flight_tools(
         )
         return json.dumps(result)
 
+    def _resolve_bid(bid_val: str | None) -> str | None:
+        raw = (bid_val or "").strip()
+        if not raw:
+            return None
+        if re.match(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+            raw,
+            re.I,
+        ):
+            return raw
+        try:
+            from supervisor.db import connection, configured
+
+            if configured():
+                with connection() as conn:
+                    row = conn.execute(
+                        """
+                        SELECT supplier_booking_id FROM bookings
+                        WHERE (pnr = %s OR id::text = %s OR supplier_booking_id = %s)
+                          AND supplier_booking_id IS NOT NULL AND supplier_booking_id != ''
+                        ORDER BY updated_at DESC NULLS LAST
+                        LIMIT 1
+                        """,
+                        (raw, raw, raw),
+                    ).fetchone()
+                    if row and row[0]:
+                        return str(row[0]).strip()
+        except Exception:
+            pass
+        return raw
+
     async def get_flight_booking(
         booking_id: str | None = None,
         airline_pnr: str | None = None,
@@ -984,7 +1015,8 @@ def build_flight_tools(
     ) -> str:
         """Retrieve booking details via LiteAPI GET /flights/bookings/{id} or PNR lookup."""
         if booking_id:
-            result = await service.get_booking(booking_id)
+            resolved_id = _resolve_bid(booking_id) or booking_id
+            result = await service.get_booking(resolved_id)
         elif airline_pnr and passenger_last_name:
             listed = await service.list_bookings(
                 airline_pnr=airline_pnr,
@@ -1000,7 +1032,7 @@ def build_flight_tools(
                 listed["llm_instruction"] = "Show the booking list. Ask which booking ID to open."
                 return json.dumps(listed)
         else:
-            bid = session.booking_id
+            bid = _resolve_bid(session.booking_id) or session.booking_id
             if not bid:
                 return json.dumps(
                     {
@@ -1031,9 +1063,10 @@ def build_flight_tools(
 
     async def get_booking_status(booking_id: str | None = None) -> str:
         """Return booking status via LiteAPI."""
-        bid = booking_id or session.booking_id
-        if not bid:
+        raw_bid = booking_id or session.booking_id
+        if not raw_bid:
             raise FlightAgentError("booking_id is required.")
+        bid = _resolve_bid(raw_bid) or raw_bid
         result = await service.get_booking_status(bid)
         result["user_prompt"] = (
             f"**Booking status**\n\n"
@@ -1046,7 +1079,8 @@ def build_flight_tools(
 
     async def cancel_flight_booking(booking_id: str | None = None) -> str:
         """Cancel a booking via LiteAPI PUT /flights/bookings/{bookingId}. Ask YES first."""
-        bid = booking_id or session.pending_cancel_booking_id or session.booking_id
+        raw_bid = booking_id or session.pending_cancel_booking_id or session.booking_id
+        bid = _resolve_bid(raw_bid) or raw_bid
         if not bid:
             return json.dumps(
                 {
@@ -1102,8 +1136,33 @@ def build_flight_tools(
         session.awaiting_cancel_confirmation = False
         session.cancel_confirmed = False
         session.pending_cancel_booking_id = None
-        if result.get("cancelled"):
+        if result.get("cancelled") or result.get("pending"):
             session.last_booking = {**(session.last_booking or {}), **result}
+            try:
+                from supervisor.email_service import send_booking_cancellation
+
+                contact = result.get("contact") or (session.last_booking or {}).get("contact") or {}
+                mail = contact.get("email") if isinstance(contact, dict) else None
+                if not mail and session.contact:
+                    mail = session.contact.email
+                if mail:
+                    pnr = result.get("airline_pnr") or result.get("booking_ref") or bid
+                    airline = result.get("airline") or ""
+                    route = result.get("segments_summary") or ""
+                    title_parts = [p for p in (str(airline or ""), "flight", str(route or "")) if p]
+                    await send_booking_cancellation(
+                        kind="flight",
+                        to_email=mail,
+                        details={
+                            "booking_ref": pnr,
+                            "booking_id": bid,
+                            "title": " ".join(title_parts).strip() or "Flight Booking",
+                            "status": "cancelled",
+                            "loyalty_reversed": True,
+                        },
+                    )
+            except Exception as exc:
+                logger.warning("flight_cancel_email_failed", error=str(exc))
         result["user_prompt"] = cancel_result_user_prompt(result)
         result["llm_instruction"] = "Tell the user the cancel result using user_prompt."
         return json.dumps(result)

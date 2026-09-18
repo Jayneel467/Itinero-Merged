@@ -232,7 +232,11 @@ def _title_case_name(name: str) -> str:
 
 
 def _pax_list(details: dict[str, Any]) -> list[str]:
-    pax = details.get("passengers")
+    pax = (
+        details.get("passengers")
+        or details.get("travelers")
+        or details.get("traveler_names")
+    )
     names: list[str] = []
     if isinstance(pax, list):
         for row in pax:
@@ -241,7 +245,7 @@ def _pax_list(details: dict[str, Any]) -> list[str]:
                     str(row.get(k) or "").strip()
                     for k in ("firstName", "first_name", "lastName", "last_name")
                     if row.get(k)
-                ).strip() or str(row.get("name") or "").strip()
+                ).strip() or str(row.get("name") or row.get("full_name") or "").strip()
             else:
                 name = str(row or "").strip()
             if name:
@@ -498,7 +502,15 @@ def _build_flight_pdf_reportlab(details: dict[str, Any]) -> bytes:
     y -= card_h + 12
 
     # Passenger + contact
-    pax_h = 72
+    num_pax = len(passengers)
+    two_col = num_pax > 3
+    if two_col:
+        rows = (num_pax + 1) // 2
+    else:
+        rows = max(num_pax, 1)
+
+    line_h = 14
+    pax_h = max(72, 34 + rows * line_h)
     c.setFillColorRGB(*_WHITE)
     c.setStrokeColorRGB(*_LINE)
     c.setLineWidth(0.9)
@@ -506,23 +518,39 @@ def _build_flight_pdf_reportlab(details: dict[str, Any]) -> bytes:
     c.setFillColorRGB(*_ORANGE)
     c.setFont("Helvetica-Bold", 7)
     c.drawString(m + 14, y - 16, "PASSENGER(S)")
-    c.drawString(m + content_w / 2 + 8, y - 16, "CONTACT")
-    c.setFillColorRGB(*_INK)
-    c.setFont("Helvetica", 10)
+
+    contact_x = m + 345 if two_col else (m + content_w / 2 + 8)
+    c.drawString(contact_x, y - 16, "CONTACT")
+
     if passengers:
-        for i, name in enumerate(passengers[:2]):
-            c.setFillColorRGB(*_ORANGE if i == 0 else _INK)
-            c.setFont("Helvetica-Bold" if i == 0 else "Helvetica", 10)
-            c.drawString(m + 14, y - 36 - i * 16, f"{i + 1}. {name}"[:42])
+        if two_col:
+            col1_x = m + 14
+            col2_x = m + 175
+            col_cap = 25
+            for i, name in enumerate(passengers):
+                col = 0 if i < rows else 1
+                row_idx = i if col == 0 else (i - rows)
+                cx = col1_x if col == 0 else col2_x
+                cy = y - 34 - row_idx * line_h
+                c.setFillColorRGB(*_ORANGE if i == 0 else _INK)
+                c.setFont("Helvetica-Bold" if i == 0 else "Helvetica", 9)
+                c.drawString(cx, cy, f"{i + 1}. {name}"[:col_cap])
+        else:
+            for i, name in enumerate(passengers):
+                c.setFillColorRGB(*_ORANGE if i == 0 else _INK)
+                c.setFont("Helvetica-Bold" if i == 0 else "Helvetica", 9.5)
+                c.drawString(m + 14, y - 34 - i * line_h, f"{i + 1}. {name}"[:40])
     else:
         c.setFillColorRGB(*_MUTED)
-        c.drawString(m + 14, y - 36, "Passenger details on file")
+        c.setFont("Helvetica", 9)
+        c.drawString(m + 14, y - 34, "Passenger details on file")
+
     c.setFillColorRGB(*_INK)
     c.setFont("Helvetica", 9)
     if email:
-        c.drawString(m + content_w / 2 + 8, y - 36, email[:36])
+        c.drawString(contact_x, y - 34, email[: 28 if two_col else 36])
     if phone:
-        c.drawString(m + content_w / 2 + 8, y - 52, phone[:28])
+        c.drawString(contact_x, y - 48, phone[: 24 if two_col else 28])
     y -= pax_h + 12
 
     # Amount + barcode

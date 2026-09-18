@@ -391,7 +391,12 @@ export default function TripDetailPage() {
           paymentId: leg.paymentId,
           expectedAmount: Number(leg.price) || null,
           paymentProvider: leg.paymentProvider || trip?.paymentProvider || "stripe",
-          email: trip?.contact?.email || undefined,
+          email:
+            trip?.contact?.email ||
+            trip?.email ||
+            leg?.contactEmail ||
+            leg?.email ||
+            undefined,
         });
       } else if (leg.paymentId && String(leg.paymentId).startsWith("pay_")) {
         setActionErr(

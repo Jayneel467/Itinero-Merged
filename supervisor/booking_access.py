@@ -64,11 +64,11 @@ def ledger_guest_email(supplier_booking_id: str) -> str | None:
             row = conn.execute(
                 """
                 SELECT payload FROM bookings
-                WHERE supplier_booking_id = %s
+                WHERE supplier_booking_id = %s OR pnr = %s OR id::text = %s
                 ORDER BY updated_at DESC NULLS LAST
                 LIMIT 1
                 """,
-                (bid,),
+                (bid, bid, bid),
             ).fetchone()
             if row:
                 got = _email_from_obj(row[0] if isinstance(row[0], dict) else {})
@@ -77,11 +77,12 @@ def ledger_guest_email(supplier_booking_id: str) -> str | None:
             loy = conn.execute(
                 """
                 SELECT guest_email FROM loyalty_point_events
-                WHERE booking_id = %s AND guest_email IS NOT NULL
+                WHERE (booking_id = %s OR booking_id IN (SELECT id::text FROM bookings WHERE supplier_booking_id = %s OR pnr = %s))
+                  AND guest_email IS NOT NULL
                 ORDER BY created_at DESC NULLS LAST
                 LIMIT 1
                 """,
-                (bid,),
+                (bid, bid, bid),
             ).fetchone()
             if loy:
                 got = normalize_email(loy[0] if isinstance(loy[0], str) else None)

@@ -156,6 +156,75 @@ def _pack(turn, path: str, payload: dict, *, tools: list | None = None) -> dict:
     return out
 
 
+def _hydrate_trip_context_from_message(
+    trip_context: dict,
+    message: str,
+    history_messages: list | None = None,
+) -> dict:
+    """Extract and persist destination, origin, dates, travelers into trip_context if missing."""
+    updates: dict = {}
+    msg = (message or "").strip()
+
+    # Destination
+    if not trip_context.get("destination"):
+        m_dest = re.search(
+            r"\b(?:trip to|visit|vacation in|holiday in|itinerary for|plan for|hotels in|flights to|plan a trip to|plan my trip to)\s+([A-Z][a-zA-Z\s]+)",
+            msg,
+            re.I,
+        )
+        if m_dest:
+            d = re.split(r"\b(?:from|on|for|with|in|during)\b", m_dest.group(1), flags=re.I)[0].strip()
+            if d and len(d) > 2 and d.lower() not in ("a", "an", "the", "my", "our"):
+                updates["destination"] = d
+                updates["planning_mode"] = "full_trip"
+
+    # Route pattern like "Delhi -> Dabolim" or "Delhi to Goa"
+    comb = msg
+    if history_messages:
+        for prev in reversed(history_messages[-4:]):
+            content = getattr(prev, "content", "") or ""
+            if isinstance(content, str) and ("->" in content or "→" in content or "seats" in content):
+                comb = f"{content}\n{comb}"
+                break
+
+    m_route = re.search(
+        r"([A-Z][a-zA-Z\s]{2,20}?)\s*(?:->|→|\bto\b)\s*([A-Z][a-zA-Z\s]{2,20}?)(?:,|\.|\n|\bon\b)",
+        comb,
+    )
+    if m_route:
+        o = m_route.group(1).strip()
+        d = m_route.group(2).strip()
+        if o and not trip_context.get("origin") and not updates.get("origin"):
+            if o.lower() not in ("plan a trip", "trip", "plan"):
+                updates["origin"] = o
+        if d and not trip_context.get("destination") and not updates.get("destination"):
+            updates["destination"] = d
+            updates["planning_mode"] = "full_trip"
+
+    # Origin standalone ("from Delhi", "from BOM")
+    if not trip_context.get("origin") and not updates.get("origin"):
+        m_orig = re.search(r"\b(?:from|departing|leaving)\s+([A-Z][a-zA-Z\s]+)", msg, re.I)
+        if m_orig:
+            o = re.split(r"\b(?:to|on|for|in|during)\b", m_orig.group(1), flags=re.I)[0].strip()
+            if o and len(o) >= 3 and o.lower() not in ("scratch", "home", "here"):
+                updates["origin"] = o
+
+    # Passenger count ("4 people", "4 seats", "2 adults", "4 pax")
+    if not trip_context.get("adults") and not updates.get("adults"):
+        m_pax = re.search(
+            r"\b(\d+)\s*(?:people|adults|persons|pax|travellers|travelers|seats)\b",
+            comb,
+            re.I,
+        )
+        if m_pax:
+            try:
+                updates["adults"] = int(m_pax.group(1))
+            except (ValueError, TypeError):
+                pass
+
+    return updates
+
+
 class ItineroAgent:
     """Thin public wrapper around the compiled LangGraph app.
 
@@ -258,6 +327,12 @@ class ItineroAgent:
             if home_airport and not trip_context.get("origin"):
                 invoke_ctx["home_airport"] = home_airport
                 trip_context["home_airport"] = home_airport
+
+        history_msgs = (snapshot.values or {}).get("messages", []) or []
+        slot_updates = _hydrate_trip_context_from_message(trip_context, message, history_msgs)
+        if slot_updates:
+            invoke_ctx.update(slot_updates)
+            trip_context.update(slot_updates)
         if page_context and isinstance(page_context, dict):
             # UI hints only — never trust client offer/prebook/transaction IDs
             # as authority to create LiteAPI holds.

@@ -404,13 +404,24 @@ export default function FlightBookingSuccessPage() {
     setCancelMsg("");
     try {
       let res;
-      const paymentProvider = confirmation?.paymentProvider || "stripe";
-      if (isSupplierBookingId(supplierBookingId)) {
+      const guestEmail =
+        String(contact?.email || confirmation?.contact?.email || "").trim() ||
+        undefined;
+      const targetBookingId =
+        supplierBookingId ||
+        confirmation?.supplierBookingId ||
+        confirmation?.liteapi?.booking_id ||
+        confirmation?.liteapi?.id ||
+        confirmation?.bookingRef ||
+        bookingRef;
+
+      if (targetBookingId) {
         res = await cancelFlightWithQuote({
-          bookingId: supplierBookingId,
+          bookingId: targetBookingId,
           paymentId,
           expectedAmount: amount || null,
           paymentProvider,
+          email: guestEmail,
         });
       } else if (paymentId && String(paymentId).startsWith("pay_")) {
         setCancelErr(
@@ -425,7 +436,7 @@ export default function FlightBookingSuccessPage() {
       if (!res?.ok) throw new Error(res?.error || res?.message || "Cancel failed.");
       const patch = refundPatchFromResult(res);
       tripService.markFlightCancelled({
-        bookingId: supplierBookingId,
+        bookingId: targetBookingId,
         refund: patch,
       });
       // Pending airline confirm ≠ fully cancelled on Connect yet
@@ -756,7 +767,7 @@ export default function FlightBookingSuccessPage() {
           </div>
 
           <div className={styles.btns}>
-            {(isSupplierBookingId(supplierBookingId) || paymentId) && !cancelled ? (
+            {Boolean(supplierBookingId || bookingRef || confirmation?.bookingRef || paymentId) && !cancelled ? (
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnCancel}`}

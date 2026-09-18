@@ -992,9 +992,11 @@ def search_flights(
     max_budget_per_person: Optional[float] = None,
     nonstop_preferred: bool = False,
     max_results: int = 12,
+    cabin: Optional[str] = None,
     *,
     state: Annotated[dict, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId],
+    **kwargs,
 ) -> Command:
     """
     Quick flight price/options lookup ONLY — never books.
@@ -1046,6 +1048,7 @@ def search_flights(
             }
         )
 
+    cabin_class = str(cabin or cabin_class or "Economy").strip().title()
     result = quick_search_service.run_flight_search(
         origin=origin,
         destination=destination,
@@ -1080,9 +1083,9 @@ def search_flights(
 
 @tool
 def search_hotels(
-    location: str,
-    check_in: str,
-    check_out: str,
+    location: Optional[str] = None,
+    check_in: Optional[str] = None,
+    check_out: Optional[str] = None,
     adults: int = 2,
     max_budget_per_night: Optional[float] = None,
     min_star_rating: Optional[float] = None,
@@ -1090,9 +1093,14 @@ def search_hotels(
     free_cancellation: bool = False,
     room_type_preference: Optional[str] = None,
     max_results: int = 5,
+    destination: Optional[str] = None,
+    checkin: Optional[str] = None,
+    checkout: Optional[str] = None,
+    rooms: Optional[Any] = None,
     *,
     state: Annotated[dict, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId],
+    **kwargs,
 ) -> Command:
     """
     Quick hotel price/options lookup ONLY — never books.
@@ -1115,6 +1123,9 @@ def search_hotels(
         room_type_preference: Optional room type keyword, e.g. "suite", "sea view".
         max_results: Maximum number of hotels to show. Defaults to 5.
     """
+    location = str(location or destination or "").strip()
+    check_in = str(check_in or checkin or "").strip()
+    check_out = str(check_out or checkout or "").strip()
     ctx = (state or {}).get("trip_context") or {}
     if str(ctx.get("planning_mode") or "").lower() == "full_trip":
         return Command(
@@ -1325,7 +1336,7 @@ def update_trip_context(
 # Full trip-plan escalation — signal only (orchestrator continues as Vero)
 # ---------------------------------------------------------------------------
 @tool
-def escalate_to_itinerary(task_description: str, reason: str) -> str:
+def escalate_to_itinerary(task_description: str = "", reason: str = "", **kwargs) -> str:
     """
     Continue as Vero into the full trip-planning flow: flight pick → draft
     day-by-day itinerary → hotels day-by-day → prebook → final confirmation.
@@ -1406,8 +1417,13 @@ def escalate_to_itinerary(task_description: str, reason: str) -> str:
             data = parsed
     except Exception:
         data = {}
-    origin = str(data.get("origin") or "").strip()
-    dest = str(data.get("destination") or "").strip()
+    if kwargs:
+        data.update(kwargs)
+        if not raw or not raw.startswith("{"):
+            raw = json.dumps(data)
+            task_description = raw
+    origin = str(data.get("origin") or data.get("departure") or kwargs.get("origin") or "").strip()
+    dest = str(data.get("destination") or kwargs.get("destination") or "").strip()
     checkout = str(data.get("checkout") or data.get("return_date") or "").strip()
     scope = str(data.get("scope") or "full").lower().strip()
     trip_type = str(data.get("trip_type") or "").lower().strip()

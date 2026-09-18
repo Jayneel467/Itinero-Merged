@@ -822,6 +822,14 @@ export default function FlightsPage() {
                       key={flight.id}
                       flight={{
                         ...flight,
+                        adults: flight.adults || search.adults,
+                        children: flight.children || search.children,
+                        infants: flight.infants || search.infants,
+                        totalPassengers:
+                          flight.totalPassengers ||
+                          (Number(flight.adults || search.adults) || 1) +
+                            (Number(flight.children || search.children) || 0) +
+                            (Number(flight.infants || search.infants) || 0),
                         legLabel: isReturnFlow
                           ? rtStep === "outbound"
                             ? "✈️ Step 1: Departing Flight"

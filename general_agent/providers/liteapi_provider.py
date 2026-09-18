@@ -41,7 +41,7 @@ def search_flight_rates(payload: dict) -> dict:
     """POST /flights/rates - returns the raw response body."""
     try:
         response = requests.post(
-            f"{BASE_URL}/flights/rates", headers=_headers(), json=payload, timeout=20
+            f"{BASE_URL}/flights/rates", headers=_headers(), json=payload, timeout=35
         )
         response.raise_for_status()
         return response.json()
@@ -54,7 +54,7 @@ def verify_flight_offer(payload: dict) -> dict:
     """POST /flights/verify — confirm a live offerId is still bookable."""
     try:
         response = requests.post(
-            f"{BASE_URL}/flights/verify", headers=_headers(), json=payload, timeout=20
+            f"{BASE_URL}/flights/verify", headers=_headers(), json=payload, timeout=35
         )
         response.raise_for_status()
         return response.json()

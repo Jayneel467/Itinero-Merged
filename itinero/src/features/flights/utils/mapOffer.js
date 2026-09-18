@@ -69,18 +69,22 @@ function coerceSeatsRemaining(value) {
 }
 
 /** Map schedule fare_options → UI fare rows (hotel rates analogue). */
-function mapFareOptions(offer) {
+function mapFareOptions(offer, totalPassengers = 1) {
   const raw = Array.isArray(offer.fare_options) ? offer.fare_options : [];
+  const pax = Math.max(1, Number(totalPassengers) || 1);
   if (raw.length) {
     return raw.map((f, i) => {
       const bag = parseBaggage(f);
+      const farePrice = Number(f.total_price ?? f.price) || 0;
       return {
         id: String(f.offer_id || f.id || `${offer.offer_id || offer.id}-fare-${i}`),
         offer_id: f.offer_id || f.id,
         // Never invent "Standard" - only show LiteAPI fare family when present
         fare_family: f.fare_family || null,
         cabin: f.cabin_class || f.cabin || offer.cabin || null,
-        price: Number(f.total_price ?? f.price) || 0,
+        price: farePrice,
+        totalPrice: farePrice,
+        perPersonPrice: pax > 0 ? farePrice / pax : farePrice,
         price_base: f.price_base ?? null,
         price_taxes: f.price_taxes ?? null,
         price_fees: f.price_fees ?? null,
@@ -96,6 +100,7 @@ function mapFareOptions(offer) {
       };
     });
   }
+  const fallbackPrice = Number(offer.price) || 0;
   // Single-fare fallback so the card always has a selectable row
   return [
     {
@@ -103,7 +108,9 @@ function mapFareOptions(offer) {
       offer_id: offer.offer_id || offer.id,
       fare_family: offer.fare_family || null,
       cabin: offer.cabin || null,
-      price: Number(offer.price) || 0,
+      price: fallbackPrice,
+      totalPrice: fallbackPrice,
+      perPersonPrice: pax > 0 ? fallbackPrice / pax : fallbackPrice,
       price_base: offer.price_base ?? null,
       price_taxes: offer.price_taxes ?? null,
       price_fees: offer.price_fees ?? null,
@@ -270,6 +277,13 @@ function mapSegment(s, fallbackAirline, fallbackFlightNumber, fallbackDuration) 
  */
 export function mapOfferToCard(offer, opts = {}) {
   const baggage = parseBaggage(offer);
+  const adults = Number(offer.adults ?? opts.adults ?? 1);
+  const children = Number(offer.children ?? opts.children ?? 0);
+  const infants = Number(offer.infants ?? opts.infants ?? 0);
+  const totalPassengers = Math.max(1, adults + children + infants);
+  const totalPrice = Number(offer.price) || 0;
+  const perPersonPrice = totalPassengers > 0 ? totalPrice / totalPassengers : totalPrice;
+
   const amenities = Array.isArray(offer.amenities)
     ? offer.amenities
         .map((a) => (typeof a === "string" ? a : a?.name))
@@ -397,10 +411,16 @@ export function mapOfferToCard(offer, opts = {}) {
     segmentFlightNos,
     dayOffset: arrivalDayOffset(firstSeg.departure, lastSeg.arrival),
     baggage,
-    price: Number(offer.price) || 0,
+    price: totalPrice,
+    totalPrice,
+    perPersonPrice,
+    adults,
+    children,
+    infants,
+    totalPassengers,
     currency: currencySymbol(offer.currency),
     currencyCode: offer.currency || "INR",
-    perPerson: true,
+    perPerson: totalPassengers === 1,
     price_base: offer.price_base ?? null,
     price_taxes: offer.price_taxes ?? null,
     price_fees: offer.price_fees ?? null,
@@ -413,7 +433,7 @@ export function mapOfferToCard(offer, opts = {}) {
     has_refund_fee: offer.has_refund_fee === true,
     has_change_fee: offer.has_change_fee === true,
     terms_summary: Array.isArray(offer.terms_summary) ? offer.terms_summary : null,
-    fares: mapFareOptions(offer),
+    fares: mapFareOptions(offer, totalPassengers),
     details: {
       flightInfo: {
         aircraft: firstSeg.aircraft || null,

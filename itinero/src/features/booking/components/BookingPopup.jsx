@@ -955,6 +955,8 @@ export default function BookingPopup({
         prebook_id: hold.prebook_id,
         transaction_id: hold.transaction_id || undefined,
         mock_payment: mockPayment || undefined,
+        payment_id: payRef || undefined,
+        contact_email: email ? email.trim() : undefined,
       });
       if (!done?.ok) {
         throw new Error(
@@ -1098,44 +1100,41 @@ export default function BookingPopup({
     paxParts.join(", ") ||
     `${totalPassengers} Passenger${totalPassengers > 1 ? "s" : ""}`;
 
-  // Per-person prices from the flight offer
-  const rawOutboundPerPerson = Number(outboundFlight?.price || flight?.price || 0);
-  const rawReturnPerPerson = Number(returnFlight?.price || 0);
+  // Flight search prices from LiteAPI are already the total for all requested passengers.
+  const rawOutboundTotal = Number(outboundFlight?.price || flight?.price || 0);
+  const rawReturnTotal = Number(returnFlight?.price || 0);
 
-  const combinedPerPerson =
-    isRoundTrip && rawReturnPerPerson > 0 && !flight?.isRoundTripPackage
-      ? rawOutboundPerPerson + rawReturnPerPerson
-      : Number(flight?.price || 0);
+  const combinedTotal =
+    isRoundTrip && rawReturnTotal > 0 && !flight?.isRoundTripPackage
+      ? rawOutboundTotal + rawReturnTotal
+      : rawOutboundTotal;
 
-  // Total price: either held price from LiteAPI prebook or (perPerson * totalPassengers)
+  // Total price: either held price from LiteAPI prebook or combinedTotal from search
   const priceNum =
     hold?.price != null
       ? Number(hold.price)
-      : combinedPerPerson * totalPassengers;
+      : combinedTotal;
 
-  const outboundPrice = rawOutboundPerPerson * totalPassengers;
-  const returnPrice = rawReturnPerPerson * totalPassengers;
+  const outboundPrice = rawOutboundTotal;
+  const returnPrice = rawReturnTotal;
 
-  const rawTaxesPerPerson =
+  const rawTaxesTotal =
     flight?.price_taxes != null || flight?.price_fees != null
       ? Number(flight.price_taxes || 0) + Number(flight.price_fees || 0)
       : 0;
 
-  const taxes =
-    rawTaxesPerPerson > 0
-      ? rawTaxesPerPerson * totalPassengers
-      : null;
+  const taxes = rawTaxesTotal > 0 ? rawTaxesTotal : null;
 
-  const rawBasePerPerson =
+  const rawBaseTotal =
     flight?.price_base != null
       ? Number(flight.price_base)
-      : rawTaxesPerPerson > 0 && combinedPerPerson > rawTaxesPerPerson
-        ? combinedPerPerson - rawTaxesPerPerson
+      : rawTaxesTotal > 0 && combinedTotal > rawTaxesTotal
+        ? combinedTotal - rawTaxesTotal
         : null;
 
   const baseFare =
-    rawBasePerPerson != null
-      ? rawBasePerPerson * totalPassengers
+    rawBaseTotal != null
+      ? rawBaseTotal
       : taxes != null && priceNum > taxes
         ? priceNum - taxes
         : priceNum;
@@ -1768,7 +1767,7 @@ export default function BookingPopup({
                     <span>{priceLabel}</span>
                     {totalPassengers > 1 && priceNum > 0 && (
                       <span style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#f97211" }}>
-                        ≈ {currencySym}{Math.round(priceNum / totalPassengers).toLocaleString("en-IN")} / person
+                        ≈ {currencySym}{(priceNum / totalPassengers).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / person
                       </span>
                     )}
                   </div>
@@ -1786,6 +1785,11 @@ export default function BookingPopup({
                 <div>
                   <span>Total Amount {isRoundTrip ? "(Round Trip)" : ""}</span>
                   <strong>{priceLabel}</strong>
+                  {totalPassengers > 1 && (
+                    <span style={{ display: "block", fontSize: "0.8rem", fontWeight: 500, color: "#64748b", marginTop: 2 }}>
+                      Total for all {paxBreakdownText} (≈ {currencySym}{(priceNum / totalPassengers).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / person)
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"

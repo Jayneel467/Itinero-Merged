@@ -36,7 +36,12 @@ _TOOL_HINT = re.compile(
     r"train|trains|bus|buses|pnr|track|visa|weather|map|maps|directions|"
     r"restaurant|restaurants|event|events|concert|ticket|tickets|"
     r"pay|payment|hold|prebook|checkout|availability|"
-    r"liteapi|seat|baggage|cancel|refund"
+    r"liteapi|seat|baggage|cancel|refund|"
+    r"cheapest|fastest|option|options|pull options|live options|"
+    r"different date|change date|"
+    r"proceed|continue|go ahead|build itinerary|create itinerary|full itinerary|"
+    r"both|flights and hotels|flight and hotel|"
+    r"plan a trip to|plan my trip to|plan our trip to|trip to"
     r")\b",
     re.I,
 )
@@ -57,10 +62,20 @@ _NEGATED_TOOL = re.compile(
 # model can think + call Places/search instead of rule-routing to planner.
 _PLAN_HINT = re.compile(
     r"\b("
-    r"itinerary|day[- ]by[- ]day|trip plan|plan a trip|plan my trip|plan our trip|"
+    r"itinerary|day[- ]by[- ]day|trip plan|"
     r"\d+\s*[- ]?\s*day(?:s)?\s+(?:plan|itinerary|trip)|rough\s+\d+\s*[- ]?\s*day|"
     r"honeymoon (?:plan|itinerary)|"
     r"rough plan|sample plan|outline (?:the )?trip|day plan|trip outline"
+    r")\b",
+    re.I,
+)
+
+_CONCRETE_SLOTS = re.compile(
+    r"\b("
+    r"from\s+[A-Za-z]+|\bto\s+[A-Za-z]+|"
+    r"\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)|"
+    r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2}|"
+    r"\d+\s*(?:people|pax|adults|travelers|travellers|persons|seats)"
     r")\b",
     re.I,
 )
@@ -70,6 +85,41 @@ _MONEY_LOCK = re.compile(
     r"\b(pay|payment|prebook|checkout|hold|book now|confirm booking|cancel|refund)\b",
     re.I,
 )
+
+
+def _is_trip_continuation(messages: list, text: str) -> bool:
+    """True when user is replying affirmatively or providing parameters to an offer to search/plan."""
+    if not text or not messages:
+        return False
+    last_ai = ""
+    for m in reversed(messages):
+        if getattr(m, "type", None) == "ai":
+            last_ai = getattr(m, "content", "") or ""
+            break
+    if not last_ai:
+        return False
+    ai_offered = bool(
+        re.search(
+            r"\b(pull options|live options|look up live|say the word|"
+            r"where are you flying from|what dates|how many travelers|how many people)\b",
+            last_ai,
+            re.I,
+        )
+    )
+    if not ai_offered:
+        return False
+    return bool(
+        re.search(
+            r"\b(yes|yeah|sure|please|ok|okay|go ahead|pull them|pull options|do it|"
+            r"show cheapest|different date|from|people|adults)\b",
+            text,
+            re.I,
+        )
+    )
+
+
+def _has_concrete_trip_slots(text: str) -> bool:
+    return bool(_CONCRETE_SLOTS.search(text or ""))
 
 
 def _wants_tools(text: str) -> bool:
@@ -300,9 +350,36 @@ def choose_lane(messages: list, trip_context: dict | None = None) -> Lane:
     except (TypeError, ValueError):
         pass
 
-    toolish = _wants_tools(text)
     money = bool(_MONEY_LOCK.search(text))
+    if money:
+        return "tools"
+
+    toolish = _wants_tools(text)
     if toolish:
+        if force_cheap and not money:
+            return "planner"
+        return "tools"
+
+    ctx = trip_context if isinstance(trip_context, dict) else {}
+    has_active_trip = bool(
+        ctx.get("destination")
+        or str(ctx.get("planning_mode") or "").lower() == "full_trip"
+        or ctx.get("selected_flight")
+        or ctx.get("selected_hotel")
+        or ctx.get("itinerary_complete")
+        or ctx.get("origin")
+    )
+    if has_active_trip and not _NEGATED_TOOL.search(text):
+        if force_cheap and not money:
+            return "planner"
+        return "tools"
+
+    if _is_trip_continuation(messages, text) and not _NEGATED_TOOL.search(text):
+        if force_cheap and not money:
+            return "planner"
+        return "tools"
+
+    if _has_concrete_trip_slots(text) and not _NEGATED_TOOL.search(text):
         if force_cheap and not money:
             return "planner"
         return "tools"

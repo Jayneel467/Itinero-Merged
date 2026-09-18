@@ -146,6 +146,8 @@ def _parse_task_description(task_description: str) -> dict[str, Any]:
             result["adults"] = int(travelers.get("adults", 1) or 1)
             result["children"] = int(travelers.get("children", 0) or 0)
             result["infants"] = int(travelers.get("infants", 0) or 0)
+        elif isinstance(travelers, (int, str)) and str(travelers).isdigit():
+            result["adults"] = int(travelers)
         extra = data.get("extra_info") or {}
         if isinstance(extra, dict):
             result["visa_required"] = extra.get("visa_required")

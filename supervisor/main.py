@@ -3703,14 +3703,41 @@ async def flights_cancel_booking(req: FlightBookingIdRequest, request: Request):
             from supervisor.email_service import send_booking_cancellation
             from supervisor.booking_access import ledger_guest_email
 
-            mail = (req.email or "").strip() or ledger_guest_email(req.booking_id)
+            bk = result.get("booking") if isinstance(result.get("booking"), dict) else {}
+            contact_obj = bk.get("contact") if isinstance(bk.get("contact"), dict) else {}
+            api_email = (
+                contact_obj.get("email")
+                or bk.get("email")
+                or bk.get("guest_email")
+            )
+            mail = (req.email or "").strip() or (api_email or "").strip() or ledger_guest_email(req.booking_id)
+            if not mail:
+                try:
+                    from flight_agent.services.flight_service import FlightService
+
+                    _svc = FlightService()
+                    try:
+                        _b = await _svc.get_booking(req.booking_id)
+                        if _b and _b.get("found"):
+                            _c = _b.get("contact") or {}
+                            mail = (_c.get("email") or "").strip()
+                    finally:
+                        await _svc.close()
+                except Exception:
+                    pass
+
             if mail:
+                airline = bk.get("airline") or ""
+                pnr = bk.get("airline_pnr") or bk.get("booking_ref") or req.booking_id
+                route = bk.get("segments_summary") or ""
+                title_parts = [p for p in (str(airline or ""), "flight", str(route or "")) if p]
                 await send_booking_cancellation(
                     kind="flight",
                     to_email=mail,
                     details={
-                        "booking_ref": req.booking_id,
+                        "booking_ref": pnr,
                         "booking_id": req.booking_id,
+                        "title": " ".join(title_parts).strip() or "Flight Booking",
                         "status": "cancelled",
                         "loyalty_reversed": True,
                     },

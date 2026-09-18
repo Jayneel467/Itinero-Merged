@@ -327,11 +327,11 @@ def booking_owned_by_device(supplier_booking_id: str | None, device_id: str | No
         row = conn.execute(
             """
             SELECT device_id, user_id FROM bookings
-            WHERE supplier_booking_id = %s
+            WHERE supplier_booking_id = %s OR pnr = %s OR id::text = %s
             ORDER BY updated_at DESC NULLS LAST
             LIMIT 1
             """,
-            (bid,),
+            (bid, bid, bid),
         ).fetchone()
         if not row:
             return None
@@ -355,11 +355,11 @@ def booking_owned_by_user(supplier_booking_id: str | None, user_id: str | None) 
         row = conn.execute(
             """
             SELECT user_id FROM bookings
-            WHERE supplier_booking_id = %s
+            WHERE supplier_booking_id = %s OR pnr = %s OR id::text = %s
             ORDER BY updated_at DESC NULLS LAST
             LIMIT 1
             """,
-            (bid,),
+            (bid, bid, bid),
         ).fetchone()
         if not row:
             return None
@@ -377,8 +377,12 @@ def _find_booking_id(
 ) -> str | None:
     if supplier_booking_id:
         row = conn.execute(
-            "SELECT id FROM bookings WHERE supplier_booking_id = %s LIMIT 1",
-            (supplier_booking_id,),
+            """
+            SELECT id FROM bookings
+            WHERE supplier_booking_id = %s OR pnr = %s OR id::text = %s
+            LIMIT 1
+            """,
+            (supplier_booking_id, supplier_booking_id, supplier_booking_id),
         ).fetchone()
         if row:
             return row[0]
@@ -687,10 +691,17 @@ def persist_cancel_result(
         or booking.get("status")
         or ("cancel_pending" if pending else "cancelled")
     )
+    actual_supplier_id = (
+        booking.get("booking_id")
+        or booking.get("id")
+        or supplier_booking_id
+    )
+    actual_pnr = booking.get("airline_pnr") or booking.get("booking_ref")
     booking_pk = record_booking(
         kind=kind,
         device_id=device_id,
-        supplier_booking_id=supplier_booking_id,
+        supplier_booking_id=actual_supplier_id,
+        pnr=actual_pnr,
         payment_id=payment_id,
         status="cancel_pending" if pending else "cancelled",
         amount=cancel.get("refund_amount") or booking.get("refund_amount"),
@@ -698,7 +709,7 @@ def persist_cancel_result(
         payload={"booking": booking, "cancellation": cancel, "razorpay_refund": rzp},
     )
     record_cancel(
-        supplier_booking_id=supplier_booking_id,
+        supplier_booking_id=actual_supplier_id,
         booking_id=booking_pk,
         status=status,
         pending=pending,

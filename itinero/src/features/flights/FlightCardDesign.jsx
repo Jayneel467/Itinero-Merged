@@ -302,9 +302,15 @@ export default function FlightCardDesign({
     "N/A";
   const airlineLogo = flight.airline?.logo || flight.logo;
   const isBestValue = flight.badge === "Best Value" || flight.isBestValue;
-
+  const totalPassengers =
+    flight.totalPassengers ||
+    (Number(flight.adults) || 1) +
+      (Number(flight.children) || 0) +
+      (Number(flight.infants) || 0);
   const activePrice = selectedFare?.price ?? flight.price ?? 0;
-  const formattedPrice = formatMoney(activePrice);
+  const perPersonPrice = totalPassengers > 1 ? activePrice / totalPassengers : activePrice;
+  const formattedPrice = formatMoney(perPersonPrice);
+  const formattedTotalPrice = formatMoney(activePrice);
   const currencyCode = flight.currencyCode || flight.currency || "INR";
   const buttonLabel = ctaLabel || "Book Now";
 
@@ -315,6 +321,12 @@ export default function FlightCardDesign({
       id: selectedFare.offer_id || selectedFare.id || flight.id,
       offer_id: selectedFare.offer_id || selectedFare.id || flight.offer_id,
       price: selectedFare.price,
+      totalPrice: selectedFare.price,
+      perPersonPrice: totalPassengers > 1 ? selectedFare.price / totalPassengers : selectedFare.price,
+      totalPassengers,
+      adults: flight.adults,
+      children: flight.children,
+      infants: flight.infants,
       price_base: selectedFare.price_base ?? flight.price_base,
       price_taxes: selectedFare.price_taxes ?? flight.price_taxes,
       price_fees: selectedFare.price_fees ?? flight.price_fees,
@@ -507,6 +519,11 @@ export default function FlightCardDesign({
             <span className={styles["fc-price-amount"]}>{formattedPrice}</span>
             <span className={styles["fc-price-person"]}>&nbsp;/ person</span>
           </div>
+          {totalPassengers > 1 && (
+            <div className={styles["fc-price-total-sub"]}>
+              {formattedTotalPrice} total ({totalPassengers} travelers)
+            </div>
+          )}
           {hasMultiFare && (
             <button
               type="button"
@@ -653,8 +670,15 @@ export default function FlightCardDesign({
                           )}
                         </div>
                         <div className={styles["fc-fare-price"]}>
-                          <div className={styles["fc-fare-price-main"]}>{formatMoney(fare.price || 0)}</div>
+                          <div className={styles["fc-fare-price-main"]}>
+                            {formatMoney(totalPassengers > 1 ? (fare.price || 0) / totalPassengers : (fare.price || 0))}
+                          </div>
                           <div className={styles["fc-fare-price-sub"]}>/ person</div>
+                          {totalPassengers > 1 && (
+                            <div className={styles["fc-fare-price-sub"]} style={{ color: "#64748b", marginTop: "2px" }}>
+                              {formatMoney(fare.price || 0)} total
+                            </div>
+                          )}
                         </div>
                         <button
                           type="button"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import sys
 import time
 import traceback
@@ -1279,11 +1280,45 @@ async def structured_complete(
         }
 
 
+def _resolve_flight_supplier_id(bid: str) -> str:
+    """Resolve PNR or local DB booking id to LiteAPI supplier UUID if needed."""
+    raw = (bid or "").strip()
+    if not raw:
+        return raw
+    if re.match(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        raw,
+        re.I,
+    ):
+        return raw
+    try:
+        from supervisor.db import connection, configured
+
+        if configured():
+            with connection() as conn:
+                row = conn.execute(
+                    """
+                    SELECT supplier_booking_id FROM bookings
+                    WHERE (pnr = %s OR id::text = %s OR supplier_booking_id = %s)
+                      AND supplier_booking_id IS NOT NULL AND supplier_booking_id != ''
+                    ORDER BY updated_at DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    (raw, raw, raw),
+                ).fetchone()
+                if row and row[0]:
+                    return str(row[0]).strip()
+    except Exception:
+        pass
+    return raw
+
+
 async def structured_flight_get_booking(*, booking_id: str) -> dict[str, Any]:
     """GET LiteAPI flight booking by id."""
     bid = (booking_id or "").strip()
     if not bid:
         return {"ok": False, "error": "missing_booking_id"}
+    bid = _resolve_flight_supplier_id(bid)
     try:
         from flight_agent.services.flight_service import FlightService
 
@@ -1306,6 +1341,7 @@ async def structured_flight_cancel_quote(*, booking_id: str) -> dict[str, Any]:
     bid = (booking_id or "").strip()
     if not bid:
         return {"ok": False, "error": "missing_booking_id", "message": "Missing booking id."}
+    bid = _resolve_flight_supplier_id(bid)
     try:
         from flight_agent.services.flight_service import FlightService
 
@@ -1335,6 +1371,7 @@ async def structured_flight_cancel_booking(
     bid = (booking_id or "").strip()
     if not bid:
         return {"ok": False, "error": "missing_booking_id", "message": "Missing booking id."}
+    bid = _resolve_flight_supplier_id(bid)
     try:
         from flight_agent.services.flight_service import FlightService
         from supervisor.payment_routing import (
@@ -1429,6 +1466,7 @@ async def structured_flight_cancel_booking(
                 "currency": result.get("currency") or (stripe_refund or {}).get("currency"),
                 "destination": result.get("destination"),
                 "vouchers": result.get("vouchers") or [],
+                "contact": result.get("contact") or {},
                 "pending": pending,
                 "liteapi_auto_refund": liteapi_handles_refund,
                 "refund_rail": rail,

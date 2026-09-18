@@ -15,8 +15,10 @@ Two nodes:
 When this grows into multi-agent, new specialist nodes get added here alongside
 `agent_node`, and `graph/workflow.py` wires the routing between them.
 """
+import json
 import logging
 import re
+import uuid
 
 from langchain_core.messages import SystemMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -36,12 +38,166 @@ _PLANNER_EXTRA = (
     "\n\n[Lane: planner/synth — DeepSeek, cost-saver] "
     "You are writing the user-facing travel answer. Do NOT invent live fares, "
     "gates, or availability. If the history already contains tool results, "
-    "synthesize them clearly. If the user needs live search or booking, say "
-    "you'll look that up next (the tools lane will handle it)."
+    "synthesize them clearly. For real flights, hotels, or booking, ask the traveler "
+    "for their dates and departure city so we can search real options."
 )
 
 _MAX_TOOL_CHARS = 6000
 _MAX_AI_CHARS_CHEAP = 4000
+
+_INVOKE_PATTERN = re.compile(
+    r"<\s*(?:[\uff5c|]{1,2}\s*DSML\s*[\uff5c|]{1,2}\s*)?invoke\s+name=[\"']?([a-zA-Z0-9_-]+)[\"']?\s*>(.*?)</\s*(?:[\uff5c|]{1,2}\s*DSML\s*[\uff5c|]{1,2}\s*)?invoke\s*>",
+    re.DOTALL | re.IGNORECASE,
+)
+_PARAM_PATTERN = re.compile(
+    r"<\s*(?:[\uff5c|]{1,2}\s*DSML\s*[\uff5c|]{1,2}\s*)?parameter\s+name=[\"']?([a-zA-Z0-9_-]+)[\"']?[^>]*>(.*?)</\s*(?:[\uff5c|]{1,2}\s*DSML\s*[\uff5c|]{1,2}\s*)?parameter\s*>",
+    re.DOTALL | re.IGNORECASE,
+)
+_CALLS_WRAPPER = re.compile(
+    r"<\s*(?:[\uff5c|]{1,2}\s*DSML\s*[\uff5c|]{1,2}\s*)?calls\s*>|</\s*(?:[\uff5c|]{1,2}\s*DSML\s*[\uff5c|]{1,2}\s*)?calls\s*>",
+    re.DOTALL | re.IGNORECASE,
+)
+_TOOL_CALL_TAG = re.compile(
+    r"<(?:tool_call|function_call)>\s*(.*?)\s*</(?:tool_call|function_call)>",
+    re.DOTALL | re.IGNORECASE,
+)
+_DEEPSEEK_SPECIAL_TOOL = re.compile(
+    r"<｜tool call begin｜>function<｜tool sep｜>([a-zA-Z0-9_-]+)\s*\n(.*?)<｜tool call end｜>",
+    re.DOTALL,
+)
+
+
+def _coerce_param_value(val_str: str, is_string: bool = False):
+    s = val_str.strip()
+    if is_string:
+        return s
+    if s.lower() == "true":
+        return True
+    if s.lower() == "false":
+        return False
+    if s.isdigit():
+        return int(s)
+    try:
+        if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+            return json.loads(s)
+    except Exception:
+        pass
+    return s
+
+
+def _parse_tool_calls_from_text(content: str) -> tuple[list[dict], str]:
+    """Detects and extracts tool calls embedded in model output text (such as
+    DeepSeek DSML `<invoke name="...">...<parameter...` or XML/markdown).
+    Returns (tool_calls, cleaned_content).
+    """
+    if not content or not isinstance(content, str):
+        return [], content or ""
+
+    tool_calls = []
+    cleaned = content
+
+    # 1. DeepSeek / DSML XML <invoke name="...">...</invoke>
+    invoke_matches = list(_INVOKE_PATTERN.finditer(content))
+    if invoke_matches:
+        for m in invoke_matches:
+            func_name = m.group(1).strip()
+            body = m.group(2).strip()
+            args = {}
+
+            param_matches = list(_PARAM_PATTERN.finditer(body))
+            if param_matches:
+                for pm in param_matches:
+                    pname = pm.group(1).strip()
+                    ptext = pm.group(2).strip()
+                    is_str = 'string="true"' in pm.group(0).lower() or "string='true'" in pm.group(0).lower()
+                    args[pname] = _coerce_param_value(ptext, is_str)
+            elif body.startswith("{") and body.endswith("}"):
+                try:
+                    parsed = json.loads(body)
+                    if isinstance(parsed, dict):
+                        args = parsed
+                except Exception:
+                    pass
+
+            if func_name == "escalate_to_itinerary" and "task_description" not in args:
+                reason = str(args.pop("reason", "") or "escalating to itinerary planning")
+                args = {
+                    "task_description": json.dumps(args),
+                    "reason": reason,
+                }
+
+            tool_calls.append({
+                "name": func_name,
+                "args": args,
+                "id": f"call_{uuid.uuid4().hex[:8]}",
+                "type": "tool_call",
+            })
+
+        cleaned = _INVOKE_PATTERN.sub("", cleaned)
+        cleaned = _CALLS_WRAPPER.sub("", cleaned).strip()
+
+    # 2. <tool_call> / <function_call> JSON tags
+    if not tool_calls:
+        tc_matches = list(_TOOL_CALL_TAG.finditer(cleaned))
+        if tc_matches:
+            for m in tc_matches:
+                raw_json = m.group(1).strip()
+                try:
+                    data = json.loads(raw_json)
+                    if isinstance(data, dict):
+                        func_name = data.get("name") or data.get("function")
+                        args = data.get("arguments") or data.get("parameters") or data.get("args") or {}
+                        if isinstance(args, str):
+                            try:
+                                args = json.loads(args)
+                            except Exception:
+                                pass
+                        if func_name:
+                            if func_name == "escalate_to_itinerary" and isinstance(args, dict) and "task_description" not in args:
+                                reason = str(args.pop("reason", "") or "escalating to itinerary planning")
+                                args = {
+                                    "task_description": json.dumps(args),
+                                    "reason": reason,
+                                }
+                            tool_calls.append({
+                                "name": func_name,
+                                "args": args if isinstance(args, dict) else {},
+                                "id": f"call_{uuid.uuid4().hex[:8]}",
+                                "type": "tool_call",
+                            })
+                except Exception:
+                    pass
+            cleaned = _TOOL_CALL_TAG.sub("", cleaned).strip()
+
+    # 3. DeepSeek special token format
+    if not tool_calls and "<｜tool" in cleaned:
+        for m in _DEEPSEEK_SPECIAL_TOOL.finditer(cleaned):
+            func_name = m.group(1).strip()
+            body = m.group(2).strip()
+            if body.startswith("```json"):
+                body = body[7:].strip()
+            if body.endswith("```"):
+                body = body[:-3].strip()
+            try:
+                args = json.loads(body)
+            except Exception:
+                args = {}
+            if func_name == "escalate_to_itinerary" and "task_description" not in args:
+                reason = str(args.pop("reason", "") or "escalating to itinerary planning")
+                args = {
+                    "task_description": json.dumps(args),
+                    "reason": reason,
+                }
+            tool_calls.append({
+                "name": func_name,
+                "args": args if isinstance(args, dict) else {},
+                "id": f"call_{uuid.uuid4().hex[:8]}",
+                "type": "tool_call",
+            })
+        cleaned = _DEEPSEEK_SPECIAL_TOOL.sub("", cleaned)
+        cleaned = cleaned.replace("<｜tool calls｜>", "").strip()
+
+    return tool_calls, cleaned
 
 
 def _cap_message_content(message, limit: int):
@@ -162,6 +318,20 @@ def agent_node(state: AgentState):
                 ]
             }
 
+    # If the LLM returned tool calls in text (e.g. DeepSeek DSML / XML tags)
+    # rather than the structured tool_calls field, parse them into tool_calls.
+    tool_calls = getattr(response, "tool_calls", None) or []
+    if not tool_calls and isinstance(getattr(response, "content", None), str):
+        parsed_tcs, cleaned_content = _parse_tool_calls_from_text(response.content)
+        if parsed_tcs:
+            try:
+                response = response.model_copy(update={"content": cleaned_content, "tool_calls": parsed_tcs})
+            except Exception:
+                response.content = cleaned_content
+                response.tool_calls = parsed_tcs
+            tool_calls = parsed_tcs
+            logger.info("Parsed %d text-embedded tool call(s) from LLM output: %s", len(parsed_tcs), [t["name"] for t in parsed_tcs])
+
     updates = {"messages": [response]}
     try:
         from llm.cost_planner import record_turn
@@ -171,12 +341,118 @@ def agent_node(state: AgentState):
         updates["trip_context"] = {"vero_cost": cost, "vero_last_lane": lane}
     except Exception:
         pass
-    logger.info("vero_llm lane=%s done tool_calls=%s", lane, bool(getattr(response, "tool_calls", None)))
+    logger.info("vero_llm lane=%s done tool_calls=%s", lane, bool(tool_calls))
 
-    tool_calls = getattr(response, "tool_calls", None)
     if tool_calls:
+        # If planning_mode is full_trip and the LLM issued search_flights and/or search_hotels,
+        # fuse them into escalate_to_itinerary so the handoff to ITINERARY_AGENT runs cleanly.
+        is_full_trip = str(trip_context.get("planning_mode") or "").lower() == "full_trip"
+        flight_tc = next((tc for tc in tool_calls if tc.get("name") == "search_flights"), None)
+        hotel_tc = next((tc for tc in tool_calls if tc.get("name") == "search_hotels"), None)
+        has_escalate = any(tc.get("name") == "escalate_to_itinerary" for tc in tool_calls)
+
+        if (is_full_trip or (flight_tc and hotel_tc)) and not has_escalate and (flight_tc or hotel_tc):
+            f_args = (flight_tc.get("args") or {}) if flight_tc else {}
+            h_args = (hotel_tc.get("args") or {}) if hotel_tc else {}
+            dest = (
+                f_args.get("destination")
+                or h_args.get("destination")
+                or h_args.get("location")
+                or trip_context.get("destination")
+                or ""
+            )
+            orig = (
+                f_args.get("origin")
+                or f_args.get("departure")
+                or trip_context.get("origin")
+                or trip_context.get("departure")
+                or ""
+            )
+            cin = (
+                f_args.get("departure_date")
+                or h_args.get("checkin")
+                or h_args.get("check_in")
+                or trip_context.get("checkin")
+                or ""
+            )
+            cout = (
+                f_args.get("return_date")
+                or h_args.get("checkout")
+                or h_args.get("check_out")
+                or trip_context.get("checkout")
+                or ""
+            )
+            pax = int(
+                f_args.get("adults")
+                or h_args.get("adults")
+                or trip_context.get("adults")
+                or 1
+            )
+            pref = (
+                h_args.get("destination")
+                if h_args.get("destination") and h_args.get("destination") != dest
+                else (trip_context.get("preferences") or "")
+            )
+            esc_data = {
+                "origin": orig,
+                "destination": dest,
+                "checkin": cin,
+                "checkout": cout,
+                "travelers": {"adults": pax},
+                "preferences": pref,
+                "trip_type": "round_trip" if cout else "one_way",
+                "scope": "full",
+            }
+            other_tcs = [tc for tc in tool_calls if tc.get("name") not in ("search_flights", "search_hotels")]
+            esc_tc = {
+                "name": "escalate_to_itinerary",
+                "args": {
+                    "task_description": json.dumps(esc_data),
+                    "reason": "Full trip with flights and hotels requested",
+                },
+                "id": f"call_{uuid.uuid4().hex[:8]}",
+                "type": "tool_call",
+            }
+            tool_calls = other_tcs + [esc_tc]
+            try:
+                response = response.model_copy(update={"tool_calls": tool_calls})
+            except Exception:
+                response.tool_calls = tool_calls
+            updates["messages"] = [response]
+            logger.info("Fused search_flights/search_hotels into escalate_to_itinerary: %s", esc_data)
+
         names = ", ".join(tc["name"] for tc in tool_calls)
         logger.info("Agent requested tool call(s): %s", names)
+
+        # Enrich escalate_to_itinerary with known trip_context if missing in call
+        for tc in tool_calls:
+            if tc.get("name") == "escalate_to_itinerary":
+                tc_args = tc.get("args") or {}
+                raw_desc = tc_args.get("task_description", "")
+                desc_data = {}
+                try:
+                    if raw_desc and str(raw_desc).startswith("{"):
+                        desc_data = json.loads(raw_desc)
+                except Exception:
+                    pass
+                ctx_origin = trip_context.get("origin") or trip_context.get("departure")
+                ctx_dest = trip_context.get("destination")
+                ctx_in = trip_context.get("checkin") or trip_context.get("check_in")
+                ctx_out = trip_context.get("checkout") or trip_context.get("check_out")
+                ctx_adults = trip_context.get("adults")
+                if not desc_data.get("origin") and ctx_origin:
+                    desc_data["origin"] = ctx_origin
+                if not desc_data.get("destination") and ctx_dest:
+                    desc_data["destination"] = ctx_dest
+                if not desc_data.get("checkin") and ctx_in:
+                    desc_data["checkin"] = ctx_in
+                if not desc_data.get("checkout") and ctx_out:
+                    desc_data["checkout"] = ctx_out
+                if not desc_data.get("travelers") and ctx_adults:
+                    desc_data["travelers"] = {"adults": int(ctx_adults)}
+                if desc_data:
+                    tc_args["task_description"] = json.dumps(desc_data)
+                    tc["args"] = tc_args
 
         # Intercept update_trip_context tool calls and write directly to state.
         # JSON-string fields (selected_flight, selected_hotel, return_flight,

@@ -142,7 +142,20 @@ function returnLegFingerprint(flight) {
   return `${num}|${dep}|${arr}`;
 }
 
-function mapList(raw, { legLabel, legIndex, routeKey, routeLabel, routeOrigin, routeDestination } = {}) {
+function mapList(
+  raw,
+  {
+    legLabel,
+    legIndex,
+    routeKey,
+    routeLabel,
+    routeOrigin,
+    routeDestination,
+    adults = 1,
+    children = 0,
+    infants = 0,
+  } = {}
+) {
   const list = (Array.isArray(raw) ? raw : []).filter(
     (f) =>
       !isFakeAirline(
@@ -167,6 +180,9 @@ function mapList(raw, { legLabel, legIndex, routeKey, routeLabel, routeOrigin, r
       routeLabel,
       routeOrigin,
       routeDestination,
+      adults: f?.adults ?? adults,
+      children: f?.children ?? children,
+      infants: f?.infants ?? infants,
     });
     // Keep IDs unique across multi-airport route merges
     if (routeKey && card.id) {
@@ -371,6 +387,9 @@ export default function useFlightSearch() {
           routeLabel: `${o0} → ${d0}`,
           routeOrigin: o0,
           routeDestination: d0,
+          adults: q.adults,
+          children: q.children,
+          infants: q.infants,
         });
         setFlights(mapped);
         setTotalOffers(mapped.length);
@@ -468,6 +487,9 @@ export default function useFlightSearch() {
             routeOrigin: pair.origin,
             routeDestination: pair.destination,
             legLabel: isReturn ? "Departing" : undefined,
+            adults: q.adults,
+            children: q.children,
+            infants: q.infants,
           });
         });
 
@@ -491,6 +513,9 @@ export default function useFlightSearch() {
               routeOrigin: o0,
               routeDestination: d0,
               legLabel: isReturn ? "Departing" : undefined,
+              adults: q.adults,
+              children: q.children,
+              infants: q.infants,
             })
           : [];
 
@@ -572,6 +597,9 @@ export default function useFlightSearch() {
             routeLabel: `${leg.origin} → ${leg.destination}`,
             routeOrigin: leg.origin,
             routeDestination: leg.destination,
+            adults: q.adults,
+            children: q.children,
+            infants: q.infants,
           });
         })
       );
@@ -654,6 +682,9 @@ export default function useFlightSearch() {
             routeLabel: `${retOrigin} → ${retDest}`,
             routeOrigin: retOrigin,
             routeDestination: retDest,
+            adults: search.adults,
+            children: search.children,
+            infants: search.infants,
           })
         );
         setFlights(mapped);
@@ -715,7 +746,11 @@ export default function useFlightSearch() {
         });
         if (res.session_id) setSessionId(res.session_id);
 
-        const packages = mapList(res.flights);
+        const packages = mapList(res.flights, {
+          adults: search.adults,
+          children: search.children,
+          infants: search.infants,
+        });
         const outKey = legFingerprint(selectedOutbound);
         const retKey = legFingerprint(returnFlight);
 
